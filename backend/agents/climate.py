@@ -17,6 +17,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from backend.rag.route_data import resolve_country
+
 # Canonical display names, indexed 1-12.
 MONTH_NAMES = [
     "january", "february", "march", "april", "may", "june",
@@ -221,6 +223,16 @@ def assess(destination: str, month: str | int | None) -> dict[str, Any]:
     """Return the seasonal verdict for a destination in a given month."""
     key = (destination or "").strip().lower()
     entry = CLIMATE_TABLE.get(key)
+    if entry is None:
+        # Candidates arrive at town granularity too. The table is keyed by
+        # country, and an exact lookup silently returned "unknown" for
+        # "Perhentian Islands, Malaysia" - throwing away a correct monsoon
+        # warning for a country that is fully covered.
+        resolved = resolve_country(key)
+        if resolved:
+            entry = CLIMATE_TABLE.get(resolved)
+            if entry is not None:
+                key = resolved
     if entry is None:
         return {
             "destination": destination,

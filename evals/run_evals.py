@@ -622,7 +622,7 @@ async def main() -> int:
     cases = load_cases(args.cases)
     account_ids = ensure_eval_accounts()
 
-    print(f"Onward eval suite")
+    print("Onward eval suite")
     print(f"  run id     : {run_id}")
     print(f"  cases      : {len(cases)}")
     print(f"  llm        : {settings.llm_model if settings.llm_enabled else 'DISABLED'}")

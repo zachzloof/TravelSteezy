@@ -12,6 +12,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from backend.rag.route_data import resolve_country
+
 # key: tuple(sorted country pair) -> connection facts
 ROUTES: dict[tuple[str, str], dict[str, Any]] = {
     ("cambodia", "thailand"): {
@@ -186,8 +188,10 @@ def _key(a: str, b: str) -> tuple[str, str]:
 
 def lookup(origin: str, destination: str) -> dict[str, Any]:
     """Return connection facts between two countries, or a clear 'unknown'."""
-    origin_key = (origin or "").strip().lower()
-    dest_key = (destination or "").strip().lower()
+    # Resolve towns to their country: the route table is country-keyed, but
+    # candidates now arrive at town granularity.
+    origin_key = resolve_country(origin) or (origin or "").strip().lower()
+    dest_key = resolve_country(destination) or (destination or "").strip().lower()
 
     if not origin_key:
         return {

@@ -8,7 +8,6 @@ and can gate a deploy. The agent graph itself is covered by evals/, not here.
 from __future__ import annotations
 
 import importlib
-import os
 import sys
 import tempfile
 from pathlib import Path

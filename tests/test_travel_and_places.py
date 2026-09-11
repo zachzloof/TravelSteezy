@@ -484,3 +484,50 @@ def test_leaving_a_country_still_logs_at_country_level(app_env):
     )
 
     assert [v["country"] for v in store.get_visited_history(user_id)] == ["Thailand"]
+
+
+# --------------------------------------------------------------------------- #
+# town -> country resolution for the country-keyed tables
+# --------------------------------------------------------------------------- #
+def test_resolve_country_handles_towns_and_compounds():
+    from backend.rag.route_data import resolve_country
+
+    assert resolve_country("Malaysia") == "malaysia"
+    assert resolve_country("Perhentian Islands, Malaysia") == "malaysia"
+    assert resolve_country("koh tao") == "thailand"
+    assert resolve_country("Bali") == "indonesia"
+    assert resolve_country("Reykjavik") is None
+    assert resolve_country("") is None
+
+
+def test_seasonal_lookup_works_for_a_town_not_just_a_country():
+    """A town-level candidate must not lose its monsoon warning.
+
+    The climate table is keyed by country; an exact lookup returned "unknown" for
+    "Perhentian Islands, Malaysia" and silently dropped a correct December
+    closure warning.
+    """
+    from backend.agents.climate import assess
+
+    country = assess("malaysia", "december")
+    town = assess("Perhentian Islands, Malaysia", "december")
+
+    assert country["rating"] == "avoid"
+    assert town["rating"] == country["rating"]
+    assert town["known"] is True
+
+
+def test_seasonal_lookup_still_unknown_for_uncovered_places():
+    from backend.agents.climate import assess
+
+    assert assess("Reykjavik", "december")["rating"] == "unknown"
+
+
+def test_route_lookup_resolves_towns_to_their_country():
+    from backend.agents.routes import lookup
+
+    by_town = lookup("Chiang Mai", "Luang Prabang")
+    by_country = lookup("Thailand", "Laos")
+
+    assert by_town["known"] is True
+    assert by_town["overland"] == by_country["overland"]

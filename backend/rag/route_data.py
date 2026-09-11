@@ -254,6 +254,7 @@ CITY_TO_COUNTRY: dict[str, str] = {
 # Cities that appear only as onward hops still need to be recognisable.
 EXTRA_CITIES: dict[str, str] = {
     "chiang rai": "thailand", "mae hong son": "thailand", "ayutthaya": "thailand",
+    "andaman coast": "thailand", "gulf islands": "thailand", "koh phi phi": "thailand",
     "kanchanaburi": "thailand", "koh tao": "thailand", "koh lanta": "thailand",
     "krabi": "thailand", "koh phangan": "thailand", "koh samui": "thailand",
     "phuket": "thailand", "hua hin": "thailand", "koh chang": "thailand",
@@ -263,11 +264,14 @@ EXTRA_CITIES: dict[str, str] = {
     "cat ba": "vietnam", "phong nha": "vietnam", "hue": "vietnam",
     "da nang": "vietnam", "da lat": "vietnam", "nha trang": "vietnam",
     "mui ne": "vietnam", "mekong delta": "vietnam", "can tho": "vietnam",
+    "angkor": "cambodia", "angkor wat": "cambodia",
     "battambang": "cambodia", "kampot": "cambodia", "kep": "cambodia",
     "sihanoukville": "cambodia", "koh rong": "cambodia", "koh rong sanloem": "cambodia",
+    "bali": "indonesia", "java": "indonesia", "sumatra": "indonesia",
     "canggu": "indonesia", "nusa penida": "indonesia", "gili islands": "indonesia",
     "gili trawangan": "indonesia", "gili air": "indonesia", "amed": "indonesia",
     "yogyakarta": "indonesia", "lombok": "indonesia", "seminyak": "indonesia",
+    "borneo": "malaysia", "george town": "malaysia",
     "cameron highlands": "malaysia", "taman negara": "malaysia", "melaka": "malaysia",
     "langkawi": "malaysia", "perhentian islands": "malaysia", "kota kinabalu": "malaysia",
     "coron": "philippines", "port barton": "philippines", "siargao": "philippines",
@@ -280,3 +284,42 @@ EXTRA_CITIES: dict[str, str] = {
 }
 
 KNOWN_CITIES: dict[str, str] = {**CITY_TO_COUNTRY, **EXTRA_CITIES}
+
+COUNTRIES: set[str] = set(KNOWN_CITIES.values())
+
+
+def resolve_country(location: str | None) -> str | None:
+    """Map any free-form place string to the country it belongs to.
+
+    Handles country names, known towns, and compound strings like
+    "Perhentian Islands, Malaysia" or "Bali, Indonesia".
+
+    This exists because the climate table and the route table are keyed by
+    COUNTRY, while candidates now arrive at town granularity. An exact lookup
+    silently returned "unknown" for "Perhentian Islands, Malaysia", which threw
+    away a correct monsoon warning for a country that is fully covered.
+    """
+    key = (location or "").strip().lower()
+    if not key:
+        return None
+    if key in COUNTRIES:
+        return key
+    if key in KNOWN_CITIES:
+        return KNOWN_CITIES[key]
+
+    # Compound strings: try each comma- or slash-separated part.
+    for part in (p.strip() for p in key.replace("/", ",").split(",")):
+        if part in COUNTRIES:
+            return part
+        if part in KNOWN_CITIES:
+            return KNOWN_CITIES[part]
+
+    # Last resort: a country or town name embedded in a longer phrase.
+    for country in COUNTRIES:
+        if country in key:
+            return country
+    for city, country in KNOWN_CITIES.items():
+        if city in key:
+            return country
+    return None
+
