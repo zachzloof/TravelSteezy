@@ -2,7 +2,9 @@
 
 This document covers the second phase of work on Onward. The base app (ADK
 orchestrator, memory store, RAG, auth, evals) is described in the main
-[README](../README.md).
+[README](../README.md). For the specific bugs found while building each piece
+below — the exact failure, the fix, and the test or eval case that caught it —
+see [notes/](../notes/00-index.md), particularly notes 02-06.
 
 Four connected features, in the order a traveller meets them:
 

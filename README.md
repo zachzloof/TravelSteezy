@@ -191,8 +191,8 @@ address account B's row. Two eval cases and four unit tests assert this.
 
 ## 4. RAG
 
-Seed corpus: 29 curated documents covering the Southeast Asia backpacker circuit
-plus Nepal and Sri Lanka, in three namespaces:
+Seed corpus: 29 curated country-level documents covering the Southeast Asia
+backpacker circuit plus Nepal and Sri Lanka, in three namespaces:
 
 | Namespace | Contents | Read by |
 |---|---|---|
@@ -208,6 +208,14 @@ Ingest with `python -m scripts.ingest_rag` (or `--stats` to inspect the index).
 > **A scoped search that matches nothing returns nothing.** An earlier version
 > retried unscoped, which handed the agent passages about entirely different
 > countries and led directly to confabulation. That fallback was removed.
+
+The extension adds two more namespaces on top of these — `routes` (16
+town-level "where next from here" documents) and `experience` (written at
+runtime from reviews and accepted/rejected suggestions, so recommendations
+improve with use) — bringing the live index to 45 curated documents plus
+runtime content. See [docs/EXTENSION.md](docs/EXTENSION.md) section 6 and
+[notes/03-rag-and-retrieval.md](notes/03-rag-and-retrieval.md) for the design
+and the bugs found building it.
 
 ---
 
@@ -241,6 +249,10 @@ Ingest with `python -m scripts.ingest_rag` (or `--stats` to inspect the index).
 | `POST /profile/me/departures` | Log a departure |
 | `DELETE /profile/me` | Forget this account's memory |
 | `GET /health` | Honest per-dependency status |
+
+The extension adds `/travel/*` — structured route, wishlist, interest and
+review endpoints backing onboarding and trip tracking. Full list in
+[docs/EXTENSION.md](docs/EXTENSION.md) section 8.
 
 ---
 
@@ -484,6 +496,26 @@ You can run both: auto-approve off, demo account on.
 8. **Admin.** Register a second account, show it blocked pending approval, then
    approve it at `/admin`.
 
+**Extension flow** (a brand-new account, so onboarding fires):
+
+9. **Onboard.** Register a fresh account. First message: *"I started in
+   Bangkok, then Koh Tao, and I'm in Chiang Mai now. I want to get to Pai next.
+   Shoestring, solo, slow, into nature and street food."* One turn captures the
+   route, wishlist, interests, pace and budget — visible immediately in the new
+   trip panel in the sidebar.
+10. **Discover, then track.** Ask *"Where next from here?"* — it prioritises
+    Pai because it's on the wishlist, citing the route corpus. Say *"I'm in Pai
+    now"* — the trip panel updates live: Pai moves from wishlist to route.
+11. **Live Places.** Ask *"Any good hostels here, and which area should I stay
+    in?"* — real Google Places results, ranked by weighted score (not raw
+    star rating), grouped into walkable areas.
+12. **Review loop.** Say *"Leaving Pai today, heading back to Chiang Mai"* — a
+    review prompt appears. Answer it; the review is saved and feeds back into
+    the RAG store for future travellers' suggestions.
+
+Full extension design (and every bug found building it) is in
+[docs/EXTENSION.md](docs/EXTENSION.md) and [notes/](notes/00-index.md).
+
 ---
 
 ## 11. Checklist status
@@ -491,23 +523,25 @@ You can run both: auto-approve off, demo account on.
 | Requirement | Status |
 |---|---|
 | Problem / product | Section 1 |
-| Architecture: agents, memory, tools, APIs | Section 2 |
-| Stack | Section 5 — all of it live, including Pinecone and Langfuse |
-| Evals: what TRACE proved + a shipped fix | Section 7 — 14/19 → 19/19, both result files committed, four fixes |
-| Memory: keep / write / lives / retrieve / forget | Section 3 — five separately implemented answers |
+| Architecture: agents, memory, tools, APIs | Section 2, extended by [docs/EXTENSION.md](docs/EXTENSION.md) |
+| Stack | Section 5 — all of it live, including Pinecone, Langfuse and Places |
+| Evals: what TRACE proved + a shipped fix | Base app: Section 7, 14/19 → 19/19, four fixes. Extension: 27 more cases, `evals/results/extension-final.md` — six fixes, including a bug in the eval harness itself (two runs corrupting each other's data), documented in [notes/06-eval-methodology.md](notes/06-eval-methodology.md) |
+| Memory: keep / write / lives / retrieve / forget | Section 3 — five separately implemented answers, extended with structured route/wishlist/review tables |
 | URL loads for a stranger in incognito | Needs the Railway deploy; no hostname is baked into the frontend build |
-| Core task works end to end | Verified locally against the live OpenAI API |
+| Core task works end to end | Verified locally against the live OpenAI API, including the full onboarding → discover → track → review loop |
 | Memory persists across a fresh session | **Verified** against a real process restart, plus tests and an eval case |
-| Eval suite passes / latest score shown | 19/19 on the local fallback and 19/19 against live Pinecone + Langfuse |
-| At least one fix from TRACE shipped | Four, Section 7 |
-| README covers problem/architecture/stack/demo | This file |
+| Eval suite passes / latest score shown | Base app 19/19 on local fallback and live services. Extension: see `evals/results/extension-final.md` for the current lock-protected, repeat-3 score — the honest per-case pass rate, not a single-run number (why: [notes/06-eval-methodology.md](notes/06-eval-methodology.md)) |
+| At least one fix from TRACE shipped | Ten total across both phases — four base-app (Section 7), six extension ([notes/08-decisions-log.md](notes/08-decisions-log.md)) |
+| README covers problem/architecture/stack/demo | This file, plus [docs/EXTENSION.md](docs/EXTENSION.md) and [notes/](notes/00-index.md) for depth |
 | Backup recording exported | **Outstanding** — record once deployed |
 
 ### Outstanding before demo day
 
 1. Deploy to Railway with a `/data` volume and verify in incognito.
 2. Decide the demo-safety mechanism (Section 9).
-3. Screen-record the Section 10 flow.
+3. Run `python -m scripts.ingest_rag` against the production Pinecone index if
+   it hasn't already seen the `routes` namespace (45 documents total once it has).
+4. Screen-record the Section 10 flow, extension steps included.
 
 Pinecone and Langfuse are done — keys supplied, corpus ingested, traces verified,
 and the full suite re-run green against both.
