@@ -316,16 +316,39 @@ async def _run_concierge(
 
 
 async def _run_one_specialist(
-    agent: LlmAgent, key: str, state: dict[str, Any], message: str, user_id: int
+    agent: LlmAgent,
+    key: str,
+    state: dict[str, Any],
+    message: str,
+    user_id: int,
+    trace: Trace,
+    parent_span: Any = None,
 ) -> tuple[str, str, list[str], str | None]:
-    """Run one specialist. Never raises: a failure is reported, not propagated."""
+    """Run one specialist. Never raises: a failure is reported, not propagated.
+
+    Opens its own Langfuse span nested under the fan-out, and emits a child span
+    per tool call, so the trace tree shows which specialist called what.
+    """
     last_error: Exception | None = None
     for attempt in (1, 2):
         try:
-            text, final_state, tool_calls = await _run_agent(
-                agent, state, message, str(user_id), f"{agent.name}-{user_id}-{attempt}"
-            )
-            output = str(final_state.get(key) or text or "")
+            with trace.span(
+                agent.name,
+                parent=parent_span,
+                input={"candidates": state.get("candidates"), "attempt": attempt},
+            ) as span_handle:
+                text, final_state, tool_calls = await _run_agent(
+                    agent, state, message, str(user_id), f"{agent.name}-{user_id}-{attempt}"
+                )
+                output = str(final_state.get(key) or text or "")
+                for tool_name in tool_calls:
+                    trace.tool_span(span_handle, tool_name)
+                try:
+                    span_handle.end(output=output[:2000])
+                except Exception:  # noqa: BLE001
+                    pass
+
+            trace.set_span_summary(agent.name, output[:180] or "(no output)")
             if output.strip():
                 return key, output, tool_calls, None
             last_error = RuntimeError("specialist produced no output")
@@ -355,10 +378,12 @@ async def _run_comparison(
     names = [agent.name for agent, _ in specialists]
 
     # ---- stage 1: parallel fan-out ----------------------------------------
-    with trace.span("agents.fan_out", metadata={"specialists": names}):
+    with trace.span("agents.fan_out", metadata={"specialists": names}) as fan_span:
         outcomes = await asyncio.gather(
             *(
-                _run_one_specialist(agent, key, state, message, user_id)
+                _run_one_specialist(
+                    agent, key, state, message, user_id, trace, fan_span
+                )
                 for agent, key in specialists
             )
         )
@@ -375,12 +400,9 @@ async def _run_comparison(
         all_tool_calls.extend(tool_calls)
         if error:
             failures.append(f"{agent.name}: {error}")
-            trace.note(agent.name, error, status="error")
-        else:
-            trace.note(
-                agent.name, output[:180] or "(no output)",
-                status="ok" if output else "empty",
-            )
+            # The span itself was already recorded by _run_one_specialist; just
+            # mark the failure so the UI panel shows it.
+            trace.set_span_status(agent.name, "error", error)
 
     summary = f"{', '.join(names)}; {len(all_tool_calls)} tool call(s)"
     if failures:
@@ -392,7 +414,10 @@ async def _run_comparison(
     cards: list[dict[str, Any]] = []
     reply = ""
     text = ""
-    with trace.span("agent.decision_weigher"):
+    with trace.span(
+        "agent.decision_weigher",
+        input={k: v[:400] for k, v in reports.items() if v},
+    ):
         # One retry: the weigher occasionally answers in prose instead of JSON,
         # which would otherwise cost the user their whole comparison.
         for attempt in (1, 2):

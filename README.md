@@ -240,22 +240,50 @@ Stated plainly, because the difference matters when marking this.
   and a live price is the wrong answer to a question asked weeks ahead. Figures
   are presented as ranges.
 
-**Fallbacks that activate when a key is missing** — `GET /health` always reports
-which path is live, so this is checkable rather than a claim:
+**Every managed service is live and verified.** `GET /health` always reports
+which path each dependency is on, so this is checkable rather than a claim:
 
-- **Pinecone.** The Pinecone path is fully implemented (namespaces, metadata
-  filters, index auto-creation). No `PINECONE_API_KEY` was available during
-  development, so everything here ran on a **local JSON index with brute-force
-  cosine search**, using real OpenAI embeddings. Set the key and the same code
-  switches to Pinecone. **This is the one stack row I could not exercise against
-  the real service** — it needs your key and one `python -m scripts.ingest_rag`
-  run to confirm.
-- **Langfuse.** Instrumentation is written (a trace per turn, a span per agent
-  and tool call). No keys were available, so it ran in no-op mode. The span tree
-  is still captured locally and rendered in the chat UI under "Show what ran".
-  **Also unexercised against the real service.**
+- **Pinecone — live.** 29 documents ingested into the `ai-bootcamp` index
+  (1536-dim, cosine) across the `visa`, `seasonal` and `tips` namespaces.
+  Namespace isolation means pre-existing vectors in the default namespace are
+  untouched. Metadata-filtered retrieval verified against the live index, and a
+  scoped query for an off-corpus destination correctly returns nothing.
+- **Langfuse — live.** Verified with `auth_check()` and by reading a trace back
+  through the API: one trace per turn carrying user id, session id, tags, input
+  and output, and an 18-span tree of agent and tool spans (see below).
+- **A local fallback still exists for both**, so the app, the tests and the eval
+  suite run with no managed services and no keys: a local JSON index with
+  brute-force cosine search, and no-op tracing. `backend_name()` and
+  `tracing_enabled()` report which path is live.
 - **OpenAI.** If unset, memory still reads and writes normally and the app says
   the model is unavailable rather than erroring.
+
+### The trace tree
+
+```
+TRACE onward.turn  user=19  spans=18
+memory.read                         11ms
+agent.turn_parser                 1857ms
+memory.write                        15ms
+agents.fan_out                    9872ms
+   weather_agent                     7133ms
+      tool.check_seasonal_conditions
+      tool.check_seasonal_conditions        (one call per candidate)
+      tool.search_seasonal_notes
+      tool.search_seasonal_notes
+   logistics_agent                   9869ms
+      tool.search_visa_rules
+      tool.search_visa_rules
+      tool.check_route
+      tool.check_route
+   recommendations_agent             9319ms
+      tool.search_backpacker_tips
+      tool.search_backpacker_tips
+agent.decision_weigher            5029ms
+```
+
+The fan-out is visible as parallelism, not just as structure: 26.3 seconds of
+specialist work completed in 9.87 seconds of wall clock.
 
 ---
 
@@ -276,10 +304,15 @@ memory surviving a fresh session.
 
 ### Result: 14/19 → 19/19
 
-| Run | Score | Artifact |
-|---|---|---|
-| Baseline | **14/19** | `evals/results/baseline-before-fix.json` / `.md` |
-| After fixes | **19/19** | `evals/results/after-fix.json` / `.md` |
+| Run | Score | RAG / tracing | Artifact |
+|---|---|---|---|
+| Baseline | **14/19** | local index, no tracing | `evals/results/baseline-before-fix.json` / `.md` |
+| After fixes | **19/19** | local index, no tracing | `evals/results/after-fix.json` / `.md` |
+| After fixes, live services | **19/19** | **Pinecone + Langfuse** | `evals/results/after-fix-pinecone-langfuse.json` / `.md` |
+
+The third run re-ran the same suite against the real managed services after the
+keys were supplied, confirming the fixes hold on Pinecone retrieval rather than
+only on the local fallback.
 
 ### The four fixes shipped from those failures
 
@@ -328,9 +361,8 @@ fixes 2, 3 and 4 are code-level fixes verifiable independently of the eval
 wording.
 
 **Langfuse traceability.** Every run gets a `run_id` recorded in the results file
-and attached to traces as a tag, so a failing case can be opened in Langfuse.
-With no Langfuse keys configured this ran in no-op mode, and the per-span timing
-in the results files came from the local span recorder.
+and attached to traces as a tag, so a failing case can be opened in Langfuse. The
+live run's id is `eval-20260911T165850Z-2493bc`.
 
 ### Running them
 
@@ -439,13 +471,13 @@ You can run both: auto-approve off, demo account on.
 |---|---|
 | Problem / product | Section 1 |
 | Architecture: agents, memory, tools, APIs | Section 2 |
-| Stack | Section 5 — Pinecone and Langfuse code paths written but unexercised, see Section 6 |
+| Stack | Section 5 — all of it live, including Pinecone and Langfuse |
 | Evals: what TRACE proved + a shipped fix | Section 7 — 14/19 → 19/19, both result files committed, four fixes |
 | Memory: keep / write / lives / retrieve / forget | Section 3 — five separately implemented answers |
 | URL loads for a stranger in incognito | Needs the Railway deploy; no hostname is baked into the frontend build |
 | Core task works end to end | Verified locally against the live OpenAI API |
 | Memory persists across a fresh session | **Verified** against a real process restart, plus tests and an eval case |
-| Eval suite passes / latest score shown | 19/19, `evals/results/after-fix.md` |
+| Eval suite passes / latest score shown | 19/19 on the local fallback and 19/19 against live Pinecone + Langfuse |
 | At least one fix from TRACE shipped | Four, Section 7 |
 | README covers problem/architecture/stack/demo | This file |
 | Backup recording exported | **Outstanding** — record once deployed |
@@ -454,7 +486,7 @@ You can run both: auto-approve off, demo account on.
 
 1. Deploy to Railway with a `/data` volume and verify in incognito.
 2. Decide the demo-safety mechanism (Section 9).
-3. Add `PINECONE_API_KEY` and run `python -m scripts.ingest_rag` to exercise the
-   real vector store, then confirm `/health` reports `"backend": "pinecone"`.
-4. Add Langfuse keys and confirm traces arrive.
-5. Screen-record the Section 10 flow.
+3. Screen-record the Section 10 flow.
+
+Pinecone and Langfuse are done — keys supplied, corpus ingested, traces verified,
+and the full suite re-run green against both.
