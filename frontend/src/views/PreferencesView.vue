@@ -89,7 +89,7 @@ async function logDeparture() {
 }
 
 async function forgetAll() {
-  if (!confirm('Erase everything Onward remembers about your trip? Your account stays.')) return
+  if (!confirm('Erase everything Travel Steezy remembers about your trip? Your account stays.')) return
   busy.value = true
   try {
     apply(await api.forgetMe())
@@ -106,7 +106,7 @@ async function forgetAll() {
   <div class="wrap">
     <h1>My Preferences</h1>
     <p class="muted small intro">
-      This is the trip profile Onward keeps for your account. Every agent reads it
+      This is the trip profile Travel Steezy keeps for your account. Every agent reads it
       before answering, so you never have to repeat yourself. Change anything here
       and the next recommendation will reflect it.
     </p>

@@ -20,7 +20,7 @@ function logout() {
     <header>
       <div class="brand">
         <span class="mark">◈</span>
-        <span>Onward</span>
+        <span>Travel Steezy</span>
         <span class="tagline hide-narrow">where next?</span>
       </div>
 

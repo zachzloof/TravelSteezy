@@ -28,7 +28,7 @@ logger = logging.getLogger("onward")
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     settings.ensure_dirs()
     init_db()
-    logger.info("Onward starting up")
+    logger.info("Travel Steezy starting up")
     logger.info("  database        : %s", settings.db_path)
     logger.info("  llm             : %s", settings.llm_model if settings.llm_enabled else "DISABLED")
     logger.info("  rag backend     : %s", rag_store.backend_name())
@@ -41,7 +41,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(
-    title="Onward",
+    title="Travel Steezy",
     description="A multi-agent travel assistant for long-term backpackers.",
     version="1.0.0",
     lifespan=lifespan,
@@ -113,7 +113,7 @@ else:
     def root() -> JSONResponse:
         return JSONResponse(
             {
-                "app": "Onward",
+                "app": "Travel Steezy",
                 "note": "Frontend not built. Run `npm run build` in frontend/.",
                 "docs": "/docs",
                 "health": "/health",

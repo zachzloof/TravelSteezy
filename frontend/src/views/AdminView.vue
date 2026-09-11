@@ -68,7 +68,7 @@ function logout() {
   <div class="wrap">
     <div v-if="!authed" class="panel card">
       <h1>Admin</h1>
-      <p class="muted small">Approve or reject new Onward accounts.</p>
+      <p class="muted small">Approve or reject new Travel Steezy accounts.</p>
       <div v-if="error" class="error">{{ error }}</div>
       <form @submit.prevent="login">
         <div class="field">

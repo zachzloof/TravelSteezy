@@ -3,7 +3,7 @@
 Working notes so this can be resumed cleanly across sessions. Delete once the
 extension is merged and the README absorbs the detail.
 
-**Session context:** extending Onward/TravelSteezy with onboarding capture, live
+**Session context:** extending Travel Steezy with onboarding capture, live
 trip tracking, post-visit reviews, and Google Places-backed recommendation tools.
 
 ---

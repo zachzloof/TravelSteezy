@@ -1,4 +1,4 @@
-"""TRACE eval harness for Onward.
+"""TRACE eval harness for Travel Steezy.
 
     python -m evals.run_evals                     # run everything
     python -m evals.run_evals --label before-fix  # name the results file
@@ -677,7 +677,7 @@ def load_cases(selected: list[str] | None) -> list[dict[str, Any]]:
 
 
 async def main() -> int:
-    parser = argparse.ArgumentParser(description="Run the Onward eval suite.")
+    parser = argparse.ArgumentParser(description="Run the Travel Steezy eval suite.")
     parser.add_argument("--label", default=None, help="name for the results files")
     parser.add_argument("--case", action="append", dest="cases", help="run only these case ids")
     parser.add_argument("--no-judge", action="store_true", help="skip LLM-judge checks")
@@ -695,7 +695,7 @@ async def main() -> int:
     cases = load_cases(args.cases)
     account_ids = ensure_eval_accounts()
 
-    print("Onward eval suite")
+    print("Travel Steezy eval suite")
     print(f"  run id     : {run_id}")
     print(f"  cases      : {len(cases)}")
     print(f"  llm        : {settings.llm_model if settings.llm_enabled else 'DISABLED'}")

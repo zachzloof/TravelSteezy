@@ -1,6 +1,6 @@
 # Extension: onboarding, trip tracking, reviews, and place recommendations
 
-This document covers the second phase of work on Onward. The base app (ADK
+This document covers the second phase of work on Travel Steezy. The base app (ADK
 orchestrator, memory store, RAG, auth, evals) is described in the main
 [README](../README.md). For the specific bugs found while building each piece
 below — the exact failure, the fix, and the test or eval case that caught it —

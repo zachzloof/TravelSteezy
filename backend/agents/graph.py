@@ -1,4 +1,4 @@
-"""Agent definitions for the Onward graph.
+"""Agent definitions for the Travel Steezy graph.
 
 Shape:
 
@@ -103,7 +103,7 @@ def parse_json_block(text: str) -> dict[str, Any] | None:
 # shared prompt fragments
 # --------------------------------------------------------------------------- #
 HOUSE_STYLE = """
-You are part of Onward, an assistant for long-term budget backpackers already on
+You are part of Travel Steezy, an assistant for long-term budget backpackers already on
 the road. Your user is not a package tourist: they sleep in dorms and guesthouses,
 travel by night bus, slow boat and budget airline, and care about cost per day,
 visa runs and whether a place is worth the journey.
@@ -140,7 +140,7 @@ COVERAGE_BLOCK = """
 # --------------------------------------------------------------------------- #
 TURN_PARSER_INSTRUCTION = (
     """
-You are the parsing step of the Onward orchestrator. You do not talk to the user.
+You are the parsing step of the Travel Steezy orchestrator. You do not talk to the user.
 Read their latest message together with the stored trip profile, and return JSON
 describing what changed and what work the specialists need to do.
 """

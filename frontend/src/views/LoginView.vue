@@ -54,7 +54,7 @@ async function submit() {
 <template>
   <div class="wrap">
     <div class="panel card">
-      <h1>Onward</h1>
+      <h1>Travel Steezy</h1>
       <p class="muted small intro">
         A travel assistant for long-term backpackers. Tell it where you are, what
         your budget is and how long you have, and it will weigh up where to go next

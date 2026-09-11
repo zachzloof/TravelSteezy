@@ -1,6 +1,6 @@
-# Onward — a multi-agent travel assistant for long-term backpackers
+# Travel Steezy — a multi-agent travel assistant for long-term backpackers
 
-Onward answers the one question every long-term backpacker asks over and over:
+Travel Steezy answers the one question every long-term backpacker asks over and over:
 **where do I go next?** It weighs season, visas, routes and cost against the
 traveller's own stored preferences, and returns a ranked comparison with pros,
 cons and a verdict per destination.
@@ -34,7 +34,7 @@ and it is genuinely hard because the inputs are unrelated to each other:
   they actually like doing?
 
 Answering that means checking four unrelated things and then trading them off.
-Onward does exactly that: four specialist agents, then a fifth that weighs their
+Travel Steezy does exactly that: four specialist agents, then a fifth that weighs their
 findings against the traveller's stored profile.
 
 The advice is deliberately **backpacker-shaped, not tourist-shaped** — dorm
