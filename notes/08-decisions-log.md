@@ -146,17 +146,30 @@ part.
     out a clean version and overwriting an unsaved one is functionally
     identical to deleting it, even though no `rm` was involved.
 
+## The final number
+
+`extension-final.json`/`.md`, run after both the `resolve_country` fix (#18)
+and the `EvalLock` fix (#22), lock-protected and confirmed uncontaminated
+(the two cases that had shown contamination signatures — the Reykjavik/Chiang
+Mai mix-up and the departure case with no departure logic — both pass cleanly
+in this run):
+
+**27/27 (100%), every case passing all 3 repeated runs, 81/81 individual
+attempts passing.**
+
+The full extension eval evidence trail, kept in full rather than trimmed to
+just this final number:
+
+| File | Score | Status |
+|---|---|---|
+| `extension-v1.md` | 23/27 | single run, before repeat-mode existed |
+| `extension-repeat3.md` | 26/27 | clean; its one flaky case led to fix #18 |
+| `extension-repeat3-run2-COLLISION-CONTAMINATED.md` | 20/27 | invalid — decision #22 |
+| `extension-final-run3-COLLISION-CONTAMINATED.json`/`.md` | 19/27 | invalid — decision #22 |
+| `extension-final.json`/`.md` | **27/27** | **clean, lock-protected — cite this one** |
+
 ## Open items at the time of writing
 
-- The extension's eval evidence trail as of this entry: `extension-v1.md`
-  (23/27, single run, pre-repeat-mode), `extension-repeat3.md` (26/27, the
-  clean first repeat-3 run whose one flaky case led to fix #18),
-  `extension-repeat3-run2-COLLISION-CONTAMINATED.md` and
-  `extension-final-run3-COLLISION-CONTAMINATED.json`/`.md` (both invalidated
-  by the concurrency bug, decision #22), and `extension-final.json`/`.md` (the
-  clean, lock-protected, authoritative re-run after both the `resolve_country`
-  fix and the `EvalLock` fix — the number to actually cite). All are kept, none
-  deleted.
 - Railway deployment, the demo-safety account decision (seeded demo account
   vs. `ADMIN_AUTO_APPROVE`), and the backup screen recording remain outstanding
   from the original build — unrelated to the extension, carried over from

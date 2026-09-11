@@ -530,7 +530,7 @@ Full extension design (and every bug found building it) is in
 | URL loads for a stranger in incognito | Needs the Railway deploy; no hostname is baked into the frontend build |
 | Core task works end to end | Verified locally against the live OpenAI API, including the full onboarding → discover → track → review loop |
 | Memory persists across a fresh session | **Verified** against a real process restart, plus tests and an eval case |
-| Eval suite passes / latest score shown | Base app 19/19 on local fallback and live services. Extension: see `evals/results/extension-final.md` for the current lock-protected, repeat-3 score — the honest per-case pass rate, not a single-run number (why: [notes/06-eval-methodology.md](notes/06-eval-methodology.md)) |
+| Eval suite passes / latest score shown | Base app 19/19 on local fallback and live services. Extension: **27/27 (100%)**, every case passing all 3 repeated runs, 81/81 individual attempts — `evals/results/extension-final.md`. Why a repeat-mode number rather than one run: [notes/06-eval-methodology.md](notes/06-eval-methodology.md) |
 | At least one fix from TRACE shipped | Ten total across both phases — four base-app (Section 7), six extension ([notes/08-decisions-log.md](notes/08-decisions-log.md)) |
 | README covers problem/architecture/stack/demo | This file, plus [docs/EXTENSION.md](docs/EXTENSION.md) and [notes/](notes/00-index.md) for depth |
 | Backup recording exported | **Outstanding** — record once deployed |

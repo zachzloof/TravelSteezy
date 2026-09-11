@@ -137,6 +137,13 @@ should make the case deterministic (pass on every run) rather than merely
 surface — a code fix that converts a flaky case into a reliably-passing one,
 versus a case that just needs a softer regex.
 
+**Confirmed.** The eventual clean, lock-protected re-run (`extension-final.md`,
+after both this fix and the concurrency fix below) scored **27/27, 81/81
+individual attempts passing** — the previously-flaky case included, no longer
+flaky at all. That is the strongest evidence available that the fix addressed
+the actual cause rather than papering over a symptom: the case didn't just
+pass more often, it stopped being nondeterministic.
+
 ## A second, more serious bug: two eval runs corrupting each other
 
 While chasing the `resolve_country` fix above, a genuinely different and more
@@ -193,6 +200,11 @@ Given the above, the honest way to present a number in a demo is not a bare
 percentage from one run — it's the repeat-mode summary: "N/27 cases pass every
 one of 3 runs; X% of all individual attempts pass; here are the cases that are
 flaky and why." That's a materially stronger claim than a single-run
-percentage, and it's the number stored in
-`evals/results/extension-final.md` (see note 08's decision log for the
-timeline of getting a clean run recorded).
+percentage.
+
+The number that actually landed, after both fixes documented above:
+**27/27 cases (100%), passing every one of 3 runs — 81/81 individual attempts
+passing, zero flaky cases.** Stored in `evals/results/extension-final.md` /
+`.json`. See note 08's decision log for the full timeline of getting a
+genuinely clean run recorded, including the two contaminated attempts kept on
+disk alongside it as evidence rather than discarded.
