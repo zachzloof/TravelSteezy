@@ -26,6 +26,9 @@ from typing import Any
 from backend.memory import store, travel
 from backend.rag import experience as experience_store
 from backend.rag.route_data import KNOWN_CITIES
+from backend.rag.seed_data import KNOWN_DESTINATIONS
+
+SUPPORTED_COUNTRIES = set(KNOWN_DESTINATIONS)
 
 logger = logging.getLogger(__name__)
 
@@ -147,10 +150,22 @@ def apply_tracking(user_id: int, parse: dict[str, Any]) -> list[dict[str, Any]]:
             departure_date=departure_date,
             source="tracked",
         )
-        # The country-level log and archival rule still applies.
-        store.log_departure(
-            user_id, country=location, departure_date=departure_date, source="agent"
+        # Only a COUNTRY departure belongs in the country-level log. Passing a
+        # town name here wrote "Pai" into visited_history as though it were a
+        # country, and leaving Pai does not mean leaving Thailand.
+        is_country = (
+            str(departure.get("location_type") or "").lower() == "country"
+            or location.strip().lower() in SUPPORTED_COUNTRIES
         )
+        if is_country:
+            store.log_departure(
+                user_id, country=location, departure_date=departure_date, source="agent"
+            )
+        else:
+            # Town-level: archive_country clears current_location when it matches,
+            # which is the same "stop treating this as active context" rule. Note
+            # update_profile cannot do this - it drops empty values by design.
+            store.archive_country(user_id, location, source="agent")
         writes.append(
             {
                 "operation": "log_departure",

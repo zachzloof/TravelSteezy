@@ -433,3 +433,54 @@ def test_city_detection_finds_multiple_towns():
 
     found = {c["city"]: c["country"] for c in detect_cities("Left Luang Prabang for Vang Vieng")}
     assert found == {"luang prabang": "laos", "vang vieng": "laos"}
+
+
+# --------------------------------------------------------------------------- #
+# departures at town vs country granularity
+# --------------------------------------------------------------------------- #
+def test_leaving_a_town_does_not_pollute_country_history(app_env, monkeypatch):
+    """Leaving Pai is not leaving Thailand.
+
+    An earlier version passed the town name straight into the country-level log,
+    writing "Pai" into visited_history as though it were a country.
+    """
+    import importlib
+
+    import backend.agents.tracking as tracking
+
+    importlib.reload(tracking)
+    travel, store, db = app_env["travel"], app_env["store"], app_env["db"]
+    user_id = make_user(db, "towndeparture")
+    store.update_profile(user_id, {"current_location": "Pai"})
+
+    tracking.apply_tracking(
+        user_id,
+        {"departures": [{"location": "Pai", "location_type": "city",
+                         "departure_date": "2026-09-20"}]},
+    )
+
+    assert store.get_visited_history(user_id) == []
+    # It still stops being active context, and lands in the route with its date.
+    assert store.get_profile(user_id)["current_location"] is None
+    entry = travel.get_travel_history(user_id)[0]
+    assert entry["location"] == "Pai"
+    assert entry["departure_date"] == "2026-09-20"
+
+
+def test_leaving_a_country_still_logs_at_country_level(app_env):
+    import importlib
+
+    import backend.agents.tracking as tracking
+
+    importlib.reload(tracking)
+    store, db = app_env["store"], app_env["db"]
+    user_id = make_user(db, "countrydeparture")
+    store.update_profile(user_id, {"current_location": "Thailand"})
+
+    tracking.apply_tracking(
+        user_id,
+        {"departures": [{"location": "Thailand", "location_type": "country",
+                         "departure_date": "2026-09-25"}]},
+    )
+
+    assert [v["country"] for v in store.get_visited_history(user_id)] == ["Thailand"]
