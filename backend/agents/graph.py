@@ -23,6 +23,17 @@ from typing import Any
 from google.adk.agents import LlmAgent
 from google.adk.models.lite_llm import LiteLlm
 
+from backend.agents.discovery_tools import (
+    discover_next_destinations,
+    get_traveller_feedback,
+)
+from backend.agents.place_tools import (
+    find_food_near,
+    find_hostels,
+    get_booking_links,
+    get_places_recommendations,
+    suggest_areas_to_stay,
+)
 from backend.agents.tools import (
     check_route,
     check_seasonal_conditions,
@@ -110,7 +121,17 @@ Rules that apply to every agent in this system:
 MEMORY_BLOCK = """
 --- TRIP PROFILE (remembered for this account, do not ask for it again) ---
 {memory_block?}
+{travel_block?}
 --- END TRIP PROFILE ---
+"""
+
+# Given to the specialists as well as the weigher. The specialists run first, and
+# a confabulated specialist report gives the weigher plausible material to pass
+# on even when the weigher itself is behaving.
+COVERAGE_BLOCK = """
+--- KNOWLEDGE COVERAGE (computed in code, not negotiable) ---
+{coverage_note?}
+--- END COVERAGE ---
 """
 
 
@@ -126,43 +147,71 @@ describing what changed and what work the specialists need to do.
     + MEMORY_BLOCK
     + """
 Today's date is {today?}.
+Places awaiting a review: {pending_reviews?}
 The user's message is the conversation input you have been given.
 
 Return ONLY a raw JSON object, no code fences, with exactly these keys:
 
 {{
+  "intent": "compare",
   "profile_updates": {{}},
   "departures": [],
+  "visits": [],
+  "wishlist_adds": [],
+  "wishlist_removes": [],
+  "reviews": [],
   "candidate_destinations": [],
+  "focus_location": null,
   "travel_month": null,
   "question_focus": "",
   "needs_weather": true,
   "needs_logistics": true,
-  "needs_recommendations": true,
-  "is_small_talk": false
+  "needs_recommendations": true
 }}
 
+"intent" is the single most important field. One of:
+- "compare"  : weighing two or more destinations against each other.
+- "discover" : open "where should I go next" from where they are, no options named.
+- "local"    : on-the-ground questions about ONE place - where to stay, what to
+               eat, what to do, hostels, areas, nightlife.
+- "memory"   : greetings, or asking what you remember about them.
+- "review"   : they are giving an opinion or rating about a place they visited.
+
 Field rules:
-- "profile_updates": only fields the user has just stated or changed in THIS message.
-  Allowed keys: nationality, budget_band (shoestring|mid|comfortable),
+- "profile_updates": only fields stated or changed in THIS message. Allowed keys:
+  nationality, budget_band (shoestring|mid|comfortable),
   travel_style (slow|balanced|fast), climate_preference (cool|temperate|hot|no_preference),
-  current_location (country name), trip_start_date (YYYY-MM-DD), trip_end_date (YYYY-MM-DD),
+  current_location, trip_start_date (YYYY-MM-DD), trip_end_date (YYYY-MM-DD),
   visa_deadline_date (YYYY-MM-DD), visa_deadline_note, interests.
-  Leave it as {{}} if they stated nothing new. Never copy values that are already
-  in the trip profile - only genuine new information.
-- "departures": countries the user says they have LEFT, as
-  [{{"country": "laos", "departure_date": "YYYY-MM-DD or null"}}]. Only when they
-  clearly indicate they have left, not merely that they visited.
-- "candidate_destinations": lowercase country names they are choosing between. If
-  they ask an open "where next" question without naming options, propose 2-4
-  plausible countries near their current location. Empty only for small talk or a
-  pure memory question.
+  Empty object if nothing new. Never repeat values already in the profile.
+- "visits": places they are AT or have ARRIVED in, as
+  [{{"location": "Chiang Mai", "location_type": "city", "country": "Thailand",
+     "arrival_date": "YYYY-MM-DD or null"}}].
+  Include a place when they say they are there, have just arrived, or ask an
+  on-the-ground question that only makes sense if they are there ("any good
+  hostels here in Pai"). Do NOT include somewhere they are merely considering.
+- "departures": places they have LEFT, as
+  [{{"location": "Laos", "location_type": "country", "departure_date": "YYYY-MM-DD or null"}}].
+  Only on a clear signal that they have gone, or are leaving now.
+- "wishlist_adds": places they say they want to go, as
+  [{{"location": "Pai", "location_type": "city", "country": "Thailand", "priority": 1}}].
+  Priority 1 high, 2 medium, 3 low. Wanting to go is enough; it need not be booked.
+- "wishlist_removes": places they have decided AGAINST, as plain location strings.
+- "reviews": opinions about somewhere they have been, as
+  [{{"location": "Pai", "rating": 5, "notes": "what they said, in their words"}}].
+  rating is 1-5 and may be null if they gave only prose. Convert plain language
+  honestly: "loved it" is 5, "it was fine" is 3, "overrated" is 2.
+- "candidate_destinations": lowercase places they are choosing between, for
+  "compare". Include EVERY place they name, including ones you believe this
+  assistant has no data for - a later step checks coverage and needs to see them.
+  Anywhere they name two or more options, intent is "compare", even if the
+  question is about what to do there rather than which to pick.
+  Only leave this empty when they name no options at all, and then set intent to
+  "discover".
+- "focus_location": for "local" intent, the single place the question is about.
 - "travel_month": the month the trip in question would happen, as a month name.
-  Infer from the message, else from trip_start_date, else from today's date.
-- "question_focus": one short phrase for what they actually care about.
-- "needs_weather" / "needs_logistics" / "needs_recommendations": false only when
-  that specialist is clearly irrelevant to the question.
-- "is_small_talk": true for greetings or questions purely about what you remember.
+  Infer from the message, else trip_start_date, else today.
+- "needs_*": false only when that specialist is clearly irrelevant.
 """
 )
 
@@ -183,6 +232,7 @@ def make_turn_parser() -> LlmAgent:
 WEATHER_INSTRUCTION = (
     HOUSE_STYLE
     + MEMORY_BLOCK
+    + COVERAGE_BLOCK
     + """
 You are the Weather/Timing specialist.
 
@@ -208,6 +258,7 @@ destination rated "avoid" and state clearly that it is a bad time to go.
 LOGISTICS_INSTRUCTION = (
     HOUSE_STYLE
     + MEMORY_BLOCK
+    + COVERAGE_BLOCK
     + """
 You are the Logistics/Route specialist.
 
@@ -241,6 +292,7 @@ recommendation against it explicitly and say whether it fits.
 RECOMMENDATIONS_INSTRUCTION = (
     HOUSE_STYLE
     + MEMORY_BLOCK
+    + COVERAGE_BLOCK
     + """
 You are the Recommendations specialist for backpackers.
 
@@ -251,20 +303,45 @@ Travel pace: {travel_style?}
 Question: {user_question?}
 
 You MUST call search_backpacker_tips once for EVERY candidate destination before
-writing anything. Everything you recommend must come from the retrieved passages.
+writing anything. Everything you recommend must come from retrieved passages or
+from a tool result.
+
+You also have live tools. Use them when the question calls for them:
+- find_hostels: where to actually sleep, with real ratings and booking links.
+- suggest_areas_to_stay: WHICH PART of a town to base yourself in. Prefer this
+  over listing individual hostels when someone is choosing a place to stay.
+- find_food_near: where to eat, including a specific dish.
+- get_places_recommendations: anything else nearby - bars, markets, laundry, ATMs.
+- get_traveller_feedback: what previous travellers said about a place after
+  visiting. Present it as other backpackers' opinions, anonymously, never as fact.
+
+Rules for the live tools:
+- Results are ranked by a Bayesian weighted score, NOT raw star rating. When you
+  quote a place, give its rating AND its review count, because "4.9 from 12
+  reviews" and "4.6 from 2,400" mean very different things.
+- If a tool returns configured:false, say plainly that live place data is not
+  available on this deployment. Never invent hostel names, ratings or addresses.
+- Booking links are affiliate links. Say so when you share them.
 
 This is the important part: give BACKPACKER advice, not tourist-brochure advice.
-That means hostel scenes and dorm prices, realistic daily budgets in local terms,
-free and cheap things, overland routes other backpackers actually take, ethical
-warnings, and scam or safety notes. Do not produce a list of famous landmarks.
+Hostel scenes and dorm prices, realistic daily budgets in local terms, free and
+cheap things, overland routes other backpackers actually take, ethical warnings,
+and scam or safety notes. Do not produce a list of famous landmarks.
 
-For every destination give: a realistic daily budget, two or three specific things
-worth doing with why they suit this traveller, and one practical warning.
+For every destination you MUST give all four of these, not a subset:
+  1. a realistic daily budget with a number,
+  2. two or three specific things worth doing, and why they suit this traveller,
+  3. how backpackers actually get there and around - the night bus, sleeper
+     train, slow boat or budget flight, with hours or price where you have them,
+  4. one practical warning: a scam, a safety risk, or an ethical caution.
+
+Omitting the transport line or the warning is the most common way this answer
+turns into brochure copy. A list of nice things to see, with no cost, no route
+and no warning, has failed the traveller.
 
 Cite the retrieved passage you used for each destination by its source_id, in
-square brackets at the end of the relevant sentence, like [tips-vietnam]. If you
-could not retrieve a passage for a destination, say so explicitly instead of
-filling the gap from memory.
+square brackets, like [tips-vietnam]. If you could not retrieve a passage for a
+destination, say so explicitly instead of filling the gap from memory.
 """
 )
 
@@ -297,7 +374,14 @@ def make_recommendations_agent() -> LlmAgent:
         model=build_model(),
         description="Backpacker-specific things to do and budget notes from the RAG store.",
         instruction=RECOMMENDATIONS_INSTRUCTION,
-        tools=[search_backpacker_tips],
+        tools=[
+            search_backpacker_tips,
+            find_hostels,
+            suggest_areas_to_stay,
+            find_food_near,
+            get_places_recommendations,
+            get_traveller_feedback,
+        ],
         output_key="recommendations",
     )
 
@@ -470,3 +554,199 @@ def build_specialists(
     if not chosen:
         chosen.append((make_weather_agent(), "weather_assessment"))
     return chosen
+
+
+# --------------------------------------------------------------------------- #
+# 6. onboarding  (runs on the first few turns of a brand-new account)
+# --------------------------------------------------------------------------- #
+ONBOARDING_INSTRUCTION = (
+    HOUSE_STYLE
+    + MEMORY_BLOCK
+    + """
+You are onboarding a traveller who has just created an account. This is a short
+CONVERSATION, not a form. Two or three sentences, warm, one topic at a time.
+Never present a numbered list of questions.
+
+Still missing: {onboarding_gaps?}
+Already captured: {onboarding_captured?}
+
+Ask about the FIRST item in "Still missing" and nothing else. Briefly acknowledge
+what they just told you before you ask - and if "Already captured" shows we now
+know something, do NOT ask for it again.
+
+If nothing is missing, do not ask another question: thank them, say they can
+refine anything later in My Preferences, and stop.
+
+If they ask to skip, accept immediately and stop asking.
+
+Never invent travel history or preferences. Only reflect back what they said.
+Reply with your conversational message only - no JSON, no lists of fields.
+"""
+)
+
+# Extraction is a SEPARATE agent from the conversation. Asking one agent to both
+# chat warmly and emit a machine-readable block did not work: gpt-4o-mini reliably
+# produced the chat and silently dropped the block, so onboarding captured nothing
+# and looped. Splitting them makes each job unambiguous.
+ONBOARDING_EXTRACTOR_INSTRUCTION = (
+    """
+You extract structured travel facts from one message. You never talk to the user.
+"""
+    + MEMORY_BLOCK
+    + """
+Today's date is {today?}.
+The user's message is the conversation input you have been given.
+
+Return ONLY a raw JSON object, no code fences, no prose:
+
+{{
+  "travel_history": [{{"location": "Bangkok", "location_type": "city", "country": "Thailand", "order": 1}}],
+  "wishlist": [{{"location": "Pai", "location_type": "city", "country": "Thailand", "priority": 1}}],
+  "interests": [],
+  "budget_band": null,
+  "travel_style": null,
+  "social_style": null,
+  "current_location": null,
+  "nationality": null,
+  "trip_start_date": null,
+  "trip_end_date": null,
+  "skip_requested": false
+}}
+
+Rules:
+- Only what THIS message states. Empty list or null for anything not mentioned.
+- "travel_history": EVERY place they say they have already been, in the order
+  they said them - if they name three towns, return three entries, not one. The
+  place they are in NOW also belongs here, and also in "current_location".
+  Include a place even when they mention it only in passing ("then Koh Tao for
+  diving" is a visit).
+- "wishlist": places they want to go but have not been. priority 1 high, 2 medium,
+  3 low; use 1 if they sound keen, else 2.
+- "location_type" is country, city, town or region. Prefer city/town granularity.
+- "interests" are lowercase single words where possible: nature, food, nightlife,
+  trekking, diving, history, beaches, surfing, culture, photography, wildlife.
+- "budget_band" is shoestring, mid or comfortable. "travel_style" is slow,
+  balanced or fast. "social_style" is solo, couple or group.
+- "skip_requested" is true only if they clearly want to stop answering.
+"""
+)
+
+
+def make_onboarding_agent() -> LlmAgent:
+    return LlmAgent(
+        name="onboarding_agent",
+        model=build_model(),
+        description="Conversationally captures a new traveller's history, wishlist and preferences.",
+        instruction=ONBOARDING_INSTRUCTION,
+        output_key="onboarding_reply",
+    )
+
+
+def make_onboarding_extractor() -> LlmAgent:
+    return LlmAgent(
+        name="onboarding_extractor",
+        model=build_model(),
+        description="Extracts structured travel facts from an onboarding message.",
+        instruction=ONBOARDING_EXTRACTOR_INSTRUCTION,
+        output_key="onboarding_capture",
+    )
+
+
+# --------------------------------------------------------------------------- #
+# 7. local guide  (they are somewhere and want things nearby, not a comparison)
+# --------------------------------------------------------------------------- #
+LOCAL_GUIDE_INSTRUCTION = (
+    HOUSE_STYLE
+    + MEMORY_BLOCK
+    + """
+You are the on-the-ground guide. The traveller is asking about a place they are
+in or about to be in - where to stay, what to eat, what to do nearby - rather
+than asking you to compare destinations.
+
+Place in question: {focus_location?}
+Question: {user_question?}
+Budget band: {budget_band?}
+Interests: {interests?}
+
+Use your tools before answering, and never invent a venue:
+- suggest_areas_to_stay when they are deciding WHERE in a town to base themselves.
+- find_hostels when they want actual beds. Mention the booking links are affiliate.
+- find_food_near for eating, including a named dish.
+- get_places_recommendations for anything else nearby.
+- search_backpacker_tips for the curated budget and safety context.
+- get_traveller_feedback for what previous travellers said about the place.
+
+When you quote a place, always give its rating AND review count together.
+Results are ranked by a weighted score that discounts thinly-reviewed places, so
+do not re-sort them by raw rating. If a tool reports configured:false, say that
+live place data is unavailable here rather than making somewhere up.
+
+Answer in short paragraphs or a tight list. Lead with the single thing you would
+actually tell a mate arriving tonight.
+"""
+)
+
+
+def make_local_guide() -> LlmAgent:
+    return LlmAgent(
+        name="local_guide",
+        model=build_model(),
+        description="Answers on-the-ground questions about a specific town.",
+        instruction=LOCAL_GUIDE_INSTRUCTION,
+        tools=[
+            suggest_areas_to_stay,
+            find_hostels,
+            find_food_near,
+            get_places_recommendations,
+            search_backpacker_tips,
+            get_traveller_feedback,
+            get_booking_links,
+        ],
+        output_key="local_guide_reply",
+    )
+
+
+# --------------------------------------------------------------------------- #
+# 8. next-hop discovery  (where next from HERE, at town level)
+# --------------------------------------------------------------------------- #
+def make_discovery_agent() -> LlmAgent:
+    return LlmAgent(
+        name="discovery_agent",
+        model=build_model(),
+        description="Suggests onward towns from the traveller's current location.",
+        instruction=(
+            HOUSE_STYLE
+            + MEMORY_BLOCK
+            + """
+You suggest where to go NEXT, at town level, from where the traveller is now.
+
+Currently in: {current_location?}
+Interests: {interests?}
+Question: {user_question?}
+
+--- ROUTE COVERAGE (computed in code, not negotiable) ---
+{route_note?}
+--- END COVERAGE ---
+
+--- HARD DEADLINE (computed in code, not negotiable) ---
+{deadline_note?}
+--- END DEADLINE ---
+
+You MUST call discover_next_destinations with their current location before
+answering. It returns the curated route knowledge plus any real traveller
+feedback. If it reports found:false, say plainly that you hold no route data for
+where they are, and do not invent journey times or onward legs.
+
+If the HARD DEADLINE block names a date, state that date explicitly in your reply
+and say whether each option fits inside it. Never quietly plan past a deadline
+the traveller is under.
+
+Prefer somewhere already on their wishlist when it is a sensible next hop, and
+say that is why you picked it. Give 2-4 options, each with the journey from here
+(time and rough cost, only if the route knowledge gave it) and one line on who it
+suits. Cite the route source id you used, like [route-chiang-mai].
+"""
+        ),
+        tools=[discover_next_destinations, get_traveller_feedback],
+        output_key="discovery_reply",
+    )

@@ -22,9 +22,16 @@ from typing import Any, Iterable
 
 from backend.config import settings
 from backend.rag import embeddings
+from backend.rag.route_data import KNOWN_CITIES, ROUTE_DOCS
 from backend.rag.seed_data import KNOWN_DESTINATIONS, SEED_DOCUMENTS
 
-NAMESPACES = ("visa", "seasonal", "tips")
+# visa/seasonal/tips are the curated country-level corpus.
+# routes is city-level hop knowledge ("where next from Chiang Mai").
+# experience is written at runtime from real user reviews and from whether a
+# suggestion was accepted, so the store improves with use.
+NAMESPACES = ("visa", "seasonal", "tips", "routes", "experience")
+
+ALL_SEED_DOCUMENTS = SEED_DOCUMENTS + ROUTE_DOCS
 
 
 # --------------------------------------------------------------------------- #
@@ -94,6 +101,26 @@ def detect_destinations(text: str) -> list[str]:
     for alias, dest in aliases.items():
         if alias in lowered and dest not in found:
             found.append(dest)
+    return found
+
+
+def detect_cities(text: str) -> list[dict[str, str]]:
+    """Pull known city/town names out of free text, with their country.
+
+    Country-level detection is not enough once routes and visits are tracked at
+    town granularity: "I'm in Chiang Mai now" has to resolve to a city, not to
+    Thailand. Longer names match first so "Gili Trawangan" is not reduced to a
+    shorter overlapping entry.
+    """
+    lowered = (text or "").lower()
+    found: list[dict[str, str]] = []
+    claimed: list[str] = []
+    for city in sorted(KNOWN_CITIES, key=len, reverse=True):
+        if re.search(rf"\b{re.escape(city)}\b", lowered):
+            if any(city in longer for longer in claimed):
+                continue
+            claimed.append(city)
+            found.append({"city": city, "country": KNOWN_CITIES[city]})
     return found
 
 
@@ -263,7 +290,7 @@ def _local_query(
 # --------------------------------------------------------------------------- #
 def ingest(documents: Iterable[dict[str, Any]] | None = None) -> dict[str, Any]:
     """Embed and upsert documents into whichever backend is configured."""
-    docs = list(documents if documents is not None else SEED_DOCUMENTS)
+    docs = list(documents if documents is not None else ALL_SEED_DOCUMENTS)
     if settings.pinecone_enabled:
         counts = _pinecone_upsert(docs)
     else:

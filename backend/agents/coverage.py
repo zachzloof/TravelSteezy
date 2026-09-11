@@ -20,6 +20,39 @@ from backend.rag.seed_data import KNOWN_DESTINATIONS
 SUPPORTED: set[str] = set(CLIMATE_TABLE) | set(KNOWN_DESTINATIONS)
 
 
+def resolve_to_covered(candidate: str) -> str | None:
+    """Map a candidate to the covered country it belongs to, or None.
+
+    Candidates arrive at town granularity ("Perhentian Islands, Malaysia") as well
+    as country level. Treating a covered country's town as unsupported made the
+    guard suppress a correct monsoon warning, so resolve through the city index
+    and through any country named inside the string before giving up.
+    """
+    from backend.rag.route_data import KNOWN_CITIES
+
+    key = (candidate or "").strip().lower()
+    if not key:
+        return None
+    if key in SUPPORTED:
+        return key
+    if key in KNOWN_CITIES:
+        return KNOWN_CITIES[key]
+
+    # "perhentian islands, malaysia" or "bali, indonesia"
+    for part in (p.strip() for p in key.replace("/", ",").split(",")):
+        if part in SUPPORTED:
+            return part
+        if part in KNOWN_CITIES:
+            return KNOWN_CITIES[part]
+    for country in SUPPORTED:
+        if country in key:
+            return country
+    for city, country in KNOWN_CITIES.items():
+        if city in key:
+            return country
+    return None
+
+
 def classify(candidates: list[str]) -> dict[str, Any]:
     """Split candidates into those we hold data for and those we do not."""
     supported, unsupported = [], []
@@ -27,7 +60,10 @@ def classify(candidates: list[str]) -> dict[str, Any]:
         key = (candidate or "").strip().lower()
         if not key:
             continue
-        (supported if key in SUPPORTED else unsupported).append(key)
+        if resolve_to_covered(key):
+            supported.append(key)
+        else:
+            unsupported.append(key)
     return {"supported": supported, "unsupported": unsupported}
 
 
@@ -42,11 +78,15 @@ def coverage_note(candidates: list[str]) -> str:
         f"COVERAGE WARNING - NO VERIFIED DATA HELD FOR: {names}.\n"
         f"The knowledge base covers only: {', '.join(sorted(SUPPORTED))}.\n"
         f"For {names} you have no verified visa rules, no seasonal data, no route "
-        f"costs and no budget figures. You MUST NOT state specifics for them, and "
-        f"you MUST NOT rank any of them first. Give each a verdict of "
-        f"'unknown', put the missing-data warning in its cons, and tell the "
-        f"traveller plainly that this assistant does not cover that destination "
-        f"and they should verify elsewhere."
+        f"costs and no budget figures.\n"
+        f"You MUST NOT rank any of them first, and you MUST give each a verdict of "
+        f"'unknown' with the missing-data warning in its cons.\n"
+        f"You MUST NOT state ANY figure for them - no dorm prices, no daily budget "
+        f"ranges, no visa fees, no journey times, not even approximate or "
+        f"'typically around' ones. Quoting a plausible-sounding price you cannot "
+        f"source is the exact failure this rule exists to stop.\n"
+        f"Say plainly that this assistant does not cover {names} and they should "
+        f"check a source that does."
     )
 
 
@@ -68,3 +108,60 @@ def deadline_note(profile: dict[str, Any]) -> str:
         f"recommendation fits inside it. Anything that cannot be done before "
         f"{date} must be flagged in visa_flag and cannot be ranked first."
     )
+
+
+def route_note(current_location: str | None) -> str:
+    """Guard for the discovery agent: do we hold onward-route data for here?
+
+    Shipped after the eval case ``discovery-honest-about-unknown-origin`` failed:
+    the tool correctly reported found:false for Reykjavik, and the agent invented
+    Icelandic destinations anyway. Telling it in a non-negotiable prompt block,
+    computed in code, is stronger than hoping it reads the tool result.
+    """
+    from backend.rag.route_data import ROUTE_GRAPH
+
+    origin = (current_location or "").strip().lower()
+    if not origin:
+        return "Current location unknown - ask where they are before suggesting onward hops."
+    if origin in ROUTE_GRAPH:
+        hops = ", ".join(ROUTE_GRAPH[origin])
+        return f"Route data IS held for {origin}. Known onward hops: {hops}."
+
+    # The route corpus is keyed by TOWN. A traveller whose stored location is a
+    # whole country is not outside coverage - we just cannot give hop-by-hop
+    # detail until we know which town they are in.
+    if origin in SUPPORTED:
+        towns = sorted(t for t in ROUTE_GRAPH if t)
+        return (
+            f"{origin.title()} is covered at country level, but the onward-route "
+            f"corpus is town-level and no town is recorded. Ask which town they "
+            f"are in before giving hop-by-hop detail. Towns held: {', '.join(towns)}."
+        )
+    return (
+        f"NO ROUTE DATA HELD FOR {origin.upper()}. The route corpus covers only "
+        f"these origins: {', '.join(sorted(ROUTE_GRAPH))}. You MUST tell the "
+        f"traveller plainly that this assistant does not cover where they are, and "
+        f"you MUST NOT name onward destinations, journey times, prices or "
+        f"attractions for {origin}. Suggest they ask again once they reach a "
+        f"region it covers."
+    )
+
+
+# Overland neighbours within the covered corpus, used when we know the country
+# but not the town, so "where next" still gets a real answer.
+COUNTRY_NEIGHBOURS: dict[str, list[str]] = {
+    "thailand": ["laos", "cambodia", "malaysia"],
+    "laos": ["thailand", "vietnam", "cambodia"],
+    "vietnam": ["cambodia", "laos", "thailand"],
+    "cambodia": ["thailand", "vietnam", "laos"],
+    "malaysia": ["thailand", "indonesia", "philippines"],
+    "indonesia": ["malaysia", "philippines", "thailand"],
+    "philippines": ["malaysia", "vietnam", "indonesia"],
+    "nepal": ["sri lanka", "thailand"],
+    "sri lanka": ["nepal", "thailand", "malaysia"],
+}
+
+
+def nearby_country_options(origin: str, limit: int = 3) -> list[str]:
+    """Plausible next countries from a covered country. Empty if uncovered."""
+    return COUNTRY_NEIGHBOURS.get((origin or "").strip().lower(), [])[:limit]

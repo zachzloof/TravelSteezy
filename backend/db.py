@@ -76,6 +76,97 @@ CREATE TABLE IF NOT EXISTS memory_writes (
     created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_writes_user ON memory_writes(user_id);
+
+-- ==================================================================== #
+-- EXTENSION: structured travel profile, tracking and reviews
+-- ==================================================================== #
+
+-- Onboarding state. Onboarding is conversational and multi-turn, so we need to
+-- know where a user is up to and whether to keep steering the conversation.
+CREATE TABLE IF NOT EXISTS onboarding_state (
+    user_id     INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    status      TEXT    NOT NULL DEFAULT 'not_started',  -- not_started|in_progress|complete|skipped
+    step        TEXT    NOT NULL DEFAULT 'history',      -- history|wishlist|preferences|done
+    turns       INTEGER NOT NULL DEFAULT 0,
+    started_at  TEXT,
+    completed_at TEXT
+);
+
+-- Structured travel history. Supersedes visited_history: adds city/town
+-- granularity, explicit route ordering, how we learned about the visit, and the
+-- post-visit review. visited_history is still maintained for the country-level
+-- "which countries have you been to" view and for backwards compatibility.
+CREATE TABLE IF NOT EXISTS travel_history (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    location        TEXT    NOT NULL,                 -- "Chiang Mai"
+    location_type   TEXT    NOT NULL DEFAULT 'city',  -- country|city|town|region
+    country         TEXT,                             -- "Thailand"
+    order_index     INTEGER NOT NULL DEFAULT 0,       -- position in the route
+    arrival_date    TEXT,
+    departure_date  TEXT,
+    source          TEXT    NOT NULL DEFAULT 'manual',-- onboarding|tracked|manual|agent
+    notes           TEXT,
+    -- post-visit review, filled in when the review prompt is answered
+    rating          INTEGER,                          -- 1-5
+    review_notes    TEXT,
+    reviewed_at     TEXT,
+    review_prompted_at TEXT,                          -- when we last asked
+    last_mentioned_at  TEXT,                          -- drives the time-based trigger
+    created_at      TEXT    NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(user_id, location, arrival_date)
+);
+CREATE INDEX IF NOT EXISTS idx_history_user ON travel_history(user_id, order_index);
+
+-- Places the user wants to go. A tracked visit promotes the matching row out of
+-- here and into travel_history.
+CREATE TABLE IF NOT EXISTS wishlist (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    location      TEXT    NOT NULL,
+    location_type TEXT    NOT NULL DEFAULT 'city',
+    country       TEXT,
+    priority      INTEGER NOT NULL DEFAULT 2,          -- 1 high, 2 medium, 3 low
+    status        TEXT    NOT NULL DEFAULT 'open',     -- open|visited|dropped
+    source        TEXT    NOT NULL DEFAULT 'manual',
+    note          TEXT,
+    added_at      TEXT    NOT NULL DEFAULT (datetime('now')),
+    resolved_at   TEXT,
+    UNIQUE(user_id, location)
+);
+CREATE INDEX IF NOT EXISTS idx_wishlist_user ON wishlist(user_id, status);
+
+-- Structured interests, replacing the free-text trip_profile.interests column as
+-- the thing agents query. The text column is kept and mirrored for prompts.
+CREATE TABLE IF NOT EXISTS user_interests (
+    id        INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    interest  TEXT    NOT NULL,                        -- nightlife|nature|food|...
+    weight    INTEGER NOT NULL DEFAULT 1,
+    added_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(user_id, interest)
+);
+CREATE INDEX IF NOT EXISTS idx_interests_user ON user_interests(user_id);
+
+-- Whether a surfaced recommendation was taken. Feeds the RAG experience loop.
+CREATE TABLE IF NOT EXISTS recommendation_feedback (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    location     TEXT    NOT NULL,
+    from_location TEXT,
+    verdict      TEXT    NOT NULL,                     -- accepted|rejected
+    reason       TEXT,
+    created_at   TEXT    NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_recfeedback_user ON recommendation_feedback(user_id);
+
+-- Google Places response cache. Places bills per call and rate limits, so
+-- identical lookups inside the TTL are served from here.
+CREATE TABLE IF NOT EXISTS places_cache (
+    cache_key   TEXT PRIMARY KEY,
+    payload     TEXT NOT NULL,                         -- JSON
+    created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
 """
 
 
@@ -105,6 +196,64 @@ def get_conn() -> Iterator[sqlite3.Connection]:
 
 
 def init_db() -> None:
-    """Create tables if they do not exist. Safe to call on every boot."""
+    """Create tables if they do not exist, then run migrations. Safe on every boot."""
     with get_conn() as conn:
         conn.executescript(SCHEMA)
+    add_missing_columns()
+    migrate_visited_history()
+
+
+# Columns added after the first release. SQLite has no ADD COLUMN IF NOT EXISTS,
+# so we check PRAGMA table_info first. Each entry is (table, column, definition).
+LATE_COLUMNS: tuple[tuple[str, str, str], ...] = (
+    ("trip_profile", "social_style", "TEXT"),          # solo | couple | group
+    ("trip_profile", "onboarded", "INTEGER NOT NULL DEFAULT 0"),
+)
+
+
+def add_missing_columns() -> list[str]:
+    added: list[str] = []
+    with get_conn() as conn:
+        for table, column, definition in LATE_COLUMNS:
+            existing = {
+                r["name"] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()
+            }
+            if column not in existing:
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
+                added.append(f"{table}.{column}")
+    return added
+
+
+def migrate_visited_history() -> int:
+    """Copy legacy country-level rows into the structured travel_history table.
+
+    Idempotent: a row is only copied if travel_history holds nothing for that
+    (user, location) pair. Existing installs therefore keep their history when
+    the extension is deployed, rather than appearing to have lost it.
+    """
+    copied = 0
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT v.user_id, v.country, v.arrival_date, v.departure_date, v.notes "
+            "FROM visited_history v WHERE NOT EXISTS ("
+            "  SELECT 1 FROM travel_history t "
+            "  WHERE t.user_id = v.user_id AND t.location = v.country COLLATE NOCASE"
+            ") ORDER BY v.id ASC"
+        ).fetchall()
+        for row in rows:
+            next_order = conn.execute(
+                "SELECT COALESCE(MAX(order_index), 0) + 1 FROM travel_history WHERE user_id = ?",
+                (row["user_id"],),
+            ).fetchone()[0]
+            conn.execute(
+                "INSERT OR IGNORE INTO travel_history "
+                "(user_id, location, location_type, country, order_index, arrival_date, "
+                " departure_date, source, notes) "
+                "VALUES (?,?,'country',?,?,?,?,'migrated',?)",
+                (
+                    row["user_id"], row["country"], row["country"], next_order,
+                    row["arrival_date"], row["departure_date"], row["notes"],
+                ),
+            )
+            copied += 1
+    return copied

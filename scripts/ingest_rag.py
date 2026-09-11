@@ -18,7 +18,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from backend.config import settings  # noqa: E402
 from backend.rag import embeddings, store  # noqa: E402
-from backend.rag.seed_data import SEED_DOCUMENTS  # noqa: E402
+from backend.rag.experience import backfill_from_memory  # noqa: E402
+from backend.rag.store import ALL_SEED_DOCUMENTS  # noqa: E402
 
 MAX_CHARS = 1800
 
@@ -58,6 +59,10 @@ def chunk_documents(documents: list[dict]) -> list[dict]:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Ingest seed content into the RAG store.")
     parser.add_argument("--stats", action="store_true", help="report index stats and exit")
+    parser.add_argument(
+        "--experience", action="store_true",
+        help="also index reviews and recommendation outcomes already in SQLite",
+    )
     args = parser.parse_args()
 
     print(f"RAG backend    : {store.backend_name()}")
@@ -71,10 +76,14 @@ def main() -> int:
         print(json.dumps(store.index_stats(), indent=2, default=str))
         return 0
 
-    chunks = chunk_documents(SEED_DOCUMENTS)
-    print(f"\nIngesting {len(chunks)} chunks from {len(SEED_DOCUMENTS)} seed documents...")
+    chunks = chunk_documents(ALL_SEED_DOCUMENTS)
+    print(f"\nIngesting {len(chunks)} chunks from {len(ALL_SEED_DOCUMENTS)} seed documents...")
     result = store.ingest(chunks)
     print(json.dumps(result, indent=2))
+
+    if args.experience:
+        outcome = backfill_from_memory()
+        print(f"Backfilled experience documents: {outcome}")
 
     # Smoke-test retrieval so a broken ingest fails loudly here, not mid-demo.
     probe = store.search("monsoon season rain", namespace="seasonal", destinations=["thailand"])

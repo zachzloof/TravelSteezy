@@ -7,6 +7,10 @@ cons and a verdict per destination.
 
 ---
 
+> **Extension:** onboarding profile capture, live trip tracking, post-visit
+> reviews and Google Places-backed recommendations are documented separately in
+> [docs/EXTENSION.md](docs/EXTENSION.md). This README covers the core app.
+
 ## 1. The problem
 
 Backpackers moving through a region face the "where next" decision constantly,
@@ -72,6 +76,11 @@ warnings hostels actually pass around, rather than a list of landmarks.
 Built on **Google ADK** (`LlmAgent`, `FunctionTool`, `Runner`, `InMemorySessionService`),
 with **OpenAI** models reached through ADK's `LiteLlm` bridge.
 
+The extension adds four more agents on the same pattern - an onboarding pair
+(extractor plus conversationalist), a local guide for on-the-ground questions,
+and a discovery agent for town-level "where next". A turn is routed to one of
+them by intent. See [docs/EXTENSION.md](docs/EXTENSION.md).
+
 ### Two guards computed in code, not prompted for
 
 Both were added because the eval suite caught the model getting them wrong.
@@ -116,6 +125,11 @@ distinct things:
 | `visited_history` | **Append-only log**: country, arrival/departure dates, notes. |
 | `conversation_turns` | Chat scrollback, capped at `WORKING_MEMORY_TURNS` (default 20). |
 | `memory_writes` | Audit trail of every write, with its source (`agent`, `user_edit`, `seed`). |
+
+The extension adds `travel_history`, `wishlist`, `user_interests`,
+`recommendation_feedback` and `onboarding_state`, which hold the route at town
+granularity with post-visit reviews attached. `visited_history` is still
+maintained and its rows are migrated across on boot.
 
 ### When we write
 
@@ -202,6 +216,7 @@ Ingest with `python -m scripts.ingest_rag` (or `--stats` to inspect the index).
 | Memory | SQLite on a Railway volume |
 | RAG | Pinecone (serverless) + `text-embedding-3-small` |
 | Tracing | Langfuse |
+| Places | Google Places API (New), Bayesian-ranked, SQLite-cached |
 | Auth | `passlib` bcrypt hashing, JWT via `python-jose` |
 | Hosting | Railway, one service serving API and frontend |
 

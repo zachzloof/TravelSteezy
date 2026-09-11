@@ -94,5 +94,17 @@ export const api = {
     request('/profile/me/departures', { method: 'POST', body: payload }),
   forgetMe: () => request('/profile/me', { method: 'DELETE' }),
 
-  chat: (message) => request('/chat', { method: 'POST', body: { message } })
+  chat: (message) => request('/chat', { method: 'POST', body: { message } }),
+
+  // structured travel memory: route, wishlist, reviews, onboarding
+  getTravel: () => request('/travel/me'),
+  addVisit: (payload) => request('/travel/me/visits', { method: 'POST', body: payload }),
+  addWishlist: (payload) => request('/travel/me/wishlist', { method: 'POST', body: payload }),
+  dropWishlist: (location) =>
+    request(`/travel/me/wishlist/${encodeURIComponent(location)}`, { method: 'DELETE' }),
+  saveReview: (payload) => request('/travel/me/reviews', { method: 'POST', body: payload }),
+  setInterests: (interests) =>
+    request('/travel/me/interests', { method: 'POST', body: interests }),
+  skipOnboarding: () => request('/travel/me/onboarding/skip', { method: 'POST' }),
+  pendingReviews: () => request('/travel/me/pending-reviews')
 }

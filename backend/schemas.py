@@ -167,3 +167,89 @@ class ChatResponse(BaseModel):
     trace_id: Optional[str] = None
     profile: Optional[TripProfile] = None
     visited_history: list[VisitedEntry] = []
+    # structured travel state, so the UI reflects a tracked visit immediately
+    intent: Optional[str] = None
+    travel_history: list["TravelEntry"] = []
+    wishlist: list["WishlistEntry"] = []
+    review_prompt: Optional[dict[str, Any]] = None
+    onboarding: Optional["OnboardingState"] = None
+
+
+# --------------------------------------------------------------------------- #
+# structured travel memory (onboarding, tracking, reviews)
+# --------------------------------------------------------------------------- #
+class TravelEntry(BaseModel):
+    id: Optional[int] = None
+    location: str
+    location_type: str = "city"
+    country: Optional[str] = None
+    order_index: int = 0
+    arrival_date: Optional[str] = None
+    departure_date: Optional[str] = None
+    source: str = "manual"
+    notes: Optional[str] = None
+    rating: Optional[int] = None
+    review_notes: Optional[str] = None
+    reviewed_at: Optional[str] = None
+    review_prompted_at: Optional[str] = None
+    last_mentioned_at: Optional[str] = None
+
+
+class WishlistEntry(BaseModel):
+    id: Optional[int] = None
+    location: str
+    location_type: str = "city"
+    country: Optional[str] = None
+    priority: int = 2
+    status: str = "open"
+    source: str = "manual"
+    note: Optional[str] = None
+    added_at: Optional[str] = None
+    resolved_at: Optional[str] = None
+
+
+class OnboardingState(BaseModel):
+    status: str = "not_started"
+    step: str = "history"
+    turns: int = 0
+    started_at: Optional[str] = None
+    completed_at: Optional[str] = None
+    missing: list[str] = []
+
+
+class TravelSnapshotResponse(BaseModel):
+    travel_history: list[TravelEntry] = []
+    wishlist: list[WishlistEntry] = []
+    interests: list[str] = []
+    pending_reviews: list[str] = []
+    onboarding: OnboardingState = OnboardingState()
+
+
+class VisitRequest(BaseModel):
+    location: str = Field(min_length=1, max_length=120)
+    location_type: Literal["country", "city", "town", "region"] = "city"
+    country: Optional[str] = None
+    arrival_date: Optional[str] = None
+    departure_date: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class WishlistRequest(BaseModel):
+    location: str = Field(min_length=1, max_length=120)
+    location_type: Literal["country", "city", "town", "region"] = "city"
+    country: Optional[str] = None
+    priority: int = Field(default=2, ge=1, le=3)
+    note: Optional[str] = None
+
+
+class ReviewRequest(BaseModel):
+    location: str = Field(min_length=1, max_length=120)
+    rating: Optional[int] = Field(default=None, ge=1, le=5)
+    notes: Optional[str] = Field(default=None, max_length=2000)
+    # False keeps the review private to this account rather than feeding the
+    # shared RAG experience namespace.
+    share: bool = True
+
+
+# Resolve the forward references used by ChatResponse above.
+ChatResponse.model_rebuild()

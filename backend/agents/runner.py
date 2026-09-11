@@ -21,10 +21,10 @@ from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 from google.genai import types
 
-from backend.agents import coverage, graph
+from backend.agents import coverage, graph, tracking
 from backend.agents.tools import ToolRecorder, reset_recorder, set_recorder
 from backend.config import settings
-from backend.memory import store
+from backend.memory import store, travel
 from backend.rag import store as rag_store
 from backend.tracing.langfuse_setup import Trace
 
@@ -51,6 +51,8 @@ STATE_KEYS = (
     "nationality", "current_location", "budget_band", "travel_style", "interests",
     "weather_assessment", "logistics_assessment", "recommendations",
     "turn_parse", "decision", "concierge_reply", "coverage_note", "deadline_note",
+    "travel_block", "pending_reviews", "focus_location", "route_note", "onboarding_step",
+    "onboarding_turns", "onboarding_reply", "local_guide_reply", "discovery_reply",
 )
 
 
@@ -127,6 +129,15 @@ def _apply_memory_writes(user_id: int, parse: dict[str, Any]) -> list[dict[str, 
             }
         )
     return writes
+
+
+def _apply_structured_writes(user_id: int, parse: dict[str, Any]) -> list[dict[str, Any]]:
+    """The extension's write path: visits, wishlist, reviews. Never kills a turn."""
+    try:
+        return tracking.apply_tracking(user_id, parse)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("tracking writes failed for user %s: %s", user_id, exc)
+        return []
 
 
 def _fallback_parse(message: str, snapshot: dict[str, Any]) -> dict[str, Any]:
@@ -220,14 +231,30 @@ async def run_turn(user_id: int, message: str, username: str = "") -> dict[str, 
         # ---- 1. HOW WE RETRIEVE: read memory at the top of every turn --------
         with trace.span("memory.read"):
             snapshot = store.get_memory_snapshot(user_id)
+            travel_snapshot = travel.get_travel_snapshot(user_id)
             memory_block = store.format_profile_for_prompt(snapshot)
-        trace.set_span_summary("memory.read", f"{len(snapshot['visited_history'])} visited entries")
+            travel_block = travel.format_travel_for_prompt(travel_snapshot)
+        trace.set_span_summary(
+            "memory.read",
+            f"{len(travel_snapshot['travel_history'])} places, "
+            f"{len(travel_snapshot['wishlist'])} on wishlist",
+        )
 
+        pending = [p["location"] for p in travel_snapshot["pending_reviews"]]
         base_state = {
             "memory_block": memory_block,
+            "travel_block": travel_block,
             "user_question": message,
             "today": date.today().isoformat(),
+            "pending_reviews": ", ".join(pending) if pending else "(none)",
         }
+
+        # ---- onboarding takes over the first few turns of a new account ----
+        onboarding = travel_snapshot["onboarding"]
+        if onboarding["status"] in {"not_started", "in_progress"}:
+            return await _run_onboarding(
+                user_id, message, base_state, onboarding, trace, recorder
+            )
 
         # ---- 2. parse the turn ----------------------------------------------
         parse: dict[str, Any] = {}
@@ -248,6 +275,7 @@ async def run_turn(user_id: int, message: str, username: str = "") -> dict[str, 
         # ---- 3. WHEN WE WRITE: explicit memory writes ------------------------
         with trace.span("memory.write", input=parse.get("profile_updates")):
             writes = _apply_memory_writes(user_id, parse)
+            writes += _apply_structured_writes(user_id, parse)
         trace.set_span_summary("memory.write", f"{len(writes)} write(s)")
 
         # ---- 4. re-read so specialists see what we just learned --------------
@@ -260,6 +288,13 @@ async def run_turn(user_id: int, message: str, username: str = "") -> dict[str, 
             for c in (parse.get("candidate_destinations") or [])
             if str(c).strip()
         ]
+        # The parser sometimes classifies a two-destination question as "local"
+        # and leaves candidates empty, which sent visa questions to an agent with
+        # no visa tool. Fall back to deterministic detection over the raw message.
+        if len(candidates) < 2:
+            detected = rag_store.detect_destinations(message)
+            if len(detected) >= 2:
+                candidates = detected
         travel_month = parse.get("travel_month") or profile.get("trip_start_date") or ""
 
         state = {
@@ -274,14 +309,56 @@ async def run_turn(user_id: int, message: str, username: str = "") -> dict[str, 
             # Deterministic guard computed in code, not left to the model.
             "coverage_note": coverage.coverage_note(candidates),
             "deadline_note": coverage.deadline_note(profile),
+            "route_note": coverage.route_note(profile.get("current_location")),
+            "travel_block": travel.format_travel_for_prompt(travel.get_travel_snapshot(user_id)),
+            "focus_location": parse.get("focus_location") or profile.get("current_location") or "",
         }
 
         # ---- 5. dispatch ------------------------------------------------------
-        small_talk = bool(parse.get("is_small_talk")) or not candidates
-        if small_talk:
+        intent = str(parse.get("intent") or "").strip().lower()
+        if intent not in {"compare", "discover", "local", "memory", "review"}:
+            intent = "compare" if candidates else "memory"
+        # Two or more named destinations IS a comparison, whatever the parser
+        # called it. Without this the classifier routed "what do I need to get
+        # into Indonesia and Cambodia?" to the local guide, which has no visa
+        # tool and answered from parametric knowledge - it got the rule wrong.
+        if len(candidates) >= 2:
+            intent = "compare"
+        # A comparison with nothing to compare is really a discovery question.
+        elif intent == "compare" and not candidates:
+            intent = "discover" if profile.get("current_location") else "memory"
+
+        # Town-level discovery needs a town. If we only know the country, fall back
+        # to the country-level comparison path rather than stalling the turn to ask
+        # which town they are in - that dead end lost the traveller their answer
+        # AND suppressed the hard-deadline warning they needed.
+        if intent == "discover":
+            from backend.rag.route_data import ROUTE_GRAPH
+
+            here = (profile.get("current_location") or "").strip().lower()
+            if here and here not in ROUTE_GRAPH:
+                neighbours = coverage.nearby_country_options(here)
+                if neighbours:
+                    candidates = neighbours
+                    state["candidates"] = ", ".join(neighbours)
+                    state["coverage_note"] = coverage.coverage_note(neighbours)
+                    intent = "compare"
+
+        if intent == "local":
+            reply, cards, fired = await _run_local_guide(state, message, user_id, trace)
+        elif intent == "discover":
+            reply, cards, fired = await _run_discovery(state, message, user_id, trace)
+        elif intent in {"memory", "review"}:
             reply, cards, fired = await _run_concierge(state, message, user_id, trace)
         else:
             reply, cards, fired = await _run_comparison(state, message, user_id, parse, trace)
+
+        # ---- post-visit review nudge, appended rather than hijacking the turn --
+        just_reviewed = [str(r.get("location", "")) for r in (parse.get("reviews") or []) if isinstance(r, dict)]
+        prompt = tracking.review_prompt_for(user_id, exclude=just_reviewed)
+        if prompt and intent != "review":
+            reply += tracking.render_review_prompt(prompt)
+            trace.note("review_prompt", f"asked about {prompt['location']}")
 
         # ---- 6. persist the turn ---------------------------------------------
         store.append_turn(user_id, "user", message)
@@ -300,9 +377,249 @@ async def run_turn(user_id: int, message: str, username: str = "") -> dict[str, 
             "profile": profile,
             "visited_history": snapshot["visited_history"],
             "specialists": fired,
+            "intent": intent,
+            "travel_history": travel.get_travel_history(user_id),
+            "wishlist": travel.get_wishlist(user_id),
+            "review_prompt": prompt,
+            "onboarding": travel.get_onboarding(user_id),
         }
     finally:
         reset_recorder(token)
+
+
+async def _run_onboarding(
+    user_id: int,
+    message: str,
+    base_state: dict[str, Any],
+    onboarding: dict[str, Any],
+    trace: Trace,
+    recorder: ToolRecorder,
+) -> dict[str, Any]:
+    """Conversational onboarding for a brand-new account.
+
+    Two agents, on purpose. An extractor turns the message into structured facts,
+    then THIS function writes them, then a separate conversational agent asks for
+    whatever is still missing. One agent asked to do both reliably produced the
+    chat and silently dropped the structured block, so nothing was ever captured
+    and onboarding asked the same question on every turn.
+
+    Progress is judged from what is actually stored, never from the model's own
+    claim about which step it is on.
+    """
+    travel.set_onboarding(user_id, status="in_progress", bump_turn=True)
+
+    # ---- 1. extract structured facts from this message --------------------
+    captured: dict[str, Any] = {}
+    with trace.span("agent.onboarding_extractor"):
+        try:
+            text, _, _ = await _run_agent(
+                graph.make_onboarding_extractor(), base_state, message,
+                str(user_id), f"onboard-extract-{user_id}",
+            )
+            captured = graph.parse_json_block(text) or {}
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("onboarding extraction failed: %s", exc)
+    trace.set_span_summary(
+        "agent.onboarding_extractor",
+        ", ".join(k for k, v in captured.items() if v) or "nothing captured",
+    )
+
+    # ---- 2. write what we learned ------------------------------------------
+    with trace.span("memory.write"):
+        writes = _apply_onboarding_capture(user_id, captured)
+    trace.set_span_summary("memory.write", f"{len(writes)} write(s)")
+
+    # ---- 3. decide whether we are done, from stored data --------------------
+    gaps = travel.onboarding_gaps(user_id)
+    skip_requested = bool(captured.get("skip_requested"))
+    state_now = travel.get_onboarding(user_id)
+    # Hard cap so onboarding can never trap someone in a loop.
+    exhausted = state_now["turns"] >= 6
+
+    finishing = gaps["complete"] or skip_requested or exhausted
+    conversation_state = {
+        **base_state,
+        "onboarding_gaps": "nothing" if finishing else gaps["missing_text"],
+        "onboarding_captured": gaps["captured_text"],
+    }
+
+    # ---- 4. converse --------------------------------------------------------
+    with trace.span("agent.onboarding"):
+        try:
+            reply, _, _ = await _run_agent(
+                graph.make_onboarding_agent(), conversation_state, message,
+                str(user_id), f"onboard-{user_id}",
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("onboarding conversation failed: %s", exc)
+            reply = ""
+    reply = (reply or "").strip()
+
+    if finishing:
+        travel.set_onboarding(user_id, status="complete", step="done")
+        if not reply:
+            reply = "Thanks - that's everything I need to get started."
+        reply += (
+            "\n\nYou can change any of this any time in My Preferences. "
+            "Ask me where to go next whenever you are ready."
+        )
+    else:
+        travel.set_onboarding(user_id, step=gaps["missing"][0])
+        if not reply:
+            reply = "Tell me a bit about where you have been so far on this trip."
+
+    store.append_turn(user_id, "user", message)
+    store.append_turn(user_id, "assistant", reply)
+    trace.end(output={"reply": reply, "onboarding": True})
+
+    return {
+        "reply": reply,
+        "comparison": [],
+        "agents_fired": trace.spans,
+        "memory_writes": writes,
+        "retrieved_sources": recorder.retrieved,
+        "trace_id": trace.id,
+        "trace_url": trace.url,
+        "tool_calls": recorder.tool_names,
+        "profile": store.get_profile(user_id),
+        "visited_history": store.get_visited_history(user_id),
+        "specialists": ["onboarding_extractor", "onboarding_agent"],
+        "intent": "onboarding",
+        "travel_history": travel.get_travel_history(user_id),
+        "wishlist": travel.get_wishlist(user_id),
+        "review_prompt": None,
+        "onboarding": travel.get_onboarding(user_id),
+    }
+
+
+def _apply_onboarding_capture(user_id: int, captured: dict[str, Any]) -> list[dict[str, Any]]:
+    """Write what onboarding learned. Explicit calls, one per field."""
+    writes: list[dict[str, Any]] = []
+    if not isinstance(captured, dict) or not captured:
+        return writes
+
+    for index, entry in enumerate(captured.get("travel_history") or [], start=1):
+        if not isinstance(entry, dict) or not entry.get("location"):
+            continue
+        order = entry.get("order")
+        try:
+            order = int(order) if order is not None else None
+        except (TypeError, ValueError):
+            order = None
+        result = travel.add_travel_history(
+            user_id,
+            location=str(entry["location"]),
+            location_type=str(entry.get("location_type") or "city"),
+            country=entry.get("country"),
+            arrival_date=entry.get("arrival_date"),
+            departure_date=entry.get("departure_date"),
+            source="onboarding",
+            order_index=order if order is not None else index,
+        )
+        if result.get("ok"):
+            writes.append(
+                {
+                    "operation": "add_travel_history",
+                    "payload": {"location": entry["location"], "order": order or index},
+                    "source": "onboarding",
+                }
+            )
+
+    for entry in captured.get("wishlist") or []:
+        if not isinstance(entry, dict) or not entry.get("location"):
+            continue
+        try:
+            priority = int(entry.get("priority") or 2)
+        except (TypeError, ValueError):
+            priority = 2
+        result = travel.add_wishlist(
+            user_id,
+            location=str(entry["location"]),
+            location_type=str(entry.get("location_type") or "city"),
+            country=entry.get("country"),
+            priority=priority,
+            source="onboarding",
+        )
+        if result.get("ok"):
+            writes.append(
+                {
+                    "operation": "add_wishlist",
+                    "payload": {"location": entry["location"], "priority": priority},
+                    "source": "onboarding",
+                }
+            )
+
+    interests = [str(i) for i in (captured.get("interests") or []) if str(i).strip()]
+    if interests:
+        travel.set_interests(user_id, interests, source="onboarding")
+        writes.append(
+            {
+                "operation": "set_interests",
+                "payload": {"interests": interests},
+                "source": "onboarding",
+            }
+        )
+
+    if captured.get("social_style"):
+        if travel.set_social_style(user_id, str(captured["social_style"]), source="onboarding"):
+            writes.append(
+                {
+                    "operation": "set_social_style",
+                    "payload": {"social_style": captured["social_style"]},
+                    "source": "onboarding",
+                }
+            )
+
+    profile_updates = {
+        key: captured[key]
+        for key in (
+            "budget_band", "travel_style", "climate_preference",
+            "current_location", "nationality", "trip_start_date", "trip_end_date",
+        )
+        if captured.get(key)
+    }
+    if profile_updates:
+        store.update_profile(user_id, profile_updates, source="onboarding")
+        writes.append(
+            {
+                "operation": "update_profile",
+                "payload": profile_updates,
+                "source": "onboarding",
+            }
+        )
+    return writes
+
+
+async def _run_local_guide(
+    state: dict[str, Any], message: str, user_id: int, trace: Trace
+) -> tuple[str, list[dict[str, Any]], list[str]]:
+    """On-the-ground questions about one town: where to stay, eat, go."""
+    with trace.span("agent.local_guide", input={"focus": state.get("focus_location")}):
+        text, _, tool_calls = await _run_agent(
+            graph.make_local_guide(), state, message, str(user_id), f"local-{user_id}"
+        )
+    trace.set_span_summary("agent.local_guide", f"{len(tool_calls)} tool call(s)")
+    return (
+        text.strip() or "I could not find anything solid for that place.",
+        [],
+        ["local_guide"],
+    )
+
+
+async def _run_discovery(
+    state: dict[str, Any], message: str, user_id: int, trace: Trace
+) -> tuple[str, list[dict[str, Any]], list[str]]:
+    """Open "where next from here", answered at town level from the route corpus."""
+    with trace.span("agent.discovery", input={"from": state.get("current_location")}):
+        text, _, tool_calls = await _run_agent(
+            graph.make_discovery_agent(), state, message, str(user_id), f"discover-{user_id}"
+        )
+    trace.set_span_summary("agent.discovery", f"{len(tool_calls)} tool call(s)")
+    return (
+        text.strip() or "I don't have route data for where you are right now.",
+        [],
+        ["discovery_agent"],
+    )
 
 
 async def _run_concierge(
@@ -418,9 +735,10 @@ async def _run_comparison(
         "agent.decision_weigher",
         input={k: v[:400] for k, v in reports.items() if v},
     ):
-        # One retry: the weigher occasionally answers in prose instead of JSON,
-        # which would otherwise cost the user their whole comparison.
-        for attempt in (1, 2):
+        # Up to three attempts: the weigher occasionally answers in prose instead
+        # of JSON, and returning no comparison at all is the worst outcome for the
+        # user, so it is worth another cheap call before giving up.
+        for attempt in (1, 2, 3):
             try:
                 text, final_state, _ = await _run_agent(
                     graph.make_decision_weigher(), weigher_state, message,

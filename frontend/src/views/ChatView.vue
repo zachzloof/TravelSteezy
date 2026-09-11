@@ -1,9 +1,11 @@
 <script setup>
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { api, tokens } from '../api'
 import DestinationCard from '../components/DestinationCard.vue'
 import MemorySidebar from '../components/MemorySidebar.vue'
+import TripPanel from '../components/TripPanel.vue'
+import ReviewCard from '../components/ReviewCard.vue'
 
 const router = useRouter()
 
@@ -16,13 +18,88 @@ const visited = ref([])
 const lastWrites = ref([])
 const scroller = ref(null)
 
+const travelHistory = ref([])
+const wishlist = ref([])
+const interests = ref([])
+const onboarding = ref(null)
+const reviewPrompt = ref(null)
+const reviewBusy = ref(false)
+
 const SUGGESTIONS = [
   "I'm in Thailand with 6 weeks left. Laos or Vietnam next?",
-  "I'm on a shoestring budget and prefer slow travel.",
+  'Where should I go next from here?',
+  'Any good hostels here, and which area should I stay in?',
   'What do you remember about my trip?'
 ]
 
-onMounted(loadProfile)
+const ONBOARDING_SUGGESTIONS = [
+  "I started in Bangkok, then Koh Tao, and I'm in Chiang Mai now.",
+  'I want to get to Pai and then Laos.',
+  "Shoestring budget, travelling solo and slowly. I'm into nature and street food."
+]
+
+const onboarding_active = computed(
+  () => onboarding.value && ['not_started', 'in_progress'].includes(onboarding.value.status)
+)
+
+const prompts = computed(() => (onboarding_active.value ? ONBOARDING_SUGGESTIONS : SUGGESTIONS))
+
+onMounted(async () => {
+  await Promise.all([loadProfile(), loadTravel()])
+})
+
+async function loadTravel() {
+  try {
+    const res = await api.getTravel()
+    applyTravel(res)
+    if (res.pending_reviews?.length && !reviewPrompt.value) {
+      reviewPrompt.value = { location: res.pending_reviews[0] }
+    }
+  } catch (e) {
+    if (e.status !== 401 && e.status !== 403) error.value = e.message
+  }
+}
+
+function applyTravel(res) {
+  if (res.travel_history) travelHistory.value = res.travel_history
+  if (res.wishlist) wishlist.value = res.wishlist
+  if (res.interests) interests.value = res.interests
+  if (res.onboarding) onboarding.value = res.onboarding
+}
+
+async function submitReview(payload) {
+  reviewBusy.value = true
+  try {
+    applyTravel(await api.saveReview(payload))
+    reviewPrompt.value = null
+    messages.value.push({
+      role: 'assistant',
+      text: `Noted - ${payload.location} saved to your trip history.`,
+      comparison: [], agents: [], sources: [], showDetail: false
+    })
+    await scrollDown()
+  } catch (e) {
+    error.value = e.message
+  } finally {
+    reviewBusy.value = false
+  }
+}
+
+async function dropWishlistItem(location) {
+  try {
+    applyTravel(await api.dropWishlist(location))
+  } catch (e) {
+    error.value = e.message
+  }
+}
+
+async function skipOnboarding() {
+  try {
+    applyTravel(await api.skipOnboarding())
+  } catch (e) {
+    error.value = e.message
+  }
+}
 
 async function loadProfile() {
   try {
@@ -63,6 +140,8 @@ async function send(text) {
     if (res.profile) profile.value = res.profile
     if (res.visited_history) visited.value = res.visited_history
     lastWrites.value = res.memory_writes || []
+    applyTravel(res)
+    if (res.review_prompt) reviewPrompt.value = res.review_prompt
   } catch (e) {
     if (e.status === 401 || e.status === 403) {
       tokens.clearUser()
@@ -87,19 +166,36 @@ async function scrollDown() {
 <template>
   <div class="layout">
     <section class="chat panel">
+      <div v-if="onboarding_active && messages.length" class="onboarding-banner small">
+        <span>Setting up your trip profile</span>
+        <button class="ghost small" @click="skipOnboarding">Skip</button>
+      </div>
+
       <div ref="scroller" class="stream">
         <div v-if="!messages.length" class="empty">
-          <h2>Where next?</h2>
-          <p class="muted">
-            I already know what is in your profile on the right. Ask me about two or
-            three places and I will weigh season, visas, routes and cost against
-            what you have told me.
-          </p>
+          <template v-if="onboarding_active">
+            <h2>First, tell me about your trip</h2>
+            <p class="muted">
+              A couple of quick questions so I know where you have been, where you
+              want to go, and how you travel. Then I never have to ask again.
+            </p>
+          </template>
+          <template v-else>
+            <h2>Where next?</h2>
+            <p class="muted">
+              I already know what is in your profile on the right. Ask me about two or
+              three places and I will weigh season, visas, routes and cost against
+              what you have told me.
+            </p>
+          </template>
           <div class="suggestions">
-            <button v-for="s in SUGGESTIONS" :key="s" class="ghost small" @click="send(s)">
+            <button v-for="s in prompts" :key="s" class="ghost small" @click="send(s)">
               {{ s }}
             </button>
           </div>
+          <button v-if="onboarding_active" class="ghost small skip" @click="skipOnboarding">
+            Skip this, I'll fill it in later
+          </button>
         </div>
 
         <div v-for="(m, i) in messages" :key="i" class="msg" :class="m.role">
@@ -149,6 +245,15 @@ async function scrollDown() {
         </div>
       </div>
 
+      <ReviewCard
+        v-if="reviewPrompt"
+        class="review-slot"
+        :location="reviewPrompt.location"
+        :busy="reviewBusy"
+        @submit="submitReview"
+        @dismiss="reviewPrompt = null"
+      />
+
       <div v-if="error" class="error compose-error">{{ error }}</div>
 
       <form class="compose" @submit.prevent="send()">
@@ -162,7 +267,16 @@ async function scrollDown() {
       </form>
     </section>
 
-    <MemorySidebar :profile="profile" :visited="visited" :writes="lastWrites" />
+    <div class="sidebar">
+      <MemorySidebar :profile="profile" :visited="visited" :writes="lastWrites">
+        <TripPanel
+          :history="travelHistory"
+          :wishlist="wishlist"
+          :interests="interests"
+          @drop-wishlist="dropWishlistItem"
+        />
+      </MemorySidebar>
+    </div>
   </div>
 </template>
 
@@ -215,6 +329,19 @@ async function scrollDown() {
 .trace { margin: 12px 0 0; }
 
 .thinking { padding: 4px 2px; }
+
+.onboarding-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 18px;
+  background: #17251f;
+  border-bottom: 1px solid var(--accent-dim);
+  color: #bfe7d3;
+}
+.skip { margin-top: 14px; }
+.review-slot { margin: 0 18px 14px; }
+.sidebar { min-width: 0; }
 
 .compose { display: flex; gap: 10px; padding: 14px 18px; border-top: 1px solid var(--line); }
 .compose-error { margin: 0 18px; }

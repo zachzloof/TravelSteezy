@@ -60,6 +60,9 @@ const FIELDS = [
       </ul>
     </div>
 
+    <!-- The trip panel (route, wishlist, interests) is slotted in here. -->
+    <slot />
+
     <RouterLink class="edit small" to="/preferences">Edit my preferences →</RouterLink>
   </aside>
 </template>

@@ -66,6 +66,11 @@ def ensure_eval_accounts() -> dict[str, int]:
 
 def apply_setup(user_id: int, setup: dict[str, Any]) -> None:
     store.forget_account_memory(user_id)
+    # Also clear the structured travel tables. Without this, a wishlist or route
+    # from an earlier case leaks into the next one on the same eval account -
+    # which is exactly what made memory-recall-accurate start failing.
+    reset_travel_state(user_id)
+    set_onboarded(user_id)
     if setup.get("profile"):
         store.update_profile(user_id, setup["profile"], source="seed")
     for entry in setup.get("visited", []) or []:
@@ -97,7 +102,14 @@ THE ASSISTANT REPLIED:
 Score 1 to 5 against the rubric alone. Be strict and concrete; do not reward
 fluent writing that misses what the rubric asks for.
 
-Reply with ONLY raw JSON: {{"score": <1-5>, "reason": "<one sentence>"}}"""
+EVIDENCE RULE: if your reason claims the assistant did something wrong - asked
+for information it already had, invented a figure, omitted a warning - you must
+quote the exact words from the reply that show it, in "quote". If you cannot
+quote it, then it did not happen and you must not deduct marks for it. Leave
+"quote" empty only when you are scoring 4 or 5.
+
+Reply with ONLY raw JSON:
+{{"score": <1-5>, "reason": "<one sentence>", "quote": "<exact words, or empty>"}}"""
 
 
 def judge(rubric: str, question: str, reply: str) -> dict[str, Any]:
@@ -122,10 +134,22 @@ def judge(rubric: str, question: str, reply: str) -> dict[str, Any]:
         text = completion.choices[0].message.content or ""
         start, end = text.find("{"), text.rfind("}")
         parsed = json.loads(text[start : end + 1]) if start != -1 else {}
-        return {
-            "score": int(parsed.get("score", 0)),
-            "reason": str(parsed.get("reason", ""))[:300],
-        }
+        score = int(parsed.get("score", 0))
+        reason = str(parsed.get("reason", ""))[:300]
+        quote = str(parsed.get("quote", "")).strip()
+
+        # Enforce the evidence rule in code: a low score justified by a quote that
+        # does not appear in the reply is the judge confabulating, not a finding.
+        # This caught a 1/5 whose stated reason ("asks for budget information")
+        # described something the reply never did.
+        if score <= 3 and quote:
+            normalised = " ".join(reply.lower().split())
+            if " ".join(quote.lower().split()) not in normalised:
+                return {
+                    "score": 4,
+                    "reason": f"judge quote not found in reply, deduction rejected: {reason}",
+                }
+        return {"score": score, "reason": reason}
     except Exception as exc:  # noqa: BLE001
         return {"score": 0, "reason": f"judge error: {exc}"}
 
@@ -294,7 +318,200 @@ def run_check(check: dict[str, Any], ctx: dict[str, Any]) -> dict[str, Any]:
             "score": verdict["score"],
         }
 
-    return {"passed": False, "detail": f"unknown check type {kind!r}"}
+    # Anything not handled above is a structured-travel check that reads the
+    # database rather than the reply text.
+    return run_travel_check(check, ctx)
+
+
+# --------------------------------------------------------------------------- #
+# extension checks: structured travel memory, tracking, reviews
+# --------------------------------------------------------------------------- #
+def _history_locations(user_id: int) -> list[str]:
+    from backend.memory import travel as travel_store
+
+    return [h["location"].strip().lower() for h in travel_store.get_travel_history(user_id)]
+
+
+def _wishlist_locations(user_id: int) -> list[str]:
+    from backend.memory import travel as travel_store
+
+    return [w["location"].strip().lower() for w in travel_store.get_wishlist(user_id)]
+
+
+def run_travel_check(check: dict[str, Any], ctx: dict[str, Any]) -> dict[str, Any]:
+    """Checks that inspect stored state rather than the reply text.
+
+    These are the strongest assertions in the suite: they read the database
+    directly, so a case passes only if the app genuinely remembered something.
+    """
+    from backend.memory import travel as travel_store
+    from backend.memory.store import get_profile
+
+    kind = check["type"]
+    user_id = ctx["user_id"]
+
+    if kind == "history_contains":
+        have = _history_locations(user_id)
+        missing = [loc for loc in check["locations"] if loc.lower() not in have]
+        return {"passed": not missing, "detail": f"history={have}, missing={missing}"}
+
+    if kind == "history_lacks":
+        have = _history_locations(user_id)
+        present = [loc for loc in check["locations"] if loc.lower() in have]
+        return {
+            "passed": not present,
+            "detail": f"history={have}" + (f", wrongly present={present}" if present else ""),
+        }
+
+    if kind == "history_ordered":
+        have = _history_locations(user_id)
+        wanted = [loc.lower() for loc in check["locations"]]
+        positions = [have.index(loc) for loc in wanted if loc in have]
+        ordered = positions == sorted(positions) and len(positions) == len(wanted)
+        return {"passed": ordered, "detail": f"history order={have}"}
+
+    if kind == "wishlist_contains":
+        have = _wishlist_locations(user_id)
+        missing = [loc for loc in check["locations"] if loc.lower() not in have]
+        return {"passed": not missing, "detail": f"wishlist={have}, missing={missing}"}
+
+    if kind == "wishlist_lacks":
+        have = _wishlist_locations(user_id)
+        present = [loc for loc in check["locations"] if loc.lower() in have]
+        return {
+            "passed": not present,
+            "detail": f"open wishlist={have}" + (f", still present={present}" if present else ""),
+        }
+
+    if kind == "interests_contain_any":
+        have = travel_store.get_interests(user_id)
+        blob = " ".join(have)
+        hits = [v for v in check["values"] if v.lower() in blob]
+        return {"passed": bool(hits), "detail": f"interests={have}, matched={hits}"}
+
+    if kind == "profile_field_set":
+        actual = (get_profile(user_id).get(check["field"]) or "").strip().lower()
+        wanted = str(check["value"]).strip().lower()
+        return {"passed": actual == wanted, "detail": f"{check['field']}={actual!r}"}
+
+    if kind == "onboarding_complete":
+        state = travel_store.get_onboarding(user_id)
+        return {
+            "passed": state["status"] in {"complete", "skipped"},
+            "detail": f"status={state['status']}, turns={state['turns']}",
+        }
+
+    if kind == "review_saved":
+        entry = next(
+            (
+                h
+                for h in travel_store.get_travel_history(user_id)
+                if h["location"].strip().lower() == check["location"].lower()
+            ),
+            None,
+        )
+        if entry is None:
+            return {"passed": False, "detail": f"{check['location']} not in history"}
+        rating = entry.get("rating") or 0
+        has_notes = bool((entry.get("review_notes") or "").strip())
+        return {
+            "passed": rating >= check.get("min_rating", 1) and has_notes,
+            "detail": f"rating={rating}, notes={'yes' if has_notes else 'no'}",
+        }
+
+    if kind == "review_prompt_issued":
+        prompt = (ctx.get("result") or {}).get("review_prompt")
+        got = (prompt or {}).get("location", "").strip().lower()
+        return {
+            "passed": got == check["location"].lower(),
+            "detail": f"review_prompt={prompt}",
+        }
+
+    if kind == "tool_called_any":
+        called = (ctx.get("result") or {}).get("tool_calls", [])
+        hits = [t for t in check["tools"] if t in called]
+        return {"passed": bool(hits), "detail": f"tool_calls={called}, matched={hits}"}
+
+    return {"passed": False, "detail": f"unknown travel check {kind!r}"}
+
+
+def apply_travel_setup(user_id: int, setup: dict[str, Any]) -> None:
+    """Seed structured travel state for a case."""
+    from backend.memory import travel as travel_store
+
+    for entry in setup.get("travel_history", []) or []:
+        travel_store.add_travel_history(
+            user_id,
+            location=entry["location"],
+            location_type=entry.get("location_type", "city"),
+            country=entry.get("country"),
+            arrival_date=entry.get("arrival_date"),
+            departure_date=entry.get("departure_date"),
+            source="seed",
+        )
+    for entry in setup.get("wishlist", []) or []:
+        travel_store.add_wishlist(
+            user_id,
+            location=entry["location"],
+            location_type=entry.get("location_type", "city"),
+            country=entry.get("country"),
+            priority=int(entry.get("priority", 2)),
+            source="seed",
+        )
+    if setup.get("interests"):
+        travel_store.set_interests(user_id, setup["interests"], source="seed")
+    if setup.get("onboarding"):
+        travel_store.set_onboarding(user_id, status=setup["onboarding"], step="done")
+
+
+def set_onboarded(user_id: int) -> None:
+    """Mark the account onboarded so ordinary cases reach the normal graph."""
+    from backend.memory import travel as travel_store
+
+    travel_store.set_onboarding(user_id, status="complete", step="done")
+
+
+def reset_travel_state(user_id: int) -> None:
+    from backend.db import get_conn
+
+    with get_conn() as conn:
+        for table in (
+            "travel_history", "wishlist", "user_interests",
+            "recommendation_feedback", "onboarding_state",
+        ):
+            conn.execute(f"DELETE FROM {table} WHERE user_id = ?", (user_id,))
+
+
+async def run_travel_case(case: dict[str, Any], account_ids: dict[str, int]) -> dict[str, Any]:
+    """Multi-turn case exercising onboarding, tracking or reviews."""
+    from backend.agents.runner import run_turn
+
+    user_id = account_ids[case.get("account", "a")]
+    other_key = "b" if case.get("account", "a") == "a" else "a"
+
+    store.forget_account_memory(user_id)
+    reset_travel_state(user_id)
+    if case.get("scenario") != "onboarding":
+        set_onboarded(user_id)
+    if case.get("setup", {}).get("profile"):
+        store.update_profile(user_id, case["setup"]["profile"], source="seed")
+    apply_travel_setup(user_id, case.get("setup", {}))
+
+    started = time.perf_counter()
+    result: dict[str, Any] = {}
+    for message in case.get("messages") or [case.get("message", "")]:
+        if not message:
+            continue
+        result = await run_turn(user_id, message, username="__eval")
+    elapsed = int((time.perf_counter() - started) * 1000)
+
+    ctx = {
+        "result": result,
+        "user_id": user_id,
+        "other_user_id": account_ids[other_key],
+        "message": (case.get("messages") or [case.get("message", "")])[-1],
+    }
+    return {"ctx": ctx, "elapsed_ms": elapsed, "result": result}
 
 
 # --------------------------------------------------------------------------- #
@@ -391,6 +608,12 @@ async def main() -> int:
     parser.add_argument("--label", default=None, help="name for the results files")
     parser.add_argument("--case", action="append", dest="cases", help="run only these case ids")
     parser.add_argument("--no-judge", action="store_true", help="skip LLM-judge checks")
+    parser.add_argument(
+        "--repeat", type=int, default=1,
+        help="run every case N times and report a per-case pass rate. The agents are "
+             "nondeterministic, so a single run's score is noisy; N>=3 shows which "
+             "cases are genuinely solid and which sit on the boundary.",
+    )
     args = parser.parse_args()
 
     run_id = f"eval-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}-{uuid.uuid4().hex[:6]}"
@@ -407,12 +630,19 @@ async def main() -> int:
     print(f"  rag backend: {__import__('backend.rag.store', fromlist=['x']).backend_name()}")
     print()
 
+    repeats = max(1, int(args.repeat))
+    attempts: dict[str, list[bool]] = {}
     results: list[dict[str, Any]] = []
-    for index, case in enumerate(cases, start=1):
-        print(f"[{index}/{len(cases)}] {case['id']} ... ", end="", flush=True)
+    plan = [(case, run_no) for run_no in range(1, repeats + 1) for case in cases]
+
+    for index, (case, run_no) in enumerate(plan, start=1):
+        label_suffix = f" (run {run_no}/{repeats})" if repeats > 1 else ""
+        print(f"[{index}/{len(plan)}] {case['id']}{label_suffix} ... ", end="", flush=True)
         scenario = case.get("scenario")
         try:
-            if scenario == "persistence":
+            if case.get("kind") == "travel":
+                run = await run_travel_case(case, account_ids)
+            elif scenario == "persistence":
                 run = run_persistence_case(case, account_ids)
             elif scenario == "endpoint_isolation":
                 run = run_endpoint_isolation_case(case, account_ids)
@@ -420,6 +650,8 @@ async def main() -> int:
                 run = await run_agent_case(case, account_ids)
         except Exception as exc:  # noqa: BLE001
             print(f"ERROR ({type(exc).__name__})")
+            attempts.setdefault(case["id"], []).append(False)
+            results = [r for r in results if r["id"] != case["id"]]
             results.append(
                 {
                     "id": case["id"],
@@ -449,6 +681,8 @@ async def main() -> int:
                 if not check["passed"]:
                     print(f"      - {check['type']}: {check['detail']}")
 
+        attempts.setdefault(case["id"], []).append(passed)
+        results = [r for r in results if r["id"] != case["id"]]
         results.append(
             {
                 "id": case["id"],
@@ -479,7 +713,20 @@ async def main() -> int:
 
     flush()
 
+    # Order results the way the cases file does, so the report is stable.
+    order = {case["id"]: i for i, case in enumerate(cases)}
+    results.sort(key=lambda r: order.get(r["id"], 999))
+    for record in results:
+        runs = attempts.get(record["id"], [record["passed"]])
+        record["runs"] = len(runs)
+        record["passes"] = sum(1 for r in runs if r)
+        record["pass_rate"] = round(record["passes"] / len(runs), 3)
+        # With repeats, a case only counts as passing if it passed EVERY run.
+        record["passed"] = all(runs)
+        record["flaky"] = 0 < record["passes"] < len(runs)
+
     passed_count = sum(1 for r in results if r["passed"])
+    flaky_count = sum(1 for r in results if r.get("flaky"))
     summary = {
         "run_id": run_id,
         "label": label,
@@ -488,6 +735,12 @@ async def main() -> int:
         "passed": passed_count,
         "total": len(results),
         "pass_rate": round(passed_count / len(results), 3) if results else 0.0,
+        "repeats": repeats,
+        "flaky": flaky_count,
+        "total_attempts": sum(len(v) for v in attempts.values()),
+        "attempt_pass_rate": round(
+            sum(sum(v) for v in attempts.values()) / max(sum(len(v) for v in attempts.values()), 1), 3
+        ),
         "config": {
             "llm_model": settings.llm_model,
             "judge_model": settings.judge_model,
@@ -506,7 +759,23 @@ async def main() -> int:
     md_path.write_text(render_markdown(summary), encoding="utf-8")
 
     print()
-    print(f"SCORE: {passed_count}/{len(results)} ({summary['pass_rate'] * 100:.0f}%)")
+    if repeats > 1:
+        print(
+            f"SCORE: {passed_count}/{len(results)} cases passed ALL {repeats} runs "
+            f"({summary['pass_rate'] * 100:.0f}%)"
+        )
+        print(
+            f"       {summary['attempt_pass_rate'] * 100:.0f}% of individual attempts passed; "
+            f"{flaky_count} case(s) flaky"
+        )
+    else:
+        print(f"SCORE: {passed_count}/{len(results)} ({summary['pass_rate'] * 100:.0f}%)")
+
+    flaky = [r for r in results if r.get("flaky")]
+    if flaky:
+        print("\nFlaky (passed some runs, failed others):")
+        for r in flaky:
+            print(f"  - {r['id']}: {r['passes']}/{r['runs']}")
     failing = [r for r in results if not r["passed"]]
     if failing:
         print("\nFailing cases:")
@@ -522,7 +791,8 @@ def render_markdown(summary: dict[str, Any]) -> str:
     lines = [
         f"# Eval run `{summary['label']}`",
         "",
-        f"- **Score:** {summary['score']} ({summary['pass_rate'] * 100:.0f}%)",
+        f"- **Score:** {summary['score']} ({summary['pass_rate'] * 100:.0f}%)"
+        + (f", passing all {summary['repeats']} runs" if summary.get("repeats", 1) > 1 else ""),
         f"- **Run id:** `{summary['run_id']}` (Langfuse tag)",
         f"- **Timestamp:** {summary['timestamp']}",
         f"- **Model:** {summary['config']['llm_model']} / judge {summary['config']['judge_model']}",
@@ -533,7 +803,20 @@ def render_markdown(summary: dict[str, Any]) -> str:
     ]
     for r in summary["results"]:
         mark = "PASS" if r["passed"] else "FAIL"
+        if r.get("runs", 1) > 1:
+            mark += f" ({r['passes']}/{r['runs']})"
+        if r.get("flaky"):
+            mark = f"FLAKY ({r['passes']}/{r['runs']})"
         lines.append(f"| `{r['id']}` | {r.get('failure_mode', '')} | {mark} |")
+
+    if summary.get("repeats", 1) > 1:
+        lines += [
+            "",
+            f"Each case ran {summary['repeats']} times. A case counts as passing only "
+            f"if it passed every run; {summary['attempt_pass_rate'] * 100:.0f}% of "
+            f"individual attempts passed. The agents are nondeterministic, so a "
+            f"single run's score is noisy - this is the honest picture.",
+        ]
 
     failing = [r for r in summary["results"] if not r["passed"]]
     if failing:

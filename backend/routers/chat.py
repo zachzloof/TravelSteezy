@@ -17,8 +17,11 @@ from backend.schemas import (
     ChatResponse,
     DestinationVerdict,
     MemoryWriteEntry,
+    OnboardingState,
+    TravelEntry,
     TripProfile,
     VisitedEntry,
+    WishlistEntry,
 )
 from backend.security import current_user
 
@@ -48,4 +51,11 @@ async def chat(payload: ChatRequest, user: dict = Depends(current_user)) -> Chat
         trace_id=result.get("trace_id"),
         profile=TripProfile(**profile) if profile else None,
         visited_history=[VisitedEntry(**v) for v in result.get("visited_history", [])],
+        intent=result.get("intent"),
+        travel_history=[TravelEntry(**h) for h in result.get("travel_history", [])],
+        wishlist=[WishlistEntry(**w) for w in result.get("wishlist", [])],
+        review_prompt=result.get("review_prompt"),
+        onboarding=(
+            OnboardingState(**result["onboarding"]) if result.get("onboarding") else None
+        ),
     )

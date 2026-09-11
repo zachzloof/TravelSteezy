@@ -61,6 +61,17 @@ class Settings:
             os.getenv("LOCAL_RAG_PATH", str(self.data_dir / "local_rag_index.json"))
         )
 
+        # --- places / booking ----------------------------------------------
+        self.google_places_api_key: str | None = os.getenv("GOOGLE_PLACES_API_KEY")
+        # Places bills per call, so identical lookups are served from the SQLite
+        # cache for this long. 24h: opening hours and ratings do not move fast.
+        self.places_cache_ttl_seconds: int = int(
+            os.getenv("PLACES_CACHE_TTL_SECONDS", str(24 * 3600))
+        )
+        self.places_min_reviews: int = int(os.getenv("PLACES_MIN_REVIEWS", "25"))
+        self.booking_affiliate_id: str | None = os.getenv("BOOKING_AFFILIATE_ID")
+        self.hostelworld_affiliate_id: str | None = os.getenv("HOSTELWORLD_AFFILIATE_ID")
+
         # --- tracing -------------------------------------------------------
         self.langfuse_public_key: str | None = os.getenv("LANGFUSE_PUBLIC_KEY")
         self.langfuse_secret_key: str | None = os.getenv("LANGFUSE_SECRET_KEY")
@@ -87,6 +98,10 @@ class Settings:
     @property
     def pinecone_enabled(self) -> bool:
         return bool(self.pinecone_api_key)
+
+    @property
+    def places_enabled(self) -> bool:
+        return bool(self.google_places_api_key)
 
     @property
     def langfuse_enabled(self) -> bool:
