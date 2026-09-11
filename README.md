@@ -10,6 +10,12 @@ cons and a verdict per destination.
 > **Extension:** onboarding profile capture, live trip tracking, post-visit
 > reviews and Google Places-backed recommendations are documented separately in
 > [docs/EXTENSION.md](docs/EXTENSION.md). This README covers the core app.
+>
+> **Design notes:** [notes/](notes/00-index.md) has a deeper, file-per-topic
+> record of specific bugs found, the fix, and the eval case or test that caught
+> each one — agent architecture, memory/schema, RAG, Places ranking, prompt
+> guards, eval methodology, known limitations, and a chronological decision
+> log. Read this if you want the "why," not just the "what."
 
 ## 1. The problem
 

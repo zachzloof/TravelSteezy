@@ -137,6 +137,56 @@ should make the case deterministic (pass on every run) rather than merely
 surface — a code fix that converts a flaky case into a reliably-passing one,
 versus a case that just needs a softer regex.
 
+## A second, more serious bug: two eval runs corrupting each other
+
+While chasing the `resolve_country` fix above, a genuinely different and more
+serious problem surfaced. Fixing the bug meant re-running the repeat-3 suite to
+confirm it. A session interruption made it look like the re-run had died
+partway through, so a second re-run was started. It hadn't died — both
+processes kept running concurrently against the same SQLite file, sharing the
+same two fixed eval accounts (`__eval_account_a`, `__eval_account_b`) that
+every case's setup calls `forget_account_memory()` and reseeds on.
+
+The result was silent cross-contamination. The clearest signature, found in
+one of the two corrupted result files: a case that seeds the traveller in
+Reykjavik, Iceland, and asks "where next" — the correct behaviour is an honest
+"no route data for Iceland" — got a confident answer entirely about Chiang Mai
+and Pai. That's only possible if this turn's account row had been overwritten,
+mid-run, by a *different* case (one of the several Chiang Mai/Pai discovery
+cases) executing in the other process at the same moment. A second signature
+in the same files: a departure-tracking case whose reply contained no
+departure logic at all, reading as if the model had answered a completely
+different, more generic question — again consistent with the account's stored
+profile changing under it between the setup step and the message step.
+
+**This is a more fundamental problem than eval flakiness** — it doesn't
+degrade gracefully, it produces confidently wrong answers to the wrong
+question with no error and no obvious tell in the output itself. Both
+corrupted runs' results were kept, not deleted (`extension-repeat3-run2-COLLISION-CONTAMINATED.md`
+and `extension-final-run3-COLLISION-CONTAMINATED.json`/`.md`), clearly labelled
+as invalid, because they're the actual evidence for this finding and because
+eval results are treated as append-only artifacts in this project — see the
+decisions log for the moment that policy got tested for real when files were
+briefly deleted, then restored from git history and reconstructed where they
+weren't recoverable.
+
+**The fix**: `evals/run_evals.py` now has an `EvalLock` — a simple file lock
+(`evals/.eval_lock`, containing the holder's PID and start time) acquired
+before any case runs and released when the process exits. A second run started
+while the lock is held gets an immediate, explicit refusal naming the PID and
+start time of the process already running, rather than silently starting and
+corrupting both runs' data. Covered by `tests/test_eval_lock.py` (acquire,
+release, double-release safety, collision refusal, and that the error message
+actually names the holding process — six tests, no API keys, sub-second).
+
+This is not a perfect distributed lock (a hard crash can leave a stale lock
+file behind, requiring a manual check-and-delete, which the refusal message
+explains how to do), but it converts "corrupts silently" into "refuses loudly,"
+which is the property that actually matters here — the corruption was
+dangerous specifically *because* nothing about the failed runs' output signalled
+that anything was wrong; both produced complete, well-formed markdown reports
+with a plausible-looking score.
+
 ## What "the eval score" means for the demo
 
 Given the above, the honest way to present a number in a demo is not a bare

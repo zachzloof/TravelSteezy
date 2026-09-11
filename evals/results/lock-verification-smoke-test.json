@@ -1,0 +1,108 @@
+{
+  "run_id": "eval-20260911T193950Z-8aa719",
+  "label": "eval-20260911T193950Z-8aa719",
+  "timestamp": "2026-09-11T19:40:12.781574+00:00",
+  "score": "1/1",
+  "passed": 1,
+  "total": 1,
+  "pass_rate": 1.0,
+  "repeats": 1,
+  "flaky": 0,
+  "total_attempts": 1,
+  "attempt_pass_rate": 1.0,
+  "config": {
+    "llm_model": "gpt-4o-mini",
+    "judge_model": "gpt-4o-mini",
+    "judge_enabled": false,
+    "rag_backend": "pinecone",
+    "embeddings": "openai",
+    "langfuse": true
+  },
+  "results": [
+    {
+      "id": "season-nepal-monsoon",
+      "name": "Does not recommend Nepal trekking in monsoon",
+      "failure_mode": "recommends a destination during its monsoon/unsafe season",
+      "message": "I want to do a big trek in July. Nepal or Sri Lanka?",
+      "passed": true,
+      "elapsed_ms": 17251,
+      "trace_id": "516ea211-57c4-40a9-8602-27e8c8b38336",
+      "checks": [
+        {
+          "type": "tool_called",
+          "passed": true,
+          "detail": "tool_calls=['search_backpacker_tips', 'search_backpacker_tips', 'search_visa_rules', 'search_visa_rules', 'check_route', 'check_route', 'check_seasonal_conditions', 'check_seasonal_conditions', 'search_seasonal_notes', 'search_seasonal_notes']"
+        },
+        {
+          "type": "not_ranked_first",
+          "passed": true,
+          "detail": "rank 1 = 'sri lanka'"
+        },
+        {
+          "type": "flag_present",
+          "passed": true,
+          "detail": "season_flag=\"Trekking conditions rated as 'avoid' due to peak monsoon rains.\""
+        }
+      ],
+      "reply": "I recommend Sri Lanka for your trekking in July due to better weather conditions, particularly on the east coast, where the trekking experience is much more favorable during this time. In Sri Lanka, a shoestring budget is around **$20-30 per day**, and you'll need to apply for an Electronic Travel Authorization (ETA), which costs about **$50** for 30 days. Since you're currently in Thailand with a balanced travel pace, this option is more suited to your budget preferences and gives you the chance to enjoy the outdoors in good weather compared to Nepal, where trekking is rated as 'avoid' because of the peak monsoon season, which could hinder your plans.",
+      "cards": [
+        {
+          "destination": "Sri Lanka",
+          "rank": 1,
+          "verdict": "go",
+          "season_flag": null,
+          "visa_flag": "ETA needed before arrival.",
+          "backpacker_notes": [
+            "The flight from Bangkok to Colombo costs between $160-280.",
+            "Explore Little Adam's Peak and Nine Arches Bridge in Ella for scenic hikes.",
+            "Train from Kandy to Ella costs around $2-3; booking a reserved seat is advised.",
+            "Be cautious of crowded buses."
+          ],
+          "source_ids": [
+            "the source ids the Recommendations specialist cited for this destination, e.g. tips-sri-lanka"
+          ]
+        },
+        {
+          "destination": "Nepal",
+          "rank": 2,
+          "verdict": "avoid",
+          "season_flag": "Trekking conditions rated as 'avoid' due to peak monsoon rains.",
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Visa details: USD 30 for 15 days, USD 50 for 30 days, USD 125 for 90 days on arrival.",
+            "Consider the Annapurna Base Camp Trek, which takes about 7-12 days.",
+            "Flights to Lukla from Kathmandu can vary in price and may be delayed due to weather.",
+            "Altitude sickness is a risk; ascend slowly above 3,000 meters."
+          ],
+          "source_ids": [
+            "the source ids the Recommendations specialist cited for this destination, e.g. tips-nepal"
+          ]
+        }
+      ],
+      "tool_calls": [
+        "search_backpacker_tips",
+        "search_backpacker_tips",
+        "search_visa_rules",
+        "search_visa_rules",
+        "check_route",
+        "check_route",
+        "check_seasonal_conditions",
+        "check_seasonal_conditions",
+        "search_seasonal_notes",
+        "search_seasonal_notes"
+      ],
+      "retrieved": [
+        "tips-nepal",
+        "tips-srilanka",
+        "visa-nepal-western",
+        "visa-srilanka-western",
+        "seasonal-nepal",
+        "seasonal-srilanka"
+      ],
+      "runs": 1,
+      "passes": 1,
+      "pass_rate": 1.0,
+      "flaky": false
+    }
+  ]
+}

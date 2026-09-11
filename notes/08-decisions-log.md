@@ -103,19 +103,60 @@ part.
     deduction ("asks for budget information" against a reply that asked for
     nothing) — note 06.
 21. **`--repeat 3` added to the eval harness** after four runs of identical
-    code scored 89/96/93/89% — note 06. This is listed last in the log not
-    because it's least important but because it's the methodological decision
-    that made decisions #18-20 possible to *notice* in the first place: a
-    single-run harness would have reported `season-malaysia-east-coast-closed`
-    as either a clean pass or an unexplained regression, and the real bug
-    underneath it would likely have gone unfound.
+    code scored 89/96/93/89% — note 06. Made decisions #18-20 possible to
+    *notice* in the first place: a single-run harness would have reported
+    `season-malaysia-east-coast-closed` as either a clean pass or an
+    unexplained regression, and the real bug underneath it would likely have
+    gone unfound.
+22. **A re-run to confirm fix #18 collided with an earlier re-run that hadn't
+    actually died** (a session interruption made it look dead; it wasn't), and
+    both processes shared the same two fixed eval accounts in the same
+    database concurrently. Both runs' results were silently corrupted — a case
+    seeded in Reykjavik answered confidently about Chiang Mai, because a
+    concurrently-executing Chiang Mai case had overwritten the shared
+    account's profile mid-run. This is qualitatively worse than the ordinary
+    LLM flakiness `--repeat` was built to surface: it produces a
+    well-formed, confident, wrong answer with no error and no visible tell.
+    Fixed with an `EvalLock` in `run_evals.py` — a file lock acquired for the
+    process lifetime, with a second run refused outright (naming the PID and
+    start time of the run already in progress) rather than silently starting.
+    Six tests in `test_eval_lock.py` cover it directly. Both corrupted
+    results were kept on disk under clearly-labelled filenames
+    (`extension-repeat3-run2-COLLISION-CONTAMINATED.md`,
+    `extension-final-run3-COLLISION-CONTAMINATED.json`/`.md`) rather than
+    deleted, per the project's own policy that eval results are append-only
+    evidence.
+23. **That policy got tested for real, immediately.** In the course of
+    "cleaning up" before re-running the suite, two already-committed result
+    files (`extension-v1.json`/`.md`, `extension-repeat3.json`/`.md`) were
+    deleted from disk without first checking whether they were the pristine
+    version or had already been superseded. They were restored from git
+    history (`git checkout HEAD -- <path>`) since they'd been committed by an
+    earlier session. One further mistake compounded this: the pristine
+    `extension-repeat3.json` was restored via `git checkout` *before* a copy
+    was saved of the contaminated version then sitting on disk in its place,
+    overwriting it with no way to get the contaminated raw JSON back through
+    git (it had never been committed). The contaminated `.md` for that run was
+    reconstructed by hand from its content, which had already been printed in
+    full during the session; the raw `.json` for that specific run is
+    genuinely gone. The `extension-final` contaminated pair, caught before the
+    same mistake could repeat, was copied to a new filename first and both the
+    `.json` and `.md` survive intact. The lesson, stated plainly for next
+    time: **copy before you restore, every time, no exceptions** — checking
+    out a clean version and overwriting an unsaved one is functionally
+    identical to deleting it, even though no `rm` was involved.
 
 ## Open items at the time of writing
 
-- The extension's final repeat-3 eval run (post-fix #18) is in progress; its
-  results file (`evals/results/extension-final.json`/`.md`) is the
-  authoritative current number, superseding any number quoted earlier in this
-  conversation before the fix landed.
+- The extension's eval evidence trail as of this entry: `extension-v1.md`
+  (23/27, single run, pre-repeat-mode), `extension-repeat3.md` (26/27, the
+  clean first repeat-3 run whose one flaky case led to fix #18),
+  `extension-repeat3-run2-COLLISION-CONTAMINATED.md` and
+  `extension-final-run3-COLLISION-CONTAMINATED.json`/`.md` (both invalidated
+  by the concurrency bug, decision #22), and `extension-final.json`/`.md` (the
+  clean, lock-protected, authoritative re-run after both the `resolve_country`
+  fix and the `EvalLock` fix — the number to actually cite). All are kept, none
+  deleted.
 - Railway deployment, the demo-safety account decision (seeded demo account
   vs. `ADMIN_AUTO_APPROVE`), and the backup screen recording remain outstanding
   from the original build — unrelated to the extension, carried over from

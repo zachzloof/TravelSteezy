@@ -24,6 +24,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import os
 import re
 import sys
 import time
@@ -42,6 +43,78 @@ from backend.tracing.langfuse_setup import flush, tracing_enabled  # noqa: E402
 
 CASES_PATH = Path(__file__).parent / "cases.jsonl"
 RESULTS_DIR = Path(__file__).parent / "results"
+LOCK_PATH = Path(__file__).parent / ".eval_lock"
+
+
+class ConcurrentRunError(RuntimeError):
+    """Raised when another eval run already holds the lock.
+
+    Every case shares two fixed eval accounts (__eval_account_a/b) so their
+    memory can be inspected directly after each turn. That is fine for one run
+    at a time, but two runs sharing the same accounts concurrently corrupt each
+    other: run A's `forget_account_memory` + reseed lands mid-turn for run B,
+    which then reads or writes the wrong profile. This happened for real -
+    a run believed to have died after a session interruption had actually kept
+    going in the background, and a second run was started against the same
+    database without noticing. Both runs' results were contaminated (visible as
+    a case for "Iceland" answering about Chiang Mai, and a departure case
+    returning a reply with no departure logic at all) and were kept on disk,
+    clearly annotated, rather than deleted - see
+    evals/results/extension-repeat3.md and extension-final.md, and
+    notes/06-eval-methodology.md.
+
+    This lock makes that class of collision impossible to *miss*: a second run
+    now refuses to start rather than silently corrupting both runs' data.
+    """
+
+
+class EvalLock:
+    """A simple exclusive lock file for the duration of one eval run.
+
+    Not a distributed lock and not immune to a hard crash leaving a stale file
+    behind - if that happens, the error message tells you exactly how to check
+    whether the PID it names is still alive and how to remove it. That is a
+    deliberate trade-off: a lock that can occasionally need a manual override is
+    far better than no lock at all, which is what let the corruption above
+    happen unnoticed.
+    """
+
+    def __init__(self, path: Path) -> None:
+        self.path = path
+
+    def acquire(self) -> None:
+        if self.path.exists():
+            try:
+                info = json.loads(self.path.read_text(encoding="utf-8"))
+            except (json.JSONDecodeError, OSError):
+                info = {}
+            raise ConcurrentRunError(
+                "Another eval run appears to be in progress "
+                f"(lock file: {self.path}).\n"
+                f"  started by PID {info.get('pid', '?')} at {info.get('started_at', '?')} "
+                f"with label {info.get('label', '?')!r}.\n"
+                "Two runs sharing the same eval accounts will corrupt both results' "
+                "data (see notes/06-eval-methodology.md for what that looked like "
+                "in practice). If that process has genuinely finished or died "
+                f"(check with your OS's process list for PID {info.get('pid', '?')}), "
+                f"delete {self.path} and try again."
+            )
+        self.path.write_text(
+            json.dumps(
+                {
+                    "pid": os.getpid(),
+                    "started_at": datetime.now(timezone.utc).isoformat(),
+                    "label": getattr(self, "_label", None),
+                }
+            ),
+            encoding="utf-8",
+        )
+
+    def release(self) -> None:
+        try:
+            self.path.unlink(missing_ok=True)
+        except OSError:
+            pass
 
 # Dedicated accounts so eval data never mixes with a real user's memory.
 EVAL_ACCOUNTS = {"a": "__eval_account_a", "b": "__eval_account_b"}
@@ -834,4 +907,17 @@ def render_markdown(summary: dict[str, Any]) -> str:
 
 
 if __name__ == "__main__":
-    raise SystemExit(asyncio.run(main()))
+    # Acquired here, outside main(), so the lock covers the whole process
+    # lifetime including argument parsing - and so a ConcurrentRunError prints
+    # a clean message and exits before touching the database at all, rather
+    # than failing deep inside a partially-started run.
+    _lock = EvalLock(LOCK_PATH)
+    try:
+        _lock.acquire()
+    except ConcurrentRunError as exc:
+        print(f"REFUSING TO START: {exc}", file=sys.stderr)
+        raise SystemExit(1) from None
+    try:
+        raise SystemExit(asyncio.run(main()))
+    finally:
+        _lock.release()

@@ -45,3 +45,20 @@ Each case ran 3 times. A case counts as passing only if it passed every run; 98%
 
 > I recommend heading to the Perhentian Islands in Malaysia for December because it's a more budget-friendly and accessible option given your shoestring budget and slow travel pace. You can stay in Malaysia visa-free for up to 90 days, which is convenient. The overland journey from Bangkok to Butterworth will take about 20 hours and cost approximately USD 30-50. While Indonesia's wet season might af
 
+
+---
+
+**What happened next.** This run's one flaky case
+(`season-malaysia-east-coast-closed`, 1/3) was investigated rather than
+shrugged off as ordinary LLM variance. It turned out to be a real bug: the
+climate table is keyed by country, and the model's candidate string
+("Perhentian Islands, Malaysia") didn't match the country key, so the lookup
+silently returned "unknown" and dropped a correct monsoon warning on the runs
+where the model happened to phrase it that way. Fixed in `resolve_country`
+(see `notes/03-rag-and-retrieval.md`). A re-run to confirm the fix
+unfortunately collided with a second process left running unnoticed from a
+prior attempt, corrupting both runs' results — preserved as
+`extension-repeat3-run2-COLLISION-CONTAMINATED.md` and
+`extension-final-run3-COLLISION-CONTAMINATED.md`/`.json`. The actual clean,
+lock-protected re-run (after fixing both the bug and the harness's missing
+concurrency guard) is `extension-final.json`/`.md`.
