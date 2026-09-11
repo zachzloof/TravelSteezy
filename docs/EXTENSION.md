@@ -338,3 +338,36 @@ Places.
 
 These use a `travel` case kind whose checks read the database rather than the
 reply text, which is a stronger assertion than anything that inspects prose.
+
+### Repeat mode, and why it exists
+
+Four consecutive runs of the *same code* scored 89%, 96%, 93% and 89%, failing a
+different subset each time. The agents are nondeterministic, so a single run's
+score is close to meaningless - it would have been easy to report the 96% and
+call it done.
+
+`--repeat N` runs every case N times. A case counts as passing only if it passed
+**every** run, and the report shows per-case pass rates plus which cases are
+flaky. That turns "somewhere between 89 and 96" into an honest picture of which
+behaviour is solid and which sits on the boundary.
+
+```bash
+python -m evals.run_evals --repeat 3
+```
+
+It immediately earned its keep: `season-malaysia-east-coast-closed` was passing
+1 run in 3, which a single run would have reported as either a clean pass or a
+regression. The cause was a real bug - the country-keyed climate table returning
+"unknown" for a town-level candidate, silently dropping a monsoon warning.
+
+### The judge has to show its evidence
+
+An LLM judge scored a reply 1/5 with the reason "the assistant asks for budget
+information, which is unnecessary given the stored context". The reply asked for
+nothing; it used every stored field correctly. The judge had invented the fault.
+
+The judge prompt now requires a verbatim `quote` from the reply for any
+deduction, and `run_evals.py` checks in code that the quote actually appears. A
+low score justified by a quote that is not in the reply is rejected and treated
+as a pass. Fixing the instrument rather than tuning the product to satisfy a
+faulty one.

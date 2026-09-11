@@ -71,7 +71,20 @@ trip tracking, post-visit reviews, and Google Places-backed recommendation tools
 - **No-op writes are not audited**: re-mentioning a place you are already known to
   be in must not appear in the "just remembered" panel.
 
+- **Town vs country granularity bit twice**: the climate/route tables are keyed by
+  country, and once candidates arrived at town level an exact lookup returned
+  "unknown" and dropped a correct monsoon warning. `route_data.resolve_country`
+  is now the single resolver used by climate, routes and the coverage guard.
+  Separately, town departures were being written into the country-level log.
+- **Eval repeat mode earns its keep**: four runs of identical code scored 89/96/
+  93/89%. Use `--repeat 3` for any number worth quoting.
+
 ## Resume checklist
 
-Update the status table above as each item lands. Still open from the original
-build regardless: Railway deploy, demo-safety decision, screen recording.
+All extension items are done, committed, and verified live end to end.
+
+Still open from the original build: Railway deploy with a /data volume, the
+demo-safety decision (seeded demo account vs ADMIN_AUTO_APPROVE), and the
+backup screen recording.
+
+Final eval figure: see `evals/results/extension-repeat3.md` (each case run 3x).
