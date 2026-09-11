@@ -1,0 +1,3 @@
+# results files are intentionally committed as graded evidence.
+!*.json
+!*.md

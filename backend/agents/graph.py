@@ -1,0 +1,472 @@
+"""Agent definitions for the Onward graph.
+
+Shape:
+
+    turn_parser  (explicit memory extraction -> Python calls store.update_profile)
+         |
+    ParallelAgent  [ weather_agent | logistics_agent | recommendations_agent ]
+         |                (only the specialists this turn actually needs)
+    decision_weigher  (reads all three from session state, ranks candidates)
+
+Note on structured output: ADK's ``output_schema`` serialises to
+``response_format.response_schema``, which the OpenAI API rejects through
+litellm. So the agents that must return JSON are prompted for it and parsed
+tolerantly in Python (see ``parse_json_block``), with a pydantic validation pass.
+"""
+from __future__ import annotations
+
+import json
+import re
+from functools import lru_cache
+from typing import Any
+
+from google.adk.agents import LlmAgent
+from google.adk.models.lite_llm import LiteLlm
+
+from backend.agents.tools import (
+    check_route,
+    check_seasonal_conditions,
+    search_backpacker_tips,
+    search_seasonal_notes,
+    search_visa_rules,
+)
+from backend.config import settings
+
+APP_NAME = "onward"
+
+
+@lru_cache(maxsize=4)
+def _cached_model(model_name: str) -> LiteLlm:
+    return LiteLlm(model=f"openai/{model_name}", api_key=settings.openai_api_key)
+
+
+def build_model() -> LiteLlm:
+    """LiteLlm is ADK's bridge to non-Gemini providers; we point it at OpenAI.
+
+    Shared rather than constructed per agent: litellm keeps process-global client
+    state, and building a fresh instance for each of the concurrently-running
+    specialists was implicated in intermittent "coroutine raised StopIteration"
+    failures during the fan-out.
+    """
+    return _cached_model(settings.llm_model)
+
+
+# --------------------------------------------------------------------------- #
+# JSON helpers
+# --------------------------------------------------------------------------- #
+_FENCE_RE = re.compile(r"```(?:json)?\s*(.*?)```", re.DOTALL)
+
+
+def parse_json_block(text: str) -> dict[str, Any] | None:
+    """Best-effort extraction of a JSON object from a model reply.
+
+    Handles bare JSON, fenced JSON, and JSON with prose wrapped around it.
+    Returns None rather than raising, so a malformed reply degrades to a
+    text-only answer instead of a 500.
+    """
+    if not text:
+        return None
+    candidates: list[str] = []
+
+    fenced = _FENCE_RE.search(text)
+    if fenced:
+        candidates.append(fenced.group(1))
+    candidates.append(text)
+
+    # last resort: the outermost {...} span
+    start, end = text.find("{"), text.rfind("}")
+    if start != -1 and end > start:
+        candidates.append(text[start : end + 1])
+
+    for candidate in candidates:
+        try:
+            parsed = json.loads(candidate.strip())
+        except (json.JSONDecodeError, ValueError):
+            continue
+        if isinstance(parsed, dict):
+            return parsed
+    return None
+
+
+# --------------------------------------------------------------------------- #
+# shared prompt fragments
+# --------------------------------------------------------------------------- #
+HOUSE_STYLE = """
+You are part of Onward, an assistant for long-term budget backpackers already on
+the road. Your user is not a package tourist: they sleep in dorms and guesthouses,
+travel by night bus, slow boat and budget airline, and care about cost per day,
+visa runs and whether a place is worth the journey.
+
+Rules that apply to every agent in this system:
+- Never ask the user for something already in the trip profile below. It is theirs,
+  read it and use it.
+- Be concrete. Numbers, months, hours, dollars. No "it depends" without the detail.
+- If a tool returns "known": false or no passages, say plainly that you do not have
+  verified data for that, rather than inventing a figure.
+- Visa rules and prices change; tell the user to confirm visas with the official
+  government source before booking.
+"""
+
+MEMORY_BLOCK = """
+--- TRIP PROFILE (remembered for this account, do not ask for it again) ---
+{memory_block?}
+--- END TRIP PROFILE ---
+"""
+
+
+# --------------------------------------------------------------------------- #
+# 1. turn parser  (the orchestrator's parsing step)
+# --------------------------------------------------------------------------- #
+TURN_PARSER_INSTRUCTION = (
+    """
+You are the parsing step of the Onward orchestrator. You do not talk to the user.
+Read their latest message together with the stored trip profile, and return JSON
+describing what changed and what work the specialists need to do.
+"""
+    + MEMORY_BLOCK
+    + """
+Today's date is {today?}.
+The user's message is the conversation input you have been given.
+
+Return ONLY a raw JSON object, no code fences, with exactly these keys:
+
+{{
+  "profile_updates": {{}},
+  "departures": [],
+  "candidate_destinations": [],
+  "travel_month": null,
+  "question_focus": "",
+  "needs_weather": true,
+  "needs_logistics": true,
+  "needs_recommendations": true,
+  "is_small_talk": false
+}}
+
+Field rules:
+- "profile_updates": only fields the user has just stated or changed in THIS message.
+  Allowed keys: nationality, budget_band (shoestring|mid|comfortable),
+  travel_style (slow|balanced|fast), climate_preference (cool|temperate|hot|no_preference),
+  current_location (country name), trip_start_date (YYYY-MM-DD), trip_end_date (YYYY-MM-DD),
+  visa_deadline_date (YYYY-MM-DD), visa_deadline_note, interests.
+  Leave it as {{}} if they stated nothing new. Never copy values that are already
+  in the trip profile - only genuine new information.
+- "departures": countries the user says they have LEFT, as
+  [{{"country": "laos", "departure_date": "YYYY-MM-DD or null"}}]. Only when they
+  clearly indicate they have left, not merely that they visited.
+- "candidate_destinations": lowercase country names they are choosing between. If
+  they ask an open "where next" question without naming options, propose 2-4
+  plausible countries near their current location. Empty only for small talk or a
+  pure memory question.
+- "travel_month": the month the trip in question would happen, as a month name.
+  Infer from the message, else from trip_start_date, else from today's date.
+- "question_focus": one short phrase for what they actually care about.
+- "needs_weather" / "needs_logistics" / "needs_recommendations": false only when
+  that specialist is clearly irrelevant to the question.
+- "is_small_talk": true for greetings or questions purely about what you remember.
+"""
+)
+
+
+def make_turn_parser() -> LlmAgent:
+    return LlmAgent(
+        name="turn_parser",
+        model=build_model(),
+        description="Parses the user turn into memory updates and a dispatch plan.",
+        instruction=TURN_PARSER_INSTRUCTION,
+        output_key="turn_parse",
+    )
+
+
+# --------------------------------------------------------------------------- #
+# 2. specialists
+# --------------------------------------------------------------------------- #
+WEATHER_INSTRUCTION = (
+    HOUSE_STYLE
+    + MEMORY_BLOCK
+    + """
+You are the Weather/Timing specialist.
+
+Candidate destinations: {candidates?}
+Travel month: {travel_month?}
+Question: {user_question?}
+
+You MUST call check_seasonal_conditions once for EVERY candidate destination,
+using the travel month above. You MUST also call search_seasonal_notes for every
+candidate to get the prose detail. Do not answer before calling both tools.
+
+Your data is a curated seasonal table, not a live forecast: it is reliable for
+"is this monsoon season" and cannot know about an anomalous year or a specific
+storm. Say so if the user seems to want a forecast.
+
+Then write 2-4 sentences per destination covering: the season it falls in, the
+rating (good / mixed / avoid), and the practical consequence for a backpacker -
+cancelled ferries, impassable roads, haze, crowds, price. Lead with any
+destination rated "avoid" and state clearly that it is a bad time to go.
+"""
+)
+
+LOGISTICS_INSTRUCTION = (
+    HOUSE_STYLE
+    + MEMORY_BLOCK
+    + """
+You are the Logistics/Route specialist.
+
+Candidate destinations: {candidates?}
+Traveller is currently in: {current_location?}
+Passport: {nationality?}
+Travel month: {travel_month?}
+Question: {user_question?}
+
+You MUST call search_visa_rules once for EVERY candidate destination, passing the
+traveller's passport nationality. You MUST call check_route once for every
+candidate, from their current location. Do not state any visa rule, price or
+journey time that did not come back from a tool.
+
+If the passport nationality is unknown, say that visa guidance is generic until
+they tell you their nationality, and still retrieve what you can.
+
+Report per destination:
+- Visa: what they get, cost, how long it lasts, and crucially any ADVANCE LEAD
+  TIME (e.g. an e-visa that takes days to issue), because that can rule a
+  destination out entirely on a short-notice plan.
+- Route: overland option with hours and cost, flight option with hours and cost,
+  and which is actually the better call given their budget band and pace.
+- Border notes and scams worth knowing.
+
+If the trip profile shows a HARD DEADLINE (a visa or permit expiry), check every
+recommendation against it explicitly and say whether it fits.
+"""
+)
+
+RECOMMENDATIONS_INSTRUCTION = (
+    HOUSE_STYLE
+    + MEMORY_BLOCK
+    + """
+You are the Recommendations specialist for backpackers.
+
+Candidate destinations: {candidates?}
+Their interests: {interests?}
+Budget band: {budget_band?}
+Travel pace: {travel_style?}
+Question: {user_question?}
+
+You MUST call search_backpacker_tips once for EVERY candidate destination before
+writing anything. Everything you recommend must come from the retrieved passages.
+
+This is the important part: give BACKPACKER advice, not tourist-brochure advice.
+That means hostel scenes and dorm prices, realistic daily budgets in local terms,
+free and cheap things, overland routes other backpackers actually take, ethical
+warnings, and scam or safety notes. Do not produce a list of famous landmarks.
+
+For every destination give: a realistic daily budget, two or three specific things
+worth doing with why they suit this traveller, and one practical warning.
+
+Cite the retrieved passage you used for each destination by its source_id, in
+square brackets at the end of the relevant sentence, like [tips-vietnam]. If you
+could not retrieve a passage for a destination, say so explicitly instead of
+filling the gap from memory.
+"""
+)
+
+
+def make_weather_agent() -> LlmAgent:
+    return LlmAgent(
+        name="weather_agent",
+        model=build_model(),
+        description="Assesses seasonal fit for candidate destinations.",
+        instruction=WEATHER_INSTRUCTION,
+        tools=[check_seasonal_conditions, search_seasonal_notes],
+        output_key="weather_assessment",
+    )
+
+
+def make_logistics_agent() -> LlmAgent:
+    return LlmAgent(
+        name="logistics_agent",
+        model=build_model(),
+        description="Visa requirements, routes, journey time and cost.",
+        instruction=LOGISTICS_INSTRUCTION,
+        tools=[search_visa_rules, check_route],
+        output_key="logistics_assessment",
+    )
+
+
+def make_recommendations_agent() -> LlmAgent:
+    return LlmAgent(
+        name="recommendations_agent",
+        model=build_model(),
+        description="Backpacker-specific things to do and budget notes from the RAG store.",
+        instruction=RECOMMENDATIONS_INSTRUCTION,
+        tools=[search_backpacker_tips],
+        output_key="recommendations",
+    )
+
+
+# --------------------------------------------------------------------------- #
+# 3. decision weigher
+# --------------------------------------------------------------------------- #
+DECISION_INSTRUCTION = (
+    HOUSE_STYLE
+    + MEMORY_BLOCK
+    + """
+You are the Decision-Weigher. The specialists have reported:
+
+--- WEATHER / TIMING ---
+{weather_assessment?}
+
+--- LOGISTICS / VISAS / ROUTES ---
+{logistics_assessment?}
+
+--- BACKPACKER RECOMMENDATIONS ---
+{recommendations?}
+
+The user asked: {user_question?}
+Candidates: {candidates?}
+Travel month: {travel_month?}
+
+--- KNOWLEDGE COVERAGE (computed in code, not negotiable) ---
+{coverage_note?}
+--- END COVERAGE ---
+
+--- HARD DEADLINE (computed in code, not negotiable) ---
+{deadline_note?}
+--- END DEADLINE ---
+
+Weigh these against the traveller's OWN stated priorities in the trip profile
+above - their budget band, their pace, their climate preference and any hard
+deadline. A destination that is wrong for their stated preferences should rank
+lower even if it is objectively pleasant. Say which preference drove the call.
+
+Season is one input, not the whole answer. If everywhere is in a poor season, say
+so briefly and then still give the traveller something to act on: which option is
+least affected, what to do there anyway, and how to work around the weather. A
+reply that is mostly weather warnings with no budget, route or activity detail has
+failed, even when the weather warnings are correct.
+
+Hard rules:
+1. A destination the weather specialist rated "avoid" CANNOT be ranked first
+   unless the user has explicitly said they accept that season. Put the seasonal
+   problem in its cons and in season_flag.
+2. A destination that cannot be reached in time because of a visa lead time or a
+   hard deadline in the profile CANNOT be ranked first. Put it in visa_flag.
+3. Never invent a fact the specialists did not report.
+4. Any destination named in the COVERAGE WARNING above CANNOT be ranked first and
+   CANNOT be given specifics. Set its verdict to "unknown" and say in the reply
+   that you hold no verified data for it.
+5. If the HARD DEADLINE block names a date, you MUST state that date explicitly in
+   your reply and say whether your top recommendation fits inside it. Do not
+   silently plan past a deadline the traveller is under.
+
+CARRY THE DETAIL THROUGH. The specialists did the research; your job is to weigh
+it, NOT to compress it into generalities. A reply that says "lower visa costs" or
+"cheaper daily costs" instead of the actual figures has thrown away the work.
+Your "reply" MUST contain at least two concrete specifics taken from the
+specialist reports above - for example a daily budget in dollars, a visa type with
+its cost and duration, an e-visa lead time in days, or a journey time in hours
+with its price. Use the real numbers the specialists reported. Never replace a
+number with an adjective.
+
+Return ONLY a raw JSON object, no code fences:
+
+{{
+  "reply": "4-8 sentences to the traveller, conversational. Lead with your recommendation and the single most important reason. Include at least two concrete figures carried over from the specialists (daily budget, visa cost/duration/lead time, or journey hours and price). Explicitly name the stored profile values you used - say their budget band, their pace, where they are now and their dates back to them in passing, so it is obvious you did not need to ask. Never end by asking them for something already in the profile.",
+  "cards": [
+    {{
+      "destination": "Country Name",
+      "rank": 1,
+      "verdict": "go | maybe | avoid | unknown",
+      "rationale": "one line on why it sits at this rank",
+      "pros": ["specific, concrete"],
+      "cons": ["specific, concrete"],
+      "season_flag": "null, or the seasonal warning",
+      "visa_flag": "null, or the visa/deadline warning",
+      "est_cost_note": "indicative daily budget and cost to get there",
+      "backpacker_notes": ["3-4 concrete specifics lifted from the Recommendations and Logistics specialists for THIS destination. Cover all of: (a) a cost with its number - dorm price, daily budget or an entry fee; (b) a named thing to do that a backpacker actually does, with the place name; (c) how you get there or get around - the bus, train, slow boat or flight with its hours or price; (d) a scam, safety or ethical warning. Keep the specialists' actual figures and place names. Empty list only if that destination has no retrieved content."],
+      "source_ids": ["the source ids the Recommendations specialist cited for this destination, e.g. tips-vietnam"]
+    }}
+  ]
+}}
+
+Include one card per candidate, ranked 1..n with no ties.
+
+The "backpacker_notes" are the part the traveller actually acts on. Fill them from
+the Recommendations specialist's report verbatim enough to keep its numbers and
+place names - a dorm price, the name of a route or trek, a specific warning. Do
+not paraphrase them into generic advice, and do not write them from your own
+knowledge: if the specialist did not report something for a destination, leave
+that destination's notes empty and say so in the reply.
+"""
+)
+
+
+def make_decision_weigher() -> LlmAgent:
+    return LlmAgent(
+        name="decision_weigher",
+        model=build_model(),
+        description="Ranks candidates against the traveller's stated priorities.",
+        instruction=DECISION_INSTRUCTION,
+        output_key="decision",
+    )
+
+
+# --------------------------------------------------------------------------- #
+# 4. concierge (no destination comparison needed)
+# --------------------------------------------------------------------------- #
+CONCIERGE_INSTRUCTION = (
+    HOUSE_STYLE
+    + MEMORY_BLOCK
+    + """
+The user has asked something that does not need a destination comparison - a
+greeting, a follow-up, or a question about what you remember about them.
+
+Question: {user_question?}
+
+Answer directly and briefly from the trip profile above. If they are asking what
+you remember, list it back accurately: never claim to remember something that is
+"(unknown)" in the profile, and never invent a value. If the profile is mostly
+empty, say what you still need and point them at the My Preferences screen where
+they can set it directly.
+"""
+)
+
+
+def make_concierge() -> LlmAgent:
+    return LlmAgent(
+        name="concierge",
+        model=build_model(),
+        description="Answers memory and small-talk turns from the trip profile.",
+        instruction=CONCIERGE_INSTRUCTION,
+        output_key="concierge_reply",
+    )
+
+
+# --------------------------------------------------------------------------- #
+# 5. assembling the fan-out
+# --------------------------------------------------------------------------- #
+def build_specialists(
+    needs_weather: bool, needs_logistics: bool, needs_recommendations: bool
+) -> list[tuple[LlmAgent, str]]:
+    """Pick the specialists this turn needs, each with the state key it writes.
+
+    The set is chosen per turn, which is the orchestrator deciding which agents are
+    relevant rather than always paying for all three.
+
+    WHY NOT ADK's ParallelAgent: it drives its concurrent sub-agents through a
+    shared async generator, and on teardown that intermittently raised
+    "aclose(): asynchronous generator is already running", which killed the whole
+    turn - the eval case rag-cites-source caught it twice, returning zero
+    comparison cards. The orchestrator now runs each specialist in its own Runner
+    under asyncio.gather instead. That is still a genuine parallel fan-out, and it
+    additionally isolates failures: one specialist erroring no longer takes the
+    other two, or the final recommendation, down with it.
+    """
+    chosen: list[tuple[LlmAgent, str]] = []
+    if needs_weather:
+        chosen.append((make_weather_agent(), "weather_assessment"))
+    if needs_logistics:
+        chosen.append((make_logistics_agent(), "logistics_assessment"))
+    if needs_recommendations:
+        chosen.append((make_recommendations_agent(), "recommendations"))
+    if not chosen:
+        chosen.append((make_weather_agent(), "weather_assessment"))
+    return chosen

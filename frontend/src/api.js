@@ -1,0 +1,98 @@
+// Thin API client.
+//
+// The base URL is empty on purpose: in production FastAPI serves this bundle from
+// the same origin, so there is no hostname baked into the build and nothing for a
+// visitor in incognito to get wrong. VITE_API_BASE only exists for the case where
+// someone wants to run the frontend against a different backend.
+
+const BASE = import.meta.env.VITE_API_BASE || ''
+
+const USER_TOKEN_KEY = 'onward.userToken'
+const ADMIN_TOKEN_KEY = 'onward.adminToken'
+const USERNAME_KEY = 'onward.username'
+
+export const tokens = {
+  user: () => localStorage.getItem(USER_TOKEN_KEY),
+  admin: () => localStorage.getItem(ADMIN_TOKEN_KEY),
+  username: () => localStorage.getItem(USERNAME_KEY),
+  setUser(token, username) {
+    localStorage.setItem(USER_TOKEN_KEY, token)
+    if (username) localStorage.setItem(USERNAME_KEY, username)
+  },
+  setAdmin(token) {
+    localStorage.setItem(ADMIN_TOKEN_KEY, token)
+  },
+  clearUser() {
+    localStorage.removeItem(USER_TOKEN_KEY)
+    localStorage.removeItem(USERNAME_KEY)
+  },
+  clearAdmin() {
+    localStorage.removeItem(ADMIN_TOKEN_KEY)
+  }
+}
+
+export class ApiError extends Error {
+  constructor(message, status) {
+    super(message)
+    this.status = status
+  }
+}
+
+async function request(path, { method = 'GET', body, auth = 'user' } = {}) {
+  const headers = { 'Content-Type': 'application/json' }
+  const token = auth === 'admin' ? tokens.admin() : auth === 'user' ? tokens.user() : null
+  if (token) headers.Authorization = `Bearer ${token}`
+
+  let response
+  try {
+    response = await fetch(`${BASE}${path}`, {
+      method,
+      headers,
+      body: body === undefined ? undefined : JSON.stringify(body)
+    })
+  } catch {
+    throw new ApiError('Could not reach the server. Is the backend running?', 0)
+  }
+
+  const text = await response.text()
+  let data = null
+  if (text) {
+    try {
+      data = JSON.parse(text)
+    } catch {
+      data = { detail: text }
+    }
+  }
+
+  if (!response.ok) {
+    const detail =
+      (data && (typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail))) ||
+      `Request failed (${response.status})`
+    throw new ApiError(detail, response.status)
+  }
+  return data
+}
+
+export const api = {
+  health: () => request('/health', { auth: null }),
+
+  register: (username, password) =>
+    request('/auth/register', { method: 'POST', body: { username, password }, auth: null }),
+  login: (username, password) =>
+    request('/auth/login', { method: 'POST', body: { username, password }, auth: null }),
+
+  adminLogin: (password) =>
+    request('/admin/login', { method: 'POST', body: { password }, auth: null }),
+  adminPending: () => request('/admin/pending', { auth: 'admin' }),
+  adminUsers: () => request('/admin/users', { auth: 'admin' }),
+  adminApprove: (id) => request(`/admin/approve/${id}`, { method: 'POST', auth: 'admin' }),
+  adminReject: (id) => request(`/admin/reject/${id}`, { method: 'POST', auth: 'admin' }),
+
+  getProfile: () => request('/profile/me'),
+  patchProfile: (patch) => request('/profile/me', { method: 'PATCH', body: patch }),
+  logDeparture: (payload) =>
+    request('/profile/me/departures', { method: 'POST', body: payload }),
+  forgetMe: () => request('/profile/me', { method: 'DELETE' }),
+
+  chat: (message) => request('/chat', { method: 'POST', body: { message } })
+}

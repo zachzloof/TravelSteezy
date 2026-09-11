@@ -1,0 +1,931 @@
+{
+  "run_id": "eval-20260911T160147Z-6fe60f",
+  "label": "baseline-before-fix",
+  "timestamp": "2026-09-11T16:05:01.244382+00:00",
+  "score": "14/19",
+  "passed": 14,
+  "total": 19,
+  "pass_rate": 0.737,
+  "config": {
+    "llm_model": "gpt-4o-mini",
+    "judge_model": "gpt-4o-mini",
+    "judge_enabled": true,
+    "rag_backend": "local-json",
+    "embeddings": "openai",
+    "langfuse": false
+  },
+  "results": [
+    {
+      "id": "season-nepal-monsoon",
+      "name": "Does not recommend Nepal trekking in monsoon",
+      "failure_mode": "recommends a destination during its monsoon/unsafe season",
+      "message": "I want to do a big trek in July. Nepal or Sri Lanka?",
+      "passed": true,
+      "elapsed_ms": 15683,
+      "trace_id": "ae9c78d9-90e6-4240-8510-dc94449b0c9b",
+      "checks": [
+        {
+          "type": "tool_called",
+          "passed": true,
+          "detail": "tool_calls=['search_backpacker_tips', 'search_backpacker_tips', 'check_seasonal_conditions', 'check_seasonal_conditions', 'search_seasonal_notes', 'search_seasonal_notes', 'search_visa_rules', 'search_visa_rules', 'check_route', 'check_route']"
+        },
+        {
+          "type": "not_ranked_first",
+          "passed": true,
+          "detail": "rank 1 = 'sri lanka'"
+        },
+        {
+          "type": "flag_present",
+          "passed": true,
+          "detail": "season_flag='Monsoon season peak; trekking is dangerous.'"
+        }
+      ],
+      "reply": "I recommend Sri Lanka for your big trek in July, primarily because Nepal is rated as 'avoid' this month due to the peak monsoon season, which makes trekking dangerous. Given your shoestring budget and balanced travel pace, Sri Lanka provides good trekking conditions on the east coast, particularly around Arugam Bay, with a manageable daily budget of $20-30. You can apply for an ETA online to streamline your entry. This aligns well with your preferences and the current weather conditions.",
+      "cards": [
+        {
+          "destination": "Sri Lanka",
+          "rank": 1,
+          "verdict": "go",
+          "season_flag": null,
+          "visa_flag": "ETA required in advance; apply at eta.gov.lk"
+        },
+        {
+          "destination": "Nepal",
+          "rank": 2,
+          "verdict": "avoid",
+          "season_flag": "Monsoon season peak; trekking is dangerous.",
+          "visa_flag": "Visa on arrival available; additional trekking permits required."
+        }
+      ],
+      "tool_calls": [
+        "search_backpacker_tips",
+        "search_backpacker_tips",
+        "check_seasonal_conditions",
+        "check_seasonal_conditions",
+        "search_seasonal_notes",
+        "search_seasonal_notes",
+        "search_visa_rules",
+        "search_visa_rules",
+        "check_route",
+        "check_route"
+      ],
+      "retrieved": [
+        "tips-nepal",
+        "tips-srilanka",
+        "seasonal-nepal",
+        "seasonal-srilanka",
+        "visa-nepal-western",
+        "visa-srilanka-western"
+      ]
+    },
+    {
+      "id": "season-philippines-typhoon",
+      "name": "Flags Philippine typhoon season in September",
+      "failure_mode": "recommends a destination during its monsoon/unsafe season",
+      "message": "September plans - Philippines or Malaysia for some island time?",
+      "passed": true,
+      "elapsed_ms": 13041,
+      "trace_id": "5e1c298f-8ebe-4fbd-a3a3-30cad6336346",
+      "checks": [
+        {
+          "type": "tool_called",
+          "passed": true,
+          "detail": "tool_calls=['check_seasonal_conditions', 'search_seasonal_notes', 'check_seasonal_conditions', 'search_seasonal_notes', 'search_backpacker_tips', 'search_backpacker_tips', 'search_visa_rules', 'search_visa_rules', 'check_route', 'check_route']"
+        },
+        {
+          "type": "not_ranked_first",
+          "passed": true,
+          "detail": "rank 1 = 'malaysia'"
+        },
+        {
+          "type": "reply_mentions_any",
+          "passed": true,
+          "detail": "matched=['typhoon']"
+        }
+      ],
+      "reply": "For your September island time, I recommend Malaysia as the top choice. The Philippines is rated 'avoid' due to typhoon season, which could severely disrupt your travel plans. Malaysia, while experiencing some rain, offers better conditions and more visa flexibility with a 90-day stay. Given your balanced travel pace and mid-range budget, Malaysia can provide a safe and enjoyable experience with plenty of beautiful islands to explore.",
+      "cards": [
+        {
+          "destination": "Malaysia",
+          "rank": 1,
+          "verdict": "go",
+          "season_flag": "Heavy rain on the west coast; some chance of disruption.",
+          "visa_flag": null
+        },
+        {
+          "destination": "Philippines",
+          "rank": 2,
+          "verdict": "avoid",
+          "season_flag": "Typhoon season peak; high risk of severe weather affecting travel.",
+          "visa_flag": "Onward ticket enforcement is very strict."
+        }
+      ],
+      "tool_calls": [
+        "check_seasonal_conditions",
+        "search_seasonal_notes",
+        "check_seasonal_conditions",
+        "search_seasonal_notes",
+        "search_backpacker_tips",
+        "search_backpacker_tips",
+        "search_visa_rules",
+        "search_visa_rules",
+        "check_route",
+        "check_route"
+      ],
+      "retrieved": [
+        "seasonal-philippines",
+        "seasonal-malaysia",
+        "tips-philippines",
+        "tips-malaysia",
+        "visa-philippines-western",
+        "visa-malaysia-western"
+      ]
+    },
+    {
+      "id": "season-cambodia-april-heat",
+      "name": "Warns about April heat at Angkor",
+      "failure_mode": "recommends a destination during its monsoon/unsafe season",
+      "message": "Is April a good time to cycle around Angkor in Cambodia, or should I go to Malaysia?",
+      "passed": true,
+      "elapsed_ms": 12274,
+      "trace_id": "923ace00-d884-4c56-bc01-539012879cef",
+      "checks": [
+        {
+          "type": "tool_called",
+          "passed": true,
+          "detail": "tool_calls=['search_visa_rules', 'search_visa_rules', 'check_route', 'check_route', 'check_seasonal_conditions', 'check_seasonal_conditions', 'search_seasonal_notes', 'search_seasonal_notes', 'search_backpacker_tips', 'search_backpacker_tips']"
+        },
+        {
+          "type": "reply_mentions_any",
+          "passed": true,
+          "detail": "matched=['heat', '38', '40', 'temperature']"
+        }
+      ],
+      "reply": "I recommend going to Malaysia instead of Cambodia for cycling in April. The harsh heat in Cambodia can make cycling around Angkor genuinely punishing, with temperatures often soaring to 38-40\u00b0C, which could detract from your experience and your interests. Since you're on a shoestring budget and prefer to travel slowly, Malaysia offers favorable weather, a visa-free entry for 90 days, and great cycling routes, making it a much more comfortable option considering your stored preferences.",
+      "cards": [
+        {
+          "destination": "Malaysia",
+          "rank": 1,
+          "verdict": "go",
+          "season_flag": null,
+          "visa_flag": null
+        },
+        {
+          "destination": "Cambodia",
+          "rank": 2,
+          "verdict": "avoid",
+          "season_flag": "April rated as 'avoid' due to extreme heat.",
+          "visa_flag": null
+        }
+      ],
+      "tool_calls": [
+        "search_visa_rules",
+        "search_visa_rules",
+        "check_route",
+        "check_route",
+        "check_seasonal_conditions",
+        "check_seasonal_conditions",
+        "search_seasonal_notes",
+        "search_seasonal_notes",
+        "search_backpacker_tips",
+        "search_backpacker_tips"
+      ],
+      "retrieved": [
+        "visa-cambodia-western",
+        "visa-malaysia-western",
+        "seasonal-cambodia",
+        "seasonal-malaysia",
+        "tips-cambodia",
+        "tips-malaysia"
+      ]
+    },
+    {
+      "id": "season-malaysia-east-coast-closed",
+      "name": "Knows Perhentians shut in the northeast monsoon",
+      "failure_mode": "recommends a destination during its monsoon/unsafe season",
+      "message": "December - should I go to the Perhentian islands in Malaysia or head to Indonesia?",
+      "passed": true,
+      "elapsed_ms": 10728,
+      "trace_id": "12030f24-cefa-4542-ba9a-a02401c00ff5",
+      "checks": [
+        {
+          "type": "tool_called",
+          "passed": true,
+          "detail": "tool_calls=['search_visa_rules', 'search_visa_rules', 'check_route', 'check_route', 'check_seasonal_conditions', 'check_seasonal_conditions', 'search_seasonal_notes', 'search_seasonal_notes', 'search_backpacker_tips', 'search_backpacker_tips']"
+        },
+        {
+          "type": "reply_mentions_any",
+          "passed": true,
+          "detail": "matched=['closed', 'monsoon']"
+        }
+      ],
+      "reply": "I recommend avoiding both Malaysia's Perhentian Islands and Indonesia for December due to unfavorable weather conditions. The Perhentian Islands are essentially closed during the northeast monsoon, while Indonesia faces heavy rains and increased costs around Christmas. Given your preference for budget travel and a slow pace, it's best to consider heading to these locations later in your journey, as both have great activities for snorkelling and exploring once the weather improves.",
+      "cards": [
+        {
+          "destination": "Malaysia (Perhentian Islands)",
+          "rank": 1,
+          "verdict": "avoid",
+          "season_flag": "Northeast monsoon season, islands closed",
+          "visa_flag": null
+        },
+        {
+          "destination": "Indonesia",
+          "rank": 2,
+          "verdict": "avoid",
+          "season_flag": "Wet season, potential travel disruptions",
+          "visa_flag": null
+        }
+      ],
+      "tool_calls": [
+        "search_visa_rules",
+        "search_visa_rules",
+        "check_route",
+        "check_route",
+        "check_seasonal_conditions",
+        "check_seasonal_conditions",
+        "search_seasonal_notes",
+        "search_seasonal_notes",
+        "search_backpacker_tips",
+        "search_backpacker_tips"
+      ],
+      "retrieved": [
+        "visa-malaysia-western",
+        "visa-indonesia-western",
+        "seasonal-malaysia",
+        "seasonal-indonesia",
+        "tips-malaysia",
+        "tips-indonesia"
+      ]
+    },
+    {
+      "id": "visa-vietnam-lead-time",
+      "name": "Respects the Vietnam e-visa lead time against a hard deadline",
+      "failure_mode": "ignores a visa deadline that should rule out or flag a destination",
+      "message": "My visa runs out in two days. Can I go to Vietnam next, or is Thailand the safer bet?",
+      "passed": true,
+      "elapsed_ms": 14947,
+      "trace_id": "b245addc-f4b5-4e3b-a83c-a7a3bf28f694",
+      "checks": [
+        {
+          "type": "tool_called",
+          "passed": true,
+          "detail": "tool_calls=['check_seasonal_conditions', 'check_seasonal_conditions', 'search_seasonal_notes', 'search_seasonal_notes', 'search_backpacker_tips', 'search_backpacker_tips', 'search_visa_rules', 'search_visa_rules', 'check_route', 'check_route']"
+        },
+        {
+          "type": "retrieval_fired",
+          "passed": true,
+          "detail": "namespaces retrieved=['seasonal', 'tips', 'visa']"
+        },
+        {
+          "type": "reply_mentions_any",
+          "passed": true,
+          "detail": "matched=['e-visa']"
+        },
+        {
+          "type": "not_ranked_first",
+          "passed": true,
+          "detail": "rank 1 = 'thailand'"
+        }
+      ],
+      "reply": "I recommend heading to **Thailand** as your next destination. Given your tight visa deadline and the fact that you can enter visa-free for 60 days, it\u2019s the safer and more practical option. You\u2019ll also find that the overland route from Cambodia is affordable and straightforward, which aligns well with your shoestring budget. I used your preferences to weigh the quick entry into Thailand against the impractical e-visa requirement for Vietnam.",
+      "cards": [
+        {
+          "destination": "Thailand",
+          "rank": 1,
+          "verdict": "go",
+          "season_flag": "Mixed weather; hot and burning season starts in the north.",
+          "visa_flag": "No visa required; can enter visa-free."
+        },
+        {
+          "destination": "Vietnam",
+          "rank": 2,
+          "verdict": "avoid",
+          "season_flag": null,
+          "visa_flag": "E-visa required, impractical for your timeline."
+        }
+      ],
+      "tool_calls": [
+        "check_seasonal_conditions",
+        "check_seasonal_conditions",
+        "search_seasonal_notes",
+        "search_seasonal_notes",
+        "search_backpacker_tips",
+        "search_backpacker_tips",
+        "search_visa_rules",
+        "search_visa_rules",
+        "check_route",
+        "check_route"
+      ],
+      "retrieved": [
+        "seasonal-vietnam",
+        "seasonal-thailand",
+        "tips-vietnam",
+        "tips-thailand",
+        "visa-vietnam-western",
+        "visa-thailand-western"
+      ]
+    },
+    {
+      "id": "visa-nationality-aware",
+      "name": "Uses the stored nationality for visa guidance",
+      "failure_mode": "ignores a visa deadline that should rule out or flag a destination",
+      "message": "What do I need to get into Indonesia and Cambodia?",
+      "passed": false,
+      "elapsed_ms": 12520,
+      "trace_id": "2e9b38c7-89c8-41f6-8c89-4565618cc1eb",
+      "checks": [
+        {
+          "type": "tool_called",
+          "passed": true,
+          "detail": "tool_calls=['search_visa_rules', 'search_visa_rules', 'check_route', 'check_route']"
+        },
+        {
+          "type": "retrieval_fired",
+          "passed": true,
+          "detail": "namespaces retrieved=['visa']"
+        },
+        {
+          "type": "reply_mentions_any",
+          "passed": false,
+          "detail": "matched=[]"
+        }
+      ],
+      "reply": "I recommend Cambodia as your first choice for travel from Malaysia due to its faster flight times and lower visa costs. Using your stored preferences, (budget-friendly, balanced pace), a flight to Phnom Penh is both economical and efficient at around USD 95. In contrast, Indonesia requires a longer flight and includes a more complex visa extension process if needed.",
+      "cards": [
+        {
+          "destination": "Cambodia",
+          "rank": 1,
+          "verdict": "go",
+          "season_flag": null,
+          "visa_flag": null
+        },
+        {
+          "destination": "Indonesia",
+          "rank": 2,
+          "verdict": "maybe",
+          "season_flag": null,
+          "visa_flag": null
+        }
+      ],
+      "tool_calls": [
+        "search_visa_rules",
+        "search_visa_rules",
+        "check_route",
+        "check_route"
+      ],
+      "retrieved": [
+        "visa-indonesia-western",
+        "visa-cambodia-western"
+      ]
+    },
+    {
+      "id": "visa-deadline-surfaced",
+      "name": "Surfaces the stored hard deadline unprompted",
+      "failure_mode": "ignores a visa deadline that should rule out or flag a destination",
+      "message": "Where should I go next?",
+      "passed": true,
+      "elapsed_ms": 13175,
+      "trace_id": "a9fd919f-2a76-4725-bf2f-71b606ff32b2",
+      "checks": [
+        {
+          "type": "reply_mentions_any",
+          "passed": true,
+          "detail": "matched=['november 20', 'deadline']"
+        }
+      ],
+      "reply": "I recommend heading to **Laos** next, as November is the ideal time with dry and comfortable weather perfect for hiking. This aligns well with your interest in outdoor activities and the upcoming visa deadline of November 20 that allows for a visa on arrival. Plus, your shoestring budget fits Laos well, with daily costs around USD 18-25, making it a cost-effective choice.",
+      "cards": [
+        {
+          "destination": "Laos",
+          "rank": 1,
+          "verdict": "go",
+          "season_flag": null,
+          "visa_flag": null
+        },
+        {
+          "destination": "Cambodia",
+          "rank": 2,
+          "verdict": "maybe",
+          "season_flag": null,
+          "visa_flag": null
+        },
+        {
+          "destination": "Malaysia",
+          "rank": 3,
+          "verdict": "avoid",
+          "season_flag": "Northeast monsoon disrupts travel; many guesthouses close.",
+          "visa_flag": null
+        }
+      ],
+      "tool_calls": [
+        "search_backpacker_tips",
+        "search_backpacker_tips",
+        "search_backpacker_tips",
+        "check_seasonal_conditions",
+        "check_seasonal_conditions",
+        "check_seasonal_conditions",
+        "search_seasonal_notes",
+        "search_seasonal_notes",
+        "search_seasonal_notes",
+        "search_visa_rules",
+        "search_visa_rules",
+        "search_visa_rules",
+        "check_route",
+        "check_route",
+        "check_route"
+      ],
+      "retrieved": [
+        "tips-laos",
+        "tips-cambodia",
+        "tips-malaysia",
+        "seasonal-laos",
+        "seasonal-cambodia",
+        "seasonal-malaysia",
+        "visa-laos-western",
+        "visa-cambodia-western",
+        "visa-malaysia-western"
+      ]
+    },
+    {
+      "id": "rag-backpacker-not-tourist",
+      "name": "Gives backpacker advice, not brochure tourism",
+      "failure_mode": "generic tourist advice instead of backpacker-specific advice",
+      "message": "I have three weeks for Vietnam or Laos. What would I actually do there?",
+      "passed": false,
+      "elapsed_ms": 16536,
+      "trace_id": "2383398d-1ed6-4096-917f-dee9f037ecae",
+      "checks": [
+        {
+          "type": "retrieval_fired",
+          "passed": true,
+          "detail": "namespaces retrieved=['seasonal', 'tips', 'visa']"
+        },
+        {
+          "type": "tool_called",
+          "passed": true,
+          "detail": "tool_calls=['search_backpacker_tips', 'search_backpacker_tips', 'check_seasonal_conditions', 'check_seasonal_conditions', 'search_seasonal_notes', 'search_seasonal_notes', 'search_visa_rules', 'search_visa_rules', 'check_route', 'check_route']"
+        },
+        {
+          "type": "judge",
+          "passed": false,
+          "detail": "judge score 2/5 - The response lacks specific budget details, transport options, and practical advice for backpackers, focusing instead on general travel conditions.",
+          "score": 2
+        }
+      ],
+      "reply": "Given your interests and budget, I recommend avoiding both Vietnam and Laos in September due to heavy rain and potential travel disruptions in both countries. However, if you had to choose based on your interests, Laos could be slightly better for its relaxed visa process and cheaper daily costs. Ultimately, both destinations are rated as 'avoid' this time of year, but Laos allows for more flexibility with last-minute travel since you can obtain a visa on arrival.",
+      "cards": [
+        {
+          "destination": "Laos",
+          "rank": 1,
+          "verdict": "avoid",
+          "season_flag": "Heavy rain, river levels high, road travel unreliable.",
+          "visa_flag": null
+        },
+        {
+          "destination": "Vietnam",
+          "rank": 2,
+          "verdict": "avoid",
+          "season_flag": "Typhoon and flood season begins on the central coast.",
+          "visa_flag": "e-Visa requires 3-5 days processing."
+        }
+      ],
+      "tool_calls": [
+        "search_backpacker_tips",
+        "search_backpacker_tips",
+        "check_seasonal_conditions",
+        "check_seasonal_conditions",
+        "search_seasonal_notes",
+        "search_seasonal_notes",
+        "search_visa_rules",
+        "search_visa_rules",
+        "check_route",
+        "check_route"
+      ],
+      "retrieved": [
+        "tips-vietnam",
+        "tips-laos",
+        "seasonal-vietnam",
+        "seasonal-laos",
+        "visa-vietnam-western",
+        "visa-laos-western"
+      ]
+    },
+    {
+      "id": "rag-cites-source",
+      "name": "Cites the retrieved passage it used",
+      "failure_mode": "generic tourist advice instead of backpacker-specific advice",
+      "passed": false,
+      "error": "RuntimeError: aclose(): asynchronous generator is already running",
+      "checks": []
+    },
+    {
+      "id": "rag-budget-numbers",
+      "name": "Quotes realistic daily budget numbers from the store",
+      "failure_mode": "generic tourist advice instead of backpacker-specific advice",
+      "message": "How much a day should I budget for Laos versus Cambodia?",
+      "passed": true,
+      "elapsed_ms": 10381,
+      "trace_id": "845d73f9-d1bf-43fb-9eef-78e933f46938",
+      "checks": [
+        {
+          "type": "retrieval_fired",
+          "passed": true,
+          "detail": "namespaces retrieved=['tips']"
+        },
+        {
+          "type": "reply_matches_regex",
+          "passed": true,
+          "detail": "match=usd 18"
+        }
+      ],
+      "reply": "I recommend considering Laos for your next destination, mainly due to its lower daily budget estimate of USD 18-25 compared to Cambodia's USD 20-25. With your shoestring budget and interest in temples and food, Laos offers a variety of culturally rich experiences without stretching your funds. Both countries are great, but Laos's slightly lower cost aligns better with your travel style.",
+      "cards": [
+        {
+          "destination": "Laos",
+          "rank": 1,
+          "verdict": "go",
+          "season_flag": null,
+          "visa_flag": null
+        },
+        {
+          "destination": "Cambodia",
+          "rank": 2,
+          "verdict": "maybe",
+          "season_flag": null,
+          "visa_flag": null
+        }
+      ],
+      "tool_calls": [
+        "search_backpacker_tips",
+        "search_backpacker_tips"
+      ],
+      "retrieved": [
+        "tips-laos",
+        "tips-cambodia"
+      ]
+    },
+    {
+      "id": "memory-no-repeat-budget",
+      "name": "Does not ask for a budget it already stores",
+      "failure_mode": "failing to use the trip profile",
+      "message": "Right, where next - Thailand or Vietnam?",
+      "passed": true,
+      "elapsed_ms": 13017,
+      "trace_id": "32328702-5025-4953-83f2-78c2eb5925b7",
+      "checks": [
+        {
+          "type": "reply_lacks_regex",
+          "passed": true,
+          "detail": "clean"
+        },
+        {
+          "type": "judge",
+          "passed": true,
+          "detail": "judge score 5/5 - The assistant clearly uses the stored context about the traveller's budget and travel style without asking for any repeated information.",
+          "score": 5
+        }
+      ],
+      "reply": "I recommend heading to Thailand next, specifically the Andaman coast or Chiang Mai, as it aligns best with your budget and pace of travel. The visa situation is straightforward, allowing you up to 60 days visa-free, plus possible extensions, which provides you with flexibility. Furthermore, daily expenses in Thailand can be managed well within your budget, especially considering low-cost dorms and street food options.",
+      "cards": [
+        {
+          "destination": "Thailand",
+          "rank": 1,
+          "verdict": "go",
+          "season_flag": "Gulf islands rainy season may cause disruptions.",
+          "visa_flag": "Visa-free for 60 days; extendable."
+        },
+        {
+          "destination": "Vietnam",
+          "rank": 2,
+          "verdict": "maybe",
+          "season_flag": "Central region may still experience flooding, affecting travel.",
+          "visa_flag": "e-visa required, processing can be slow."
+        }
+      ],
+      "tool_calls": [
+        "search_backpacker_tips",
+        "search_backpacker_tips",
+        "check_seasonal_conditions",
+        "check_seasonal_conditions",
+        "search_seasonal_notes",
+        "search_seasonal_notes",
+        "search_visa_rules",
+        "search_visa_rules",
+        "check_route",
+        "check_route"
+      ],
+      "retrieved": [
+        "tips-thailand",
+        "tips-vietnam",
+        "seasonal-thailand",
+        "seasonal-vietnam",
+        "visa-thailand-western",
+        "visa-vietnam-western"
+      ]
+    },
+    {
+      "id": "memory-respects-explicit-preference",
+      "name": "Respects an explicitly set preference over a generic pick",
+      "failure_mode": "failing to use the trip profile",
+      "message": "Where next - Nepal or Indonesia?",
+      "passed": true,
+      "elapsed_ms": 14498,
+      "trace_id": "77be007a-1ccf-46a4-8198-7fbae021c153",
+      "checks": [
+        {
+          "type": "judge",
+          "passed": true,
+          "detail": "judge score 5/5 - The reply explicitly uses the cool-climate preference by recommending Nepal for its good weather in November, aligning with the traveler's interests.",
+          "score": 5
+        }
+      ],
+      "reply": "I recommend choosing Nepal as your next destination for hiking and mountains, especially given it's rated as 'good' for weather in November. This aligns perfectly with your interest in cool weather and hiking, making it a prime time for trails like the Annapurna Base Camp trek. The season in Nepal offers stable weather and breathtaking mountain views, which suit your shoestring budget and travel pace while providing a blend of adventure and natural beauty.",
+      "cards": [
+        {
+          "destination": "Nepal",
+          "rank": 1,
+          "verdict": "go",
+          "season_flag": "good - prime trekking season with cold and clear conditions",
+          "visa_flag": null
+        },
+        {
+          "destination": "Indonesia",
+          "rank": 2,
+          "verdict": "maybe",
+          "season_flag": "mixed - wet season starting with potential rain",
+          "visa_flag": null
+        }
+      ],
+      "tool_calls": [
+        "search_visa_rules",
+        "search_visa_rules",
+        "check_route",
+        "check_route",
+        "check_seasonal_conditions",
+        "check_seasonal_conditions",
+        "search_seasonal_notes",
+        "search_seasonal_notes",
+        "search_backpacker_tips",
+        "search_backpacker_tips"
+      ],
+      "retrieved": [
+        "visa-nepal-western",
+        "visa-indonesia-western",
+        "seasonal-nepal",
+        "seasonal-indonesia",
+        "tips-nepal",
+        "tips-indonesia"
+      ]
+    },
+    {
+      "id": "memory-recall-accurate",
+      "name": "Recalls stored profile accurately without inventing",
+      "failure_mode": "failing to use the trip profile",
+      "message": "What do you remember about me?",
+      "passed": true,
+      "elapsed_ms": 2835,
+      "trace_id": "cfb7f3cc-49e9-44d8-b35d-2704c6880fd1",
+      "checks": [
+        {
+          "type": "reply_mentions_any",
+          "passed": true,
+          "detail": "matched=['ireland']"
+        },
+        {
+          "type": "reply_mentions_any",
+          "passed": true,
+          "detail": "matched=['malaysia']"
+        },
+        {
+          "type": "reply_lacks_regex",
+          "passed": true,
+          "detail": "clean"
+        }
+      ],
+      "reply": "You are from Ireland and currently in Malaysia. Your trip started on June 1, 2026, and you have a mid-range budget. You travel at a fast pace and have interests in street food and diving. If there's anything more you'd like to add or update, feel free to let me know!",
+      "cards": [],
+      "tool_calls": [],
+      "retrieved": []
+    },
+    {
+      "id": "memory-writes-departure",
+      "name": "Writes a departure to history and archives active context",
+      "failure_mode": "failing to use the trip profile",
+      "message": "I left Laos yesterday and I'm in Thailand now.",
+      "passed": true,
+      "elapsed_ms": 3445,
+      "trace_id": "2424a38e-43c5-4ec2-98c0-b5644bd25c2c",
+      "checks": [
+        {
+          "type": "memory_write_occurred",
+          "passed": true,
+          "detail": "writes=['update_profile', 'log_departure']"
+        },
+        {
+          "type": "visited_history_contains",
+          "passed": true,
+          "detail": "visited=['laos']"
+        }
+      ],
+      "reply": "You left Laos on 2026-09-10 and are now in Thailand. Your travel budget is shoestring, you're traveling at a slow pace, and you have an interest in hiking. If you need any specific information or assistance, feel free to ask!",
+      "cards": [],
+      "tool_calls": [],
+      "retrieved": []
+    },
+    {
+      "id": "memory-persists-fresh-session",
+      "name": "Profile survives a simulated restart and re-login",
+      "failure_mode": "memory persisting across a fresh session",
+      "message": null,
+      "passed": true,
+      "elapsed_ms": 0,
+      "trace_id": null,
+      "checks": [
+        {
+          "type": "profile_unchanged_after_restart",
+          "passed": true,
+          "detail": "identical after restart"
+        }
+      ],
+      "reply": "(persistence scenario - no agent turn)",
+      "cards": [],
+      "tool_calls": [],
+      "retrieved": []
+    },
+    {
+      "id": "isolation-cross-account",
+      "name": "Account B never sees account A's profile",
+      "failure_mode": "cross-account isolation",
+      "message": "What do you remember about me?",
+      "passed": true,
+      "elapsed_ms": 3182,
+      "trace_id": "69bd3b9c-0216-423c-80e5-63c0ff9a367f",
+      "checks": [
+        {
+          "type": "reply_lacks_regex",
+          "passed": true,
+          "detail": "clean"
+        },
+        {
+          "type": "reply_mentions_any",
+          "passed": true,
+          "detail": "matched=['vietnam', 'german']"
+        },
+        {
+          "type": "no_cross_account_rows",
+          "passed": true,
+          "detail": "own=Vietnam other=Nepal"
+        }
+      ],
+      "reply": "You are a traveler from Germany, currently in Vietnam. Your budget band is mid-range, and you prefer a balanced travel pace. You are interested in coffee and motorbikes. Your trip started on May 1, 2026, but your trip end date is unknown.",
+      "cards": [],
+      "tool_calls": [],
+      "retrieved": []
+    },
+    {
+      "id": "isolation-endpoint-scoping",
+      "name": "GET /profile/me is scoped to the token's own account",
+      "failure_mode": "cross-account isolation",
+      "message": null,
+      "passed": true,
+      "elapsed_ms": 0,
+      "trace_id": null,
+      "checks": [
+        {
+          "type": "endpoint_returns_own_profile",
+          "passed": true,
+          "detail": "own=Germany / other=Ireland"
+        }
+      ],
+      "reply": "(endpoint isolation scenario - no agent turn)",
+      "cards": [],
+      "tool_calls": [],
+      "retrieved": []
+    },
+    {
+      "id": "honesty-unknown-destination",
+      "name": "Admits when it has no verified data for a destination",
+      "failure_mode": "generic tourist advice instead of backpacker-specific advice",
+      "message": "What about heading to Mongolia or Uzbekistan instead?",
+      "passed": false,
+      "elapsed_ms": 13249,
+      "trace_id": "15e91ac0-4c7f-4e5d-88da-9a02d1a5710c",
+      "checks": [
+        {
+          "type": "judge",
+          "passed": false,
+          "detail": "judge score 1/5 - The assistant confidently stated invented specifics about Mongolia and Uzbekistan's visa requirements and budget without acknowledging the lack of verified data.",
+          "score": 1
+        }
+      ],
+      "reply": "I recommend considering Mongolia first for your travel plans in June. The main reason is that it offers pleasant weather that is ideal for hiking and outdoor activities, which aligns well with your interests. Both Mongolia and Uzbekistan have similar budgets and visa requirements, but Mongolia's scenic landscapes in places like Terelj National Park provide great value experiences for a shoestring backpacker. You might also encounter fewer crowds in the open landscapes compared to possible tourist congestion in Uzbekistan.",
+      "cards": [
+        {
+          "destination": "Mongolia",
+          "rank": 1,
+          "verdict": "go",
+          "season_flag": null,
+          "visa_flag": null
+        },
+        {
+          "destination": "Uzbekistan",
+          "rank": 2,
+          "verdict": "maybe",
+          "season_flag": null,
+          "visa_flag": null
+        }
+      ],
+      "tool_calls": [
+        "check_seasonal_conditions",
+        "check_seasonal_conditions",
+        "search_seasonal_notes",
+        "search_seasonal_notes",
+        "search_backpacker_tips",
+        "search_backpacker_tips",
+        "search_visa_rules",
+        "search_visa_rules",
+        "check_route",
+        "check_route"
+      ],
+      "retrieved": [
+        "seasonal-thailand",
+        "seasonal-nepal",
+        "seasonal-srilanka",
+        "seasonal-thailand",
+        "tips-nepal",
+        "tips-cambodia",
+        "tips-vietnam",
+        "tips-nepal",
+        "tips-indonesia",
+        "tips-srilanka",
+        "visa-philippines-western",
+        "visa-vietnam-western",
+        "visa-philippines-western",
+        "visa-vietnam-western"
+      ]
+    },
+    {
+      "id": "route-overland-vs-flight",
+      "name": "Compares overland against flying with real numbers",
+      "failure_mode": "failing to use the trip profile",
+      "message": "Getting to Laos or Malaysia from here - is it worth going overland?",
+      "passed": false,
+      "elapsed_ms": 11270,
+      "trace_id": "cd146360-f369-448b-90e3-0629a8f04b1e",
+      "checks": [
+        {
+          "type": "tool_called",
+          "passed": true,
+          "detail": "tool_calls=['check_seasonal_conditions', 'check_seasonal_conditions', 'search_seasonal_notes', 'search_seasonal_notes', 'search_backpacker_tips', 'search_backpacker_tips', 'search_visa_rules', 'search_visa_rules', 'check_route', 'check_route']"
+        },
+        {
+          "type": "reply_mentions_any",
+          "passed": true,
+          "detail": "matched=['overland']"
+        },
+        {
+          "type": "reply_matches_regex",
+          "passed": false,
+          "detail": "match=None"
+        }
+      ],
+      "reply": "I recommend opting for Malaysia over Laos for your September travel. The main reason is that Laos experiences heavy rain during this month, making overland travel potentially unsafe and challenging. Based on your budget and preference for slow travel, Malaysia still offers interesting experiences and reliable transport options, allowing you to explore while staying within your shoestring budget.",
+      "cards": [
+        {
+          "destination": "Malaysia",
+          "rank": 1,
+          "verdict": "go",
+          "season_flag": null,
+          "visa_flag": null
+        },
+        {
+          "destination": "Laos",
+          "rank": 2,
+          "verdict": "avoid",
+          "season_flag": "avoid - heavy rain, high river levels, unreliable road travel",
+          "visa_flag": null
+        }
+      ],
+      "tool_calls": [
+        "check_seasonal_conditions",
+        "check_seasonal_conditions",
+        "search_seasonal_notes",
+        "search_seasonal_notes",
+        "search_backpacker_tips",
+        "search_backpacker_tips",
+        "search_visa_rules",
+        "search_visa_rules",
+        "check_route",
+        "check_route"
+      ],
+      "retrieved": [
+        "seasonal-laos",
+        "seasonal-malaysia",
+        "tips-laos",
+        "tips-malaysia",
+        "visa-laos-western",
+        "visa-malaysia-western"
+      ]
+    }
+  ]
+}
