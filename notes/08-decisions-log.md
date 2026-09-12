@@ -168,6 +168,80 @@ just this final number:
 | `extension-final-run3-COLLISION-CONTAMINATED.json`/`.md` | 19/27 | invalid — decision #22 |
 | `extension-final.json`/`.md` | **27/27** | **clean, lock-protected — cite this one** |
 
+---
+
+# Phase 3 — the onboarding and trip-profile rework
+
+Prompted by using the app rather than by a failing test: the first thing a new
+account saw was a chat window interviewing it, and the trip profile was a single
+form that could not edit the two lists it was supposedly about.
+
+## 23. Onboarding became a page of fixed questions, not a conversation
+
+The conversational agent was deleted; the extractor kept and specialised per
+question. Full reasoning in
+[01-agent-architecture.md](01-agent-architecture.md) (the epilogue to the
+two-agent split) and [docs/EXTENSION.md](../docs/EXTENSION.md) section 2. The
+short version: splitting the agent in two was the right fix for the bug it was
+aimed at, but nobody had re-examined whether the conversational half needed a
+model at all. It did not, and removing it made the feature faster, more
+predictable, and for the first time properly testable.
+
+## 24. The three preference scales went from three points to five
+
+`hot` was covering both a Thai beach in March and a Nepali hill town in October.
+The new scales are supersets of the old ones — every value seeded anywhere in the
+suite still normalises to itself — and free text maps onto them in Python rather
+than being rounded by the model. See [02-memory-and-schema.md](02-memory-and-schema.md).
+
+## 25. Negated preferences are inverted or dropped, never matched on their keyword
+
+"I hate the heat" and "I love the heat" share a keyword. Storing the first as
+`hot` is the worst single thing this code could do to a profile, so a negated
+match inverts for climate and drops for budget and pace, where inverting would
+itself be a guess.
+
+## 26. Passports became a table; `nationality` mirrors the primary
+
+A dual national was previously quoted the harder of their two options. The mirror
+is what made this cheap: nothing written against `nationality` had to change.
+
+## 27. Ratings were promoted from a stored field to a prompt-level signal
+
+They were already being collected and were barely being used. They are now split
+into liked/lukewarm/disliked in the prompt block with an explicit instruction to
+generalise from them — which is what makes "you did not enjoy Hanoi, so here is
+why Ho Chi Minh City will or will not land differently" possible at all.
+
+## 28. Two bugs the new evals and tests caught immediately
+
+**`set_social_style` silently did nothing for a brand-new account.** It wrote
+with a bare `UPDATE trip_profile`, which matches no rows and reports no error
+when the profile row does not exist yet — which is every account arriving at
+onboarding. The eval case captured budget, pace and interests correctly and lost
+only "solo". `set_interests`' mirror into the text column had the same shape.
+Both now call `ensure_profile` first.
+
+That failure mode is worth naming: **a bare `UPDATE` is a silent no-op, not an
+error.** It is the third time in this codebase a write has failed by matching
+zero rows and saying nothing about it (see also the no-op audit-write bug and the
+`update_profile` clearing no-op in note 02).
+
+**A revisit was being dropped.** "I'd go back to Koh Tao in a heartbeat" was
+filed as history — where Koh Tao already was — and never reached the wishlist,
+losing the only intent in the sentence. Fixed with per-question extractor rules,
+which is the concrete payoff of building the extractor per question rather than
+once.
+
+## 29. Somewhere already visited can be wishlisted
+
+`add_wishlist` used to refuse it outright with `reason: "already visited"`.
+Wanting to go back somewhere is one of the most common things a long-term
+traveller says, and refusing it silently dropped real intent. It is accepted now
+and flagged as `revisit`, so the UI shows a "going back" badge and the agents can
+still tell the two apart. The test that asserted the refusal was inverted rather
+than deleted, so the new rule is pinned as deliberately as the old one was.
+
 ## Open items at the time of writing
 
 - Railway deployment, the demo-safety account decision (seeded demo account

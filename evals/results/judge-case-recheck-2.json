@@ -1,0 +1,102 @@
+{
+  "run_id": "eval-20260912T094830Z-d96fda",
+  "label": "judge-case-recheck-2",
+  "timestamp": "2026-09-12T09:50:02.319544+00:00",
+  "score": "0/1",
+  "passed": 0,
+  "total": 1,
+  "pass_rate": 0.0,
+  "repeats": 6,
+  "flaky": 1,
+  "total_attempts": 6,
+  "attempt_pass_rate": 0.833,
+  "config": {
+    "llm_model": "gpt-4o-mini",
+    "judge_model": "gpt-4o-mini",
+    "judge_enabled": true,
+    "rag_backend": "pinecone",
+    "embeddings": "openai",
+    "langfuse": true
+  },
+  "results": [
+    {
+      "id": "rag-backpacker-not-tourist",
+      "name": "Gives backpacker advice, not brochure tourism",
+      "failure_mode": "generic tourist advice instead of backpacker-specific advice",
+      "message": "I have three weeks for Vietnam or Laos. What would I actually do there?",
+      "passed": false,
+      "elapsed_ms": 15640,
+      "trace_id": "61b5584a-ea4e-4408-9833-8db279079111",
+      "checks": [
+        {
+          "type": "retrieval_fired",
+          "passed": true,
+          "detail": "namespaces retrieved=['seasonal', 'tips', 'visa']"
+        },
+        {
+          "type": "tool_called",
+          "passed": true,
+          "detail": "tool_calls=['search_backpacker_tips', 'search_backpacker_tips', 'search_visa_rules', 'search_visa_rules', 'check_route', 'check_route', 'check_seasonal_conditions', 'check_seasonal_conditions', 'search_seasonal_notes', 'search_seasonal_notes']"
+        },
+        {
+          "type": "judge",
+          "passed": true,
+          "detail": "judge score 4/5 - The advice is mostly aimed at budget backpackers, providing daily budget estimates and specific transport options, but it includes some irrelevant details about Vietnam that detract from the focus on Laos.",
+          "score": 4
+        }
+      ],
+      "reply": "Given your current location in Cambodia and your shoestring budget, I recommend considering Laos. The primary reason is that both destinations rank as 'avoid' for travel in September due to heavy rains impacting travel and activities, but Laos is likely to be slightly less affected. In Laos, you can manage on about $18-25 per day, with activities like the Mekong Slow Boat costing around $35 for a beautiful two-day journey from Huay Xai to Luang Prabang. Your travel style of staying in dorms fits well with the available options, as the daily budget aligns with your goals. You are currently in Cambodia and your trip starts on March 10, 2026, with no hard deadline, allowing for flexibility in planning your next steps.",
+      "cards": [
+        {
+          "destination": "Laos",
+          "rank": 1,
+          "verdict": "maybe",
+          "season_flag": "Heavy rains impacting travel conditions",
+          "visa_flag": null,
+          "backpacker_notes": [
+            "You can manage on about $18-25 per day in Laos.",
+            "Take the Mekong Slow Boat to Luang Prabang costing around $35.",
+            "Travel overland with a bus from Si Phan Don (4000 Islands) to Stung Treng costing $20-30 and taking 6-8 hours.",
+            "Be cautious of unexploded ordnance in the east, especially around the Plain of Jars."
+          ],
+          "source_ids": [
+            "tips-laos"
+          ]
+        },
+        {
+          "destination": "Vietnam",
+          "rank": 2,
+          "verdict": "avoid",
+          "season_flag": "Severe weather conditions during September",
+          "visa_flag": "Processing time of 3-5 days for e-visa.",
+          "backpacker_notes": [],
+          "source_ids": []
+        }
+      ],
+      "tool_calls": [
+        "search_backpacker_tips",
+        "search_backpacker_tips",
+        "search_visa_rules",
+        "search_visa_rules",
+        "check_route",
+        "check_route",
+        "check_seasonal_conditions",
+        "check_seasonal_conditions",
+        "search_seasonal_notes",
+        "search_seasonal_notes"
+      ],
+      "retrieved": [
+        "tips-vietnam",
+        "tips-laos",
+        "visa-vietnam-western",
+        "visa-laos-western",
+        "seasonal-vietnam",
+        "seasonal-laos"
+      ],
+      "runs": 6,
+      "passes": 5,
+      "pass_rate": 0.833,
+      "flaky": true
+    }
+  ]
+}

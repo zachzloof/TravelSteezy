@@ -1,0 +1,102 @@
+{
+  "run_id": "eval-20260912T095031Z-74fe35",
+  "label": "judge-isolation-no-labels",
+  "timestamp": "2026-09-12T09:52:00.945481+00:00",
+  "score": "0/1",
+  "passed": 0,
+  "total": 1,
+  "pass_rate": 0.0,
+  "repeats": 6,
+  "flaky": 1,
+  "total_attempts": 6,
+  "attempt_pass_rate": 0.5,
+  "config": {
+    "llm_model": "gpt-4o-mini",
+    "judge_model": "gpt-4o-mini",
+    "judge_enabled": true,
+    "rag_backend": "pinecone",
+    "embeddings": "openai",
+    "langfuse": true
+  },
+  "results": [
+    {
+      "id": "rag-backpacker-not-tourist",
+      "name": "Gives backpacker advice, not brochure tourism",
+      "failure_mode": "generic tourist advice instead of backpacker-specific advice",
+      "message": "I have three weeks for Vietnam or Laos. What would I actually do there?",
+      "passed": false,
+      "elapsed_ms": 14906,
+      "trace_id": "829f87ba-62de-41fe-8ae1-93c0ded9331c",
+      "checks": [
+        {
+          "type": "retrieval_fired",
+          "passed": true,
+          "detail": "namespaces retrieved=['seasonal', 'tips', 'visa']"
+        },
+        {
+          "type": "tool_called",
+          "passed": true,
+          "detail": "tool_calls=['search_backpacker_tips', 'search_backpacker_tips', 'check_seasonal_conditions', 'check_seasonal_conditions', 'search_seasonal_notes', 'search_seasonal_notes', 'search_visa_rules', 'search_visa_rules', 'check_route', 'check_route']"
+        },
+        {
+          "type": "judge",
+          "passed": false,
+          "detail": "judge score 3/5 - While the assistant provides some budget details and mentions dorm prices, it lacks specific overland transport options and detailed safety warnings relevant to budget backpackers.",
+          "score": 3
+        }
+      ],
+      "reply": "I recommend going to Vietnam for your three weeks, as the weather in March is rated 'good' for travel, making it a great time to explore. Your daily budget would be around USD 20-25, and you'll need an e-Visa costing approximately USD 25, valid for up to 90 days with a processing lead time of 3-5 working days. Given your budget band and slow travel pace, Vietnam is a perfect fit for your current situation as you're currently in Cambodia, planning the trip starting March 10, 2026.",
+      "cards": [
+        {
+          "destination": "Vietnam",
+          "rank": 1,
+          "verdict": "go",
+          "season_flag": null,
+          "visa_flag": "e-Visa processing may take 3-5 working days.",
+          "backpacker_notes": [
+            "Dorm rooms range from USD 5-9.",
+            "Consider the Ha Giang Loop for a stunning three to four-day motorbike journey costing around USD 100-150.",
+            "Use sleeper buses for long distances (e.g., Hanoi to Hue) which are affordable but can be uncomfortable.",
+            "Be wary of booking bus tickets through hostels at inflated prices; always check local apps to save money."
+          ],
+          "source_ids": [
+            "tips-vietnam"
+          ]
+        },
+        {
+          "destination": "Laos",
+          "rank": 2,
+          "verdict": "avoid",
+          "season_flag": "Laos is rated as an 'avoid' month due to burning season.",
+          "visa_flag": null,
+          "backpacker_notes": [],
+          "source_ids": []
+        }
+      ],
+      "tool_calls": [
+        "search_backpacker_tips",
+        "search_backpacker_tips",
+        "check_seasonal_conditions",
+        "check_seasonal_conditions",
+        "search_seasonal_notes",
+        "search_seasonal_notes",
+        "search_visa_rules",
+        "search_visa_rules",
+        "check_route",
+        "check_route"
+      ],
+      "retrieved": [
+        "tips-vietnam",
+        "tips-laos",
+        "seasonal-vietnam",
+        "seasonal-laos",
+        "visa-vietnam-western",
+        "visa-laos-western"
+      ],
+      "runs": 6,
+      "passes": 3,
+      "pass_rate": 0.5,
+      "flaky": true
+    }
+  ]
+}

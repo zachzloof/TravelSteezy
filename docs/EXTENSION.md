@@ -9,7 +9,8 @@ see [notes/](../notes/00-index.md), particularly notes 02-06.
 Four connected features, in the order a traveller meets them:
 
 1. **Onboarding** captures their route so far, where they want to go, and how
-   they travel - conversationally, into structured fields.
+   they travel - a welcome page of fixed questions answered in plain text, with
+   an LLM turning each answer into structured fields.
 2. **Trip tracking** notices when they actually reach somewhere and logs it,
    promoting it off the wishlist.
 3. **Review prompts** ask what a place was like once they have left it.
@@ -31,9 +32,15 @@ is keyed by `user_id` and cascades on account deletion.
 | `user_interests` | Interests as rows, so agents can filter rather than parse a text blob. |
 | `recommendation_feedback` | Whether a surfaced suggestion was accepted or rejected. |
 | `places_cache` | Google Places responses, keyed by query hash, with a TTL. |
-| `onboarding_state` | Status, step and turn count for the onboarding conversation. |
+| `onboarding_state` | Status, step, turn count and which questions have been answered. |
+| `passports` | Every passport the traveller holds. A dual national gets a different, usually better, visa answer. |
 
 Added to `trip_profile`: `social_style` (solo/couple/group) and `onboarded`.
+Added to `onboarding_state`: `answered`, a JSON list of question ids.
+
+`trip_profile.nationality` is kept in sync with the primary passport, so every
+prompt, tool and eval written against that single field keeps working unchanged
+and a single-passport traveller sees no difference at all.
 
 ```sql
 CREATE TABLE travel_history (
@@ -73,42 +80,105 @@ has no `ADD COLUMN IF NOT EXISTS`.
 
 ## 2. Onboarding
 
-`backend/agents/graph.py` defines **two** agents, and that split is the whole
-lesson of this feature.
+Onboarding is a **welcome page with a fixed set of questions**, not a
+conversation. That is the second design for this feature, and the reason for the
+change is worth recording.
 
-The first attempt was one agent asked to both hold a warm conversation and append
-a machine-readable block. It reliably produced the conversation and silently
-dropped the block. Nothing was ever captured, so the step never advanced, so it
-asked "where have you been?" on every single turn. The fix:
+### What the first version did, and why it was replaced
 
-| Agent | Job |
+The first version was two agents hijacking the opening turns of `/chat`: one
+held the conversation and decided what to ask next, the other pulled structured
+facts out of the answer. Splitting them fixed the original bug (one agent asked
+to both chat warmly and emit JSON reliably produced the chat and dropped the
+JSON), but three problems survived:
+
+- **The first thing a new account saw was a chat window asking it questions.**
+  Someone who arrived wanting to ask something got interviewed instead.
+- **Which question got asked varied run to run**, because a model chose it. That
+  made the eval case weak by construction: it could only assert the end state
+  after three turns, never that a specific question was extracted correctly.
+- **Nothing showed the traveller what had been captured.** Extraction quietly
+  succeeded or quietly failed, and they found out later.
+
+### What it does now
+
+The questions live in `backend/agents/onboarding.py` as `QUESTIONS` - ordered
+data, served to the frontend by `GET /travel/me/onboarding`. The conversational
+agent is gone. The model keeps the one job it is genuinely good at: turning one
+plain-English answer into structured fields.
+
+| Question | Captures |
 |---|---|
-| `onboarding_extractor` | Reads the message, returns JSON only. Never speaks to the user. |
-| `onboarding_agent` | Holds the conversation. Never emits JSON. |
+| Where have you been so far? | route in order, ratings, current location |
+| How long have you got? | trip dates, visa/permit deadline |
+| Which passport do you travel on? | passports (plural) |
+| Where do you want to get to? | wishlist, including revisits |
+| How do you travel? | budget, pace, climate, company, interests |
 
-`_run_onboarding` in `backend/agents/runner.py` runs the extractor, writes what it
-found with explicit calls, then asks the conversational agent for the next gap.
+Two are marked optional and say so on screen.
 
-**Progress is computed from stored data, never from the model.**
-`travel.onboarding_gaps(user_id)` asks the database three questions: is there any
-route history, is there anything on the wishlist, do we have interests plus a
-budget or pace. Whatever the model believes about which step it is on is
-irrelevant. A hard cap of six turns means onboarding can never trap anyone, and
-`POST /travel/me/onboarding/skip` lets them opt out.
+**Each question gets its own extractor**, built with the question embedded in
+its instruction plus any question-specific rules. This is not decoration: which
+of `travel_history` or `wishlist` a place belongs in is carried almost entirely
+by which question prompted the answer. The eval case
+`onboarding-wishlist-allows-a-revisit` failed for exactly this reason - "I'd go
+back to Koh Tao in a heartbeat" was filed as history (where Koh Tao already was)
+and dropped from the wishlist, losing the only intent in the sentence. The fix
+was a per-question rule telling the wishlist extractor that every place named
+there is a wishlist entry, revisits included.
 
-Captured shape:
+### Everything after extraction is Python
+
+The model is never trusted to emit a valid enum value. It is told the opposite -
+to copy the traveller's own words - and `store.normalise_band` maps them:
+
+```
+"dirt cheap"        -> shoestring        "as slow as I can"  -> slow
+"flashpacker"       -> mid               "whistle-stop"      -> very_fast
+```
+
+Place names resolve through the same gazetteer as the coverage guard, so "koh
+tao" and "Koh Tao, Thailand" become one row. Ratings are clamped. Nationality
+adjectives become country names ("British" -> "United Kingdom"), because the
+visa corpus is keyed on countries.
+
+**Negation is handled explicitly**, because it is the worst failure available
+here. "I hate the heat" and "I love the heat" share a keyword and mean opposite
+things; substring matching alone stores the reverse of what was said. A negated
+match is inverted for climate (`hot` -> `cool`) and **dropped** for budget and
+pace, where inverting would itself be a guess - "not cheap" honestly could mean
+any of four bands, and storing a guess is worse than storing nothing.
+
+### Showing its working
+
+Every answer's writes are echoed straight back to the page as "here is what I
+took from that". This is the feature that makes imperfect extraction acceptable:
+a misread is visible in the same second it happens, next to a panel where it can
+be corrected. The flow ends on a review screen, and nothing in it is a one-way
+door.
+
+### It cannot trap anyone
+
+Progress is a list of answered question ids on `onboarding_state.answered`, not
+a single step cursor - a cursor could not express "skipped question 2, answered
+question 3", so a resumed session re-asked something already dealt with. Every
+question can be skipped, the whole thing can be skipped, and a skipped question
+counts as answered so it does not reappear. Extraction failing is not fatal:
+the step still advances and the field is editable by hand on the next screen.
+
+### Captured shape
 
 ```json
 {
-  "travel_history": [{"location": "Bangkok", "location_type": "city",
-                      "country": "Thailand", "order": 1}],
+  "travel_history": [{"location": "Koh Tao", "country": "Thailand", "order": 2,
+                      "rating": 5, "review_notes": "did my Open Water here"}],
   "wishlist":       [{"location": "Pai", "priority": 1}],
+  "passports":      ["United Kingdom", "Ireland"],
   "interests":      ["nature", "trekking", "food"],
-  "budget_band": "shoestring", "travel_style": "slow", "social_style": "solo"
+  "budget_band": "shoestring", "travel_style": "slow",
+  "climate_preference": "cool", "social_style": "solo"
 }
 ```
-
----
 
 ## 3. Trip tracking
 
@@ -291,22 +361,43 @@ All scoped to the authenticated account; `user_id` comes from the signed token.
 | `DELETE /travel/me/wishlist/{location}` | Drop it, recorded as a rejected suggestion |
 | `POST /travel/me/reviews` | Save a review, optionally private |
 | `POST /travel/me/interests` | Replace the interest list |
+| `GET /travel/me/onboarding` | The question set plus wherever this account got to |
+| `POST /travel/me/onboarding/answer` | Extract one plain-text answer, echo back what was captured |
+| `POST /travel/me/onboarding/complete` | Finish from the review screen |
 | `POST /travel/me/onboarding/skip` | Opt out of onboarding |
+| `POST /travel/me/history/rating` | Star-rate a stop already on the route |
+| `DELETE /travel/me/history/{location}` | Remove a stop logged wrongly |
 | `GET /travel/me/pending-reviews` | Places due a review prompt |
 
 ---
 
 ## 9. Frontend
 
-- **Onboarding** takes over the chat for the first few turns, with its own
-  suggested openers and a skip link.
-- **Trip panel** in the sidebar shows the route as a timeline with ratings, the
+- **Welcome page** (`/welcome`) is where a new account lands. Five questions, one
+  at a time, each answered in a plain textarea, with a panel beside it filling in
+  with what has been captured so far. A router gate sends any account that has
+  not finished or skipped onboarding here before it can reach the chat.
+- **The trip profile** (`/preferences`) is three panels rather than one form:
+
+  | Panel | Holds |
+  |---|---|
+  | About you | Passports (a list), currently in, and the three five-point scales, plus trip dates, deadline and interests |
+  | Where you have been | The route, each stop star-rated inline, removable |
+  | Where you want to go | The wishlist, with priority, and a "going back" badge on a revisit |
+
+  History and wishlist actions persist immediately, because each is a discrete
+  action. Only About You has a Save button, because that is the only panel where
+  the user is mid-thought. Previously neither list was editable here at all -
+  they could be seen in the chat sidebar and changed only by talking to an agent,
+  which is backwards for the user's own data.
+- **Five-point scales are five buttons, not a dropdown.** The order is the
+  meaning, and a `<select>` hid it. Each point carries a one-line description
+  ("private rooms, occasional flights") because "mid-range" alone is not
+  something anybody can recognise themselves in.
+- **Trip panel** in the chat sidebar shows the route with its star ratings, the
   wishlist with priorities, and interests. Auto-logged stops are marked as such.
 - **Review card** appears above the composer when a review is due: a star rating,
   free text, and a share toggle.
-- Wishlist entries can be dropped inline.
-
----
 
 ## 10. Configuration
 
@@ -324,22 +415,65 @@ HOSTELWORLD_AFFILIATE_ID=     # optional
 
 ## 11. What is tested
 
-30 unit tests in `tests/test_travel_and_places.py`, no keys and no network:
-route ordering, the visit-promotes-wishlist path, rating validation, both review
-triggers, onboarding gaps derived from data, per-account isolation, the legacy
-migration, the ranking maths including the weighted-prior fix, clustering not
-chaining a city, label cleaning, affiliate URLs, and Places degradation without a
-key.
+**82 unit tests** across `tests/`, no keys and no network: route ordering, the
+visit-promotes-wishlist path, rating validation, both review triggers, onboarding
+gaps derived from data, per-account isolation, the legacy migration, the ranking
+maths including the weighted-prior fix, clustering not chaining a city, label
+cleaning, affiliate URLs, and Places degradation without a key.
 
-Eight new eval cases in `evals/cases.jsonl` exercise the agent behaviour against
-the real database: onboarding capturing structured history in order, a visit
-promoting off the wishlist, curiosity *not* logging a visit, a review being
-stored, the review prompt firing after departure, discovery using the route
-corpus, discovery admitting an uncovered origin, and the local guide hitting
-Places.
+The onboarding rework added coverage for the passport list and its `nationality`
+mirror, free text landing on the five-point scales, **negated preferences never
+being stored as their opposite**, an unrecognised band being dropped rather than
+stored raw, ratings being settable and clearable, a stop being removable, and
+`apply_capture` being idempotent and junk-tolerant.
 
-These use a `travel` case kind whose checks read the database rather than the
-reply text, which is a stronger assertion than anything that inspects prose.
+**16 eval cases** exercise agent behaviour against the real database - eight
+`travel` cases (tracking, reviews, discovery, the local guide) and eight
+`onboarding` cases.
+
+Both kinds check **stored rows rather than reply text**, which is a stronger
+assertion than anything that inspects prose. The onboarding cases in particular
+assert things a prose check simply cannot reach:
+
+| Case | What it pins |
+|---|---|
+| `onboarding-captures-route-with-ratings` | A messy paragraph becomes an ordered route with the right ratings, and no rating is invented for the stop they gave no verdict on |
+| `onboarding-maps-plain-english-to-bands` | "pretty tight budget", "staying put for a couple of weeks", "on my own" land on the scales |
+| `onboarding-does-not-invert-a-negated-preference` | "I can't handle the heat" is never stored as `hot` |
+| `onboarding-captures-both-passports` | The second passport is not dropped |
+| `onboarding-wishlist-allows-a-revisit` | "I'd go back to Koh Tao" reaches the wishlist |
+| `onboarding-scopes-answers-to-the-question-asked` | Places named on the wishlist question do not become visited history |
+| `onboarding-invents-nothing` | Only what was said is stored |
+| `onboarding-survives-a-non-answer` | Five non-answers write nothing and still complete the flow |
+| `onboarding-full-flow-completes` | All five questions end to end produce a usable profile |
+
+The `onboarding` case kind drives the same sequence as
+`POST /travel/me/onboarding/answer`, including finishing on the review screen, so
+it exercises the shipped path rather than a convenient approximation of it.
+
+### What these cases caught immediately
+
+First run: **7/9**. Both failures were real.
+
+1. **`set_social_style` silently did nothing for a brand-new account.** It wrote
+   with a bare `UPDATE trip_profile`, which matches no rows and reports no error
+   when the profile row does not exist yet - which is every account arriving at
+   onboarding. The case captured the budget, the pace and the interests correctly
+   and lost only "solo", which is exactly the kind of single-field gap that never
+   gets noticed by hand. `set_interests`' mirror into the text column had the
+   same shape. Both now call `ensure_profile` first, pinned by
+   `test_style_and_interests_save_for_an_account_with_no_profile_row_yet`.
+2. **A revisit was being dropped**, which produced the per-question extractor
+   rules described in section 2.
+
+After both fixes: **9/9, passing all 3 repeat runs, 27/27 individual attempts**
+(`evals/results/onboarding-v2.md`).
+
+A third bug was caught by a unit test rather than an eval, and is worth noting
+because it was invisible by inspection: the band synonym table flattens hyphens
+in the *input* but not in its own *keys*, so `"whistle-stop"` arrived as
+`"whistle stop"` and could never match its own entry. `"mid-range"` got away with
+it only because `"mid"` matched as a substring.
 
 ### Repeat mode, and why it exists
 

@@ -1,0 +1,107 @@
+{
+  "run_id": "eval-20260912T094620Z-f950dc",
+  "label": "judge-case-recheck",
+  "timestamp": "2026-09-12T09:47:20.659258+00:00",
+  "score": "0/1",
+  "passed": 0,
+  "total": 1,
+  "pass_rate": 0.0,
+  "repeats": 4,
+  "flaky": 1,
+  "total_attempts": 4,
+  "attempt_pass_rate": 0.5,
+  "config": {
+    "llm_model": "gpt-4o-mini",
+    "judge_model": "gpt-4o-mini",
+    "judge_enabled": true,
+    "rag_backend": "pinecone",
+    "embeddings": "openai",
+    "langfuse": true
+  },
+  "results": [
+    {
+      "id": "rag-backpacker-not-tourist",
+      "name": "Gives backpacker advice, not brochure tourism",
+      "failure_mode": "generic tourist advice instead of backpacker-specific advice",
+      "message": "I have three weeks for Vietnam or Laos. What would I actually do there?",
+      "passed": false,
+      "elapsed_ms": 12301,
+      "trace_id": "6d37a8c7-5589-4a2e-9573-57a453d2fc67",
+      "checks": [
+        {
+          "type": "retrieval_fired",
+          "passed": true,
+          "detail": "namespaces retrieved=['seasonal', 'tips', 'visa']"
+        },
+        {
+          "type": "tool_called",
+          "passed": true,
+          "detail": "tool_calls=['search_backpacker_tips', 'search_backpacker_tips', 'check_seasonal_conditions', 'search_seasonal_notes', 'check_seasonal_conditions', 'search_seasonal_notes', 'search_visa_rules', 'search_visa_rules', 'check_route', 'check_route']"
+        },
+        {
+          "type": "judge",
+          "passed": true,
+          "detail": "judge score 4/5 - The assistant provides relevant budget information and travel advice for budget backpackers, but it lacks a more detailed exploration of specific overland transport options and safety warnings for both countries.",
+          "score": 4
+        }
+      ],
+      "reply": "Given your shoestring budget and slow travel pace, I recommend Laos as the better option for you. Laos offers a realistic daily budget of around $18-25, which fits well with your budget band, and it has opportunities for caving and enjoying cheap food. You can experience the Mekong Slow Boat, a two-day journey from Huay Xai to Luang Prabang costing approximately $35. Currently, you're in Cambodia, and since your travel dates started in March 2026, you can comfortably plan your trip within the three weeks. If you choose to go to Vietnam, be aware that September is heavy rain season which complicates travel and activities, making Laos a more favorable option despite both countries being in 'avoid' season.",
+      "cards": [
+        {
+          "destination": "Laos",
+          "rank": 1,
+          "verdict": "go",
+          "season_flag": "September falls within the wet season.",
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Daily budget of around $18-25",
+            "Mekong Slow Boat: a two-day journey from Huay Xai to Luang Prabang (approx. $35)",
+            "Be cautious when exploring areas in the east around the Plain of Jars due to unexploded ordnance; always stay on marked paths."
+          ],
+          "source_ids": [
+            "tips-laos"
+          ]
+        },
+        {
+          "destination": "Vietnam",
+          "rank": 2,
+          "verdict": "avoid",
+          "season_flag": "September falls within the wet season.",
+          "visa_flag": "Visa requires e-visa, taking 3-5 working days.",
+          "backpacker_notes": [
+            "Expect to spend around $20-25 per day",
+            "Explore Ho Chi Minh City, visit the Cu Chi tunnels",
+            "Overland bus from Cambodia to Ho Chi Minh City takes 6-7 hours at a cost of $12-18."
+          ],
+          "source_ids": [
+            "tips-vietnam"
+          ]
+        }
+      ],
+      "tool_calls": [
+        "search_backpacker_tips",
+        "search_backpacker_tips",
+        "check_seasonal_conditions",
+        "search_seasonal_notes",
+        "check_seasonal_conditions",
+        "search_seasonal_notes",
+        "search_visa_rules",
+        "search_visa_rules",
+        "check_route",
+        "check_route"
+      ],
+      "retrieved": [
+        "tips-vietnam",
+        "tips-laos",
+        "seasonal-vietnam",
+        "seasonal-laos",
+        "visa-vietnam-western",
+        "visa-laos-western"
+      ],
+      "runs": 4,
+      "passes": 2,
+      "pass_rate": 0.5,
+      "flaky": true
+    }
+  ]
+}

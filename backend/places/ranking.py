@@ -35,7 +35,13 @@ PRICE_LEVEL_ORDER = {
 
 # What a budget band will tolerate. Places with no price data are never excluded -
 # most hostels do not publish one, and dropping them would gut the results.
-BUDGET_MAX_PRICE_LEVEL = {"shoestring": 1, "mid": 2, "comfortable": 4}
+BUDGET_MAX_PRICE_LEVEL = {
+    "shoestring": 1,
+    "budget": 2,
+    "mid": 2,
+    "comfortable": 3,
+    "luxury": 4,
+}
 
 
 def mean_rating(places: Iterable[dict[str, Any]]) -> float:

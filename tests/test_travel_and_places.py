@@ -103,16 +103,33 @@ def test_repeat_mention_is_not_recorded_as_a_write(app_env):
 # --------------------------------------------------------------------------- #
 # wishlist
 # --------------------------------------------------------------------------- #
-def test_cannot_wishlist_somewhere_already_visited(app_env):
+def test_somewhere_already_visited_can_be_wishlisted_as_a_revisit(app_env):
+    """Wanting to go back is a real preference, not a data-entry mistake.
+
+    An earlier version refused this outright, which silently dropped one of the
+    most common things a long-term traveller says. It is accepted now and
+    flagged, so the UI and the agents can tell a revisit from a first visit.
+    """
     travel, db = app_env["travel"], app_env["db"]
     user_id = make_user(db, "been")
 
     travel.add_travel_history(user_id, "Chiang Mai", source="onboarding")
-    result = travel.add_wishlist(user_id, "chiang mai")
+    result = travel.add_wishlist(user_id, "chiang mai", priority=1)
 
-    assert result["ok"] is False
-    assert result["reason"] == "already visited"
-    assert travel.get_wishlist(user_id) == []
+    assert result["ok"] is True
+    assert result["revisit"] is True
+
+    entries = travel.get_wishlist(user_id)
+    assert [w["location"] for w in entries] == ["chiang mai"]
+    assert entries[0]["revisit"] is True
+
+
+def test_a_first_visit_is_not_flagged_as_a_revisit(app_env):
+    travel, db = app_env["travel"], app_env["db"]
+    user_id = make_user(db, "notbeen")
+
+    assert travel.add_wishlist(user_id, "Pai")["revisit"] is False
+    assert travel.get_wishlist(user_id)[0]["revisit"] is False
 
 
 def test_visit_promotes_off_the_wishlist(app_env):
@@ -212,9 +229,16 @@ def test_onboarding_gaps_derive_from_stored_data(app_env):
     travel, store, db = app_env["travel"], app_env["store"], app_env["db"]
     user_id = make_user(db, "onboardee")
 
-    assert travel.onboarding_gaps(user_id)["missing"] == ["history", "wishlist", "preferences"]
+    assert travel.onboarding_gaps(user_id)["missing"] == [
+        "history", "passports", "wishlist", "preferences",
+    ]
 
     travel.add_travel_history(user_id, "Bangkok", source="onboarding")
+    assert travel.onboarding_gaps(user_id)["missing"] == [
+        "passports", "wishlist", "preferences",
+    ]
+
+    store.set_passports(user_id, ["United Kingdom"])
     assert travel.onboarding_gaps(user_id)["missing"] == ["wishlist", "preferences"]
 
     travel.add_wishlist(user_id, "Pai")
@@ -531,3 +555,337 @@ def test_route_lookup_resolves_towns_to_their_country():
 
     assert by_town["known"] is True
     assert by_town["overland"] == by_country["overland"]
+
+
+# --------------------------------------------------------------------------- #
+# passports
+# --------------------------------------------------------------------------- #
+def test_passports_are_a_list_with_nationality_mirroring_the_primary(app_env):
+    """A dual national must not have to pick one passport and lose the other.
+
+    ``nationality`` is kept in sync with the first passport, because every
+    prompt, tool and eval in the base app was written against that single field.
+    Adding passports must not quietly break any of them.
+    """
+    store, db = app_env["store"], app_env["db"]
+    user_id = make_user(db, "dual")
+
+    store.set_passports(user_id, ["United Kingdom", "Ireland"])
+
+    assert store.get_passports(user_id) == ["United Kingdom", "Ireland"]
+    profile = store.get_profile(user_id)
+    assert profile["nationality"] == "United Kingdom"
+    assert profile["passports"] == ["United Kingdom", "Ireland"]
+
+
+def test_passports_deduplicate_and_reordering_moves_the_primary(app_env):
+    store, db = app_env["store"], app_env["db"]
+    user_id = make_user(db, "reorder")
+
+    store.set_passports(user_id, ["Ireland", "ireland", "United Kingdom"])
+    assert store.get_passports(user_id) == ["Ireland", "United Kingdom"]
+
+    store.set_passports(user_id, ["United Kingdom", "Ireland"])
+    assert store.get_profile(user_id)["nationality"] == "United Kingdom"
+
+
+def test_existing_accounts_backfill_a_passport_from_nationality(app_env):
+    """An account created before passports existed must not show an empty panel."""
+    store, db = app_env["store"], app_env["db"]
+    user_id = make_user(db, "legacy")
+
+    store.update_profile(user_id, {"nationality": "Australia"})
+    assert store.get_passports(user_id) == []
+
+    assert store.sync_passports_from_nationality(user_id) == ["Australia"]
+    # Idempotent: running it again must not duplicate or reorder anything.
+    assert store.sync_passports_from_nationality(user_id) == ["Australia"]
+
+
+def test_forgetting_an_account_clears_its_passports(app_env):
+    store, db = app_env["store"], app_env["db"]
+    user_id = make_user(db, "forgetful")
+
+    store.set_passports(user_id, ["Canada"])
+    store.forget_account_memory(user_id)
+
+    assert store.get_passports(user_id) == []
+
+
+# --------------------------------------------------------------------------- #
+# the five-point scales
+# --------------------------------------------------------------------------- #
+def test_free_text_maps_onto_the_five_point_scales(app_env):
+    """Onboarding can accept plain English because Python does the mapping."""
+    store = app_env["store"]
+
+    assert store.normalise_band("budget_band", "dirt cheap") == "shoestring"
+    assert store.normalise_band("budget_band", "flashpacker") == "mid"
+    assert store.normalise_band("budget_band", "splurge") == "luxury"
+    assert store.normalise_band("travel_style", "as slow as I can") == "slow"
+    assert store.normalise_band("travel_style", "whistle-stop") == "very_fast"
+    assert store.normalise_band("climate_preference", "tropical") == "hot"
+    assert store.normalise_band("climate_preference", "very cold") == "cold"
+
+
+def test_a_negated_preference_is_never_stored_as_its_opposite(app_env):
+    """The most damaging extraction failure available here.
+
+    "I hate the heat" and "I love the heat" share a keyword and mean opposite
+    things. Plain substring matching stores the reverse of what was said, so a
+    negated match is inverted for climate, and dropped wherever inverting would
+    itself be a guess.
+    """
+    store = app_env["store"]
+
+    assert store.normalise_band("climate_preference", "I melt in the heat") == "cool"
+    assert store.normalise_band("climate_preference", "hate the heat") == "cool"
+    assert store.normalise_band("climate_preference", "not too hot") == "cool"
+    assert store.normalise_band("climate_preference", "love the heat") == "hot"
+
+    # "not cheap" could honestly mean any of four bands, so nothing is stored.
+    assert store.normalise_band("budget_band", "not cheap") == ""
+
+
+def test_an_unrecognised_band_is_dropped_rather_than_stored_raw(app_env):
+    """Storing "pretty cheap I guess" would render into every agent prompt."""
+    store, db = app_env["store"], app_env["db"]
+    user_id = make_user(db, "vague")
+
+    store.update_profile(user_id, {"budget_band": "banana", "nationality": "Ireland"})
+    profile = store.get_profile(user_id)
+
+    assert profile["budget_band"] is None
+    assert profile["nationality"] == "Ireland"
+
+
+def test_a_legacy_no_preference_climate_does_not_survive_as_a_value(app_env):
+    store, db = app_env["store"], app_env["db"]
+    user_id = make_user(db, "nopref")
+
+    store.update_profile(user_id, {"climate_preference": "no_preference"})
+    assert store.get_profile(user_id)["climate_preference"] is None
+
+
+def test_clearing_a_field_actually_clears_it(app_env):
+    """update_profile deliberately cannot clear, so clearing is its own call."""
+    store, db = app_env["store"], app_env["db"]
+    user_id = make_user(db, "clearer")
+
+    store.update_profile(user_id, {"budget_band": "mid", "nationality": "Spain"})
+    store.clear_profile_fields(user_id, ["budget_band"])
+
+    profile = store.get_profile(user_id)
+    assert profile["budget_band"] is None
+    assert profile["nationality"] == "Spain"
+
+
+# --------------------------------------------------------------------------- #
+# ratings: the signal that drives recommendations
+# --------------------------------------------------------------------------- #
+def test_a_rating_can_be_set_and_cleared_without_touching_the_review_text(app_env):
+    travel, db = app_env["travel"], app_env["db"]
+    user_id = make_user(db, "rater")
+
+    travel.add_travel_history(user_id, "Hanoi", source="onboarding")
+    travel.save_review(user_id, "Hanoi", rating=2, review_notes="too loud")
+
+    assert travel.set_rating(user_id, "hanoi", 4) is True
+    entry = travel.get_travel_history(user_id)[0]
+    assert entry["rating"] == 4
+    assert entry["review_notes"] == "too loud"
+
+    assert travel.set_rating(user_id, "Hanoi", None) is True
+    assert travel.get_travel_history(user_id)[0]["rating"] is None
+
+
+def test_rating_somewhere_not_in_the_history_fails_rather_than_inventing_a_stop(app_env):
+    travel, db = app_env["travel"], app_env["db"]
+    user_id = make_user(db, "phantom")
+
+    assert travel.set_rating(user_id, "Atlantis", 5) is False
+    assert travel.get_travel_history(user_id) == []
+
+
+def test_the_prompt_block_separates_liked_from_disliked_and_says_to_generalise(app_env):
+    """The whole point of collecting ratings.
+
+    Somebody who rated Hanoi 2/5 is telling the assistant something about big,
+    loud cities generally, not only about Hanoi. An earlier version listed the
+    last four ratings with no framing at all, so a 1/5 read to the model as a
+    neutral fact about one town.
+    """
+    travel, db = app_env["travel"], app_env["db"]
+    user_id = make_user(db, "prompted")
+
+    travel.add_travel_history(user_id, "Hanoi", source="onboarding")
+    travel.add_travel_history(user_id, "Pai", source="onboarding")
+    travel.save_review(user_id, "Hanoi", rating=2, review_notes="too loud, traffic everywhere")
+    travel.save_review(user_id, "Pai", rating=5, review_notes="canyon at sunset")
+
+    block = travel.format_travel_for_prompt(travel.get_travel_snapshot(user_id))
+
+    assert "Did NOT enjoy: Hanoi 2/5" in block
+    assert "too loud, traffic everywhere" in block
+    assert "Rated highly: Pai 5/5" in block
+    assert "rank lower" in block
+
+
+def test_a_stop_can_be_removed_from_the_route(app_env):
+    """A visit inferred wrongly would otherwise skew every future answer."""
+    travel, db = app_env["travel"], app_env["db"]
+    user_id = make_user(db, "corrector")
+
+    travel.add_travel_history(user_id, "Pai", source="tracked")
+    assert travel.remove_travel_history(user_id, "pai") is True
+    assert travel.get_travel_history(user_id) == []
+    assert travel.remove_travel_history(user_id, "Pai") is False
+
+
+# --------------------------------------------------------------------------- #
+# onboarding: from one extracted answer to stored rows
+# --------------------------------------------------------------------------- #
+def test_onboarding_capture_writes_route_ratings_passports_and_bands(app_env):
+    """The whole onboarding contract, asserted on stored rows.
+
+    This is what the welcome page's first question produces once extraction has
+    run: an ordered route with ratings attached, passports normalised from
+    adjectives to country names, and free-text bands mapped onto the scales.
+    """
+    import backend.agents.onboarding as onboarding
+
+    importlib.reload(onboarding)
+    travel, store, db = app_env["travel"], app_env["store"], app_env["db"]
+    user_id = make_user(db, "onboard_capture")
+
+    writes = onboarding.apply_capture(
+        user_id,
+        {
+            "travel_history": [
+                {"location": "bangkok", "order": 1, "rating": 3,
+                 "review_notes": "would not rush back"},
+                {"location": "Koh Tao, Thailand", "order": 2, "rating": 5},
+                {"location": "chiang mai", "order": 3},
+            ],
+            "wishlist": [{"location": "pai", "priority": 1}],
+            "passports": ["British", "Irish"],
+            "interests": ["Trekking", "diving"],
+            "social_style": "just me",
+            "budget_band": "dirt cheap",
+            "travel_style": "as slow as I can",
+            "climate_preference": "I melt in the heat",
+            "current_location": "chiang mai",
+        },
+    )
+
+    route = travel.get_travel_history(user_id)
+    assert [h["location"] for h in route] == ["Bangkok", "Koh Tao", "Chiang Mai"]
+    assert [h["rating"] for h in route] == [3, 5, None]
+    # "Koh Tao, Thailand" must resolve to the town, with the country alongside.
+    assert route[1]["country"] == "Thailand"
+
+    assert [w["location"] for w in travel.get_wishlist(user_id)] == ["Pai"]
+
+    profile = store.get_profile(user_id)
+    assert profile["passports"] == ["United Kingdom", "Ireland"]
+    assert profile["budget_band"] == "shoestring"
+    assert profile["travel_style"] == "slow"
+    assert profile["climate_preference"] == "cool"
+    assert profile["social_style"] == "solo"
+    assert profile["current_location"] == "Chiang Mai"
+    assert sorted(travel.get_interests(user_id)) == ["diving", "trekking"]
+
+    # Every write is echoed back, because the welcome page shows the traveller
+    # exactly what was taken from their answer.
+    assert {w["operation"] for w in writes} >= {
+        "add_travel_history", "add_wishlist", "set_passports",
+        "set_interests", "set_social_style", "update_profile",
+    }
+
+
+def test_onboarding_capture_is_idempotent_on_a_repeated_answer(app_env):
+    """Redoing a question must correct the profile, not duplicate the route."""
+    import backend.agents.onboarding as onboarding
+
+    importlib.reload(onboarding)
+    travel, db = app_env["travel"], app_env["db"]
+    user_id = make_user(db, "onboard_repeat")
+
+    captured = {"travel_history": [{"location": "Bangkok", "order": 1, "rating": 4}]}
+    onboarding.apply_capture(user_id, captured)
+    onboarding.apply_capture(user_id, captured)
+
+    route = travel.get_travel_history(user_id)
+    assert [h["location"] for h in route] == ["Bangkok"]
+    assert route[0]["rating"] == 4
+
+
+def test_onboarding_capture_ignores_junk_without_failing(app_env):
+    """Extraction is best-effort, so bad output must never break the flow."""
+    import backend.agents.onboarding as onboarding
+
+    importlib.reload(onboarding)
+    travel, db = app_env["travel"], app_env["db"]
+    user_id = make_user(db, "onboard_junk")
+
+    writes = onboarding.apply_capture(
+        user_id,
+        {
+            "travel_history": [{"location": ""}, "not a dict", {"no_location": 1}],
+            "wishlist": [{"location": None}],
+            "passports": ["", "   "],
+            "interests": [],
+            "budget_band": "hmm not sure really",
+            "nothing_to_extract": True,
+        },
+    )
+
+    assert writes == []
+    assert travel.get_travel_history(user_id) == []
+    assert travel.get_wishlist(user_id) == []
+
+
+def test_onboarding_steps_are_tracked_so_a_resumed_session_does_not_repeat_one(app_env):
+    """Progress is stored per question, not as a single cursor.
+
+    A single "current step" pointer could not express "skipped question 2,
+    answered question 3", so a resumed session re-asked something already dealt
+    with.
+    """
+    import backend.agents.onboarding as onboarding
+
+    importlib.reload(onboarding)
+    travel, db = app_env["travel"], app_env["db"]
+    user_id = make_user(db, "onboard_resume")
+
+    assert travel.get_onboarding(user_id)["answered"] == []
+    assert onboarding.next_step([]) == onboarding.QUESTION_IDS[0]
+
+    travel.mark_step_answered(user_id, "route")
+    travel.mark_step_answered(user_id, "route")  # idempotent
+    answered = travel.mark_step_answered(user_id, "timing")
+
+    assert answered == ["route", "timing"]
+    assert travel.get_onboarding(user_id)["answered"] == ["route", "timing"]
+    assert onboarding.next_step(answered) == "passports"
+    assert onboarding.next_step(list(onboarding.QUESTION_IDS)) is None
+
+
+def test_style_and_interests_save_for_an_account_with_no_profile_row_yet(app_env):
+    """Regression: an UPDATE against a missing row reports no error.
+
+    set_social_style and the interests mirror both wrote with a bare UPDATE, so
+    for a brand-new account - which is every account arriving at onboarding -
+    they silently did nothing. Caught by an eval case that captured the budget,
+    the pace and the interests correctly and lost only "solo".
+    """
+    travel, store, db = app_env["travel"], app_env["store"], app_env["db"]
+    user_id = make_user(db, "rowless")
+    store.forget_account_memory(user_id)
+
+    assert travel.set_social_style(user_id, "solo") == "solo"
+    travel.set_interests(user_id, ["diving"])
+
+    profile = store.get_profile(user_id)
+    assert profile["social_style"] == "solo"
+    assert "diving" in (profile["interests"] or "")

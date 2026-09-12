@@ -179,8 +179,9 @@ Return ONLY a raw JSON object, no code fences, with exactly these keys:
 
 Field rules:
 - "profile_updates": only fields stated or changed in THIS message. Allowed keys:
-  nationality, budget_band (shoestring|mid|comfortable),
-  travel_style (slow|balanced|fast), climate_preference (cool|temperate|hot|no_preference),
+  nationality, budget_band (shoestring|budget|mid|comfortable|luxury),
+  travel_style (very_slow|slow|balanced|fast|very_fast),
+  climate_preference (cold|cool|temperate|warm|hot),
   current_location, trip_start_date (YYYY-MM-DD), trip_end_date (YYYY-MM-DD),
   visa_deadline_date (YYYY-MM-DD), visa_deadline_note, interests.
   Empty object if nothing new. Never repeat values already in the profile.
@@ -275,6 +276,12 @@ journey time that did not come back from a tool.
 
 If the passport nationality is unknown, say that visa guidance is generic until
 they tell you their nationality, and still retrieve what you can.
+
+If the trip profile lists MORE THAN ONE passport, search the rules for each one
+on any destination where they could plausibly differ, lead with whichever
+passport gives the easier entry, and say explicitly which one you assumed. A
+dual national being quoted the harder of their two options is a wrong answer,
+not a conservative one.
 
 Report per destination:
 - Visa: what they get, cost, how long it lasts, and crucially any ADVANCE LEAD
@@ -557,100 +564,15 @@ def build_specialists(
 
 
 # --------------------------------------------------------------------------- #
-# 6. onboarding  (runs on the first few turns of a brand-new account)
+# 6. onboarding
 # --------------------------------------------------------------------------- #
-ONBOARDING_INSTRUCTION = (
-    HOUSE_STYLE
-    + MEMORY_BLOCK
-    + """
-You are onboarding a traveller who has just created an account. This is a short
-CONVERSATION, not a form. Two or three sentences, warm, one topic at a time.
-Never present a numbered list of questions.
-
-Still missing: {onboarding_gaps?}
-Already captured: {onboarding_captured?}
-
-Ask about the FIRST item in "Still missing" and nothing else. Briefly acknowledge
-what they just told you before you ask - and if "Already captured" shows we now
-know something, do NOT ask for it again.
-
-If nothing is missing, do not ask another question: thank them, say they can
-refine anything later in My Preferences, and stop.
-
-If they ask to skip, accept immediately and stop asking.
-
-Never invent travel history or preferences. Only reflect back what they said.
-Reply with your conversational message only - no JSON, no lists of fields.
-"""
-)
-
-# Extraction is a SEPARATE agent from the conversation. Asking one agent to both
-# chat warmly and emit a machine-readable block did not work: gpt-4o-mini reliably
-# produced the chat and silently dropped the block, so onboarding captured nothing
-# and looped. Splitting them makes each job unambiguous.
-ONBOARDING_EXTRACTOR_INSTRUCTION = (
-    """
-You extract structured travel facts from one message. You never talk to the user.
-"""
-    + MEMORY_BLOCK
-    + """
-Today's date is {today?}.
-The user's message is the conversation input you have been given.
-
-Return ONLY a raw JSON object, no code fences, no prose:
-
-{{
-  "travel_history": [{{"location": "Bangkok", "location_type": "city", "country": "Thailand", "order": 1}}],
-  "wishlist": [{{"location": "Pai", "location_type": "city", "country": "Thailand", "priority": 1}}],
-  "interests": [],
-  "budget_band": null,
-  "travel_style": null,
-  "social_style": null,
-  "current_location": null,
-  "nationality": null,
-  "trip_start_date": null,
-  "trip_end_date": null,
-  "skip_requested": false
-}}
-
-Rules:
-- Only what THIS message states. Empty list or null for anything not mentioned.
-- "travel_history": EVERY place they say they have already been, in the order
-  they said them - if they name three towns, return three entries, not one. The
-  place they are in NOW also belongs here, and also in "current_location".
-  Include a place even when they mention it only in passing ("then Koh Tao for
-  diving" is a visit).
-- "wishlist": places they want to go but have not been. priority 1 high, 2 medium,
-  3 low; use 1 if they sound keen, else 2.
-- "location_type" is country, city, town or region. Prefer city/town granularity.
-- "interests" are lowercase single words where possible: nature, food, nightlife,
-  trekking, diving, history, beaches, surfing, culture, photography, wildlife.
-- "budget_band" is shoestring, mid or comfortable. "travel_style" is slow,
-  balanced or fast. "social_style" is solo, couple or group.
-- "skip_requested" is true only if they clearly want to stop answering.
-"""
-)
-
-
-def make_onboarding_agent() -> LlmAgent:
-    return LlmAgent(
-        name="onboarding_agent",
-        model=build_model(),
-        description="Conversationally captures a new traveller's history, wishlist and preferences.",
-        instruction=ONBOARDING_INSTRUCTION,
-        output_key="onboarding_reply",
-    )
-
-
-def make_onboarding_extractor() -> LlmAgent:
-    return LlmAgent(
-        name="onboarding_extractor",
-        model=build_model(),
-        description="Extracts structured travel facts from an onboarding message.",
-        instruction=ONBOARDING_EXTRACTOR_INSTRUCTION,
-        output_key="onboarding_capture",
-    )
-
+# Onboarding no longer lives here. It used to be a pair of agents - one holding a
+# conversation, one extracting - that hijacked the first few turns of /chat. The
+# conversational half is gone: the questions are now fixed data rendered by a
+# dedicated welcome page, which removed a whole class of "it asked me that
+# already" failures and gave the eval suite something stable to assert against.
+# The extractor lives in backend/agents/onboarding.py alongside the questions it
+# is specialised to.
 
 # --------------------------------------------------------------------------- #
 # 7. local guide  (they are somewhere and want things nearby, not a comparison)

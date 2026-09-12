@@ -115,6 +115,38 @@ a step in the pipeline genuinely needs both, split it into two calls rather than
 trying to prompt-engineer around it — the split cost one extra LLM call per
 onboarding turn and was worth every millisecond of it.
 
+### Epilogue: the conversational half was later deleted entirely
+
+The two-agent split fixed the bug it was aimed at. Extraction started working and
+stayed working. But `onboarding_agent` — the half that held the conversation —
+was removed in a later pass, and the reasoning is a useful counterweight to the
+lesson above.
+
+Splitting the agent was the right fix *given the requirement that onboarding be a
+conversation*. Nobody had re-examined that requirement. Once it was, the
+conversational agent turned out to be carrying almost no weight and costing quite
+a lot:
+
+- **It decided what to ask next**, which meant the question varied run to run.
+  That made the eval case weak by construction — it could assert the end state
+  after three turns but never that a specific question's extraction was correct,
+  because there was no stable "question 2" to point at.
+- **It was a whole LLM round-trip per turn** to produce a sentence that a
+  designer could have written once, better, and put on a page.
+- **It was slower and vaguer than a form** at the thing it was for. "Where have
+  you been so far?" is not a question that benefits from being improvised.
+
+So the questions became data (`QUESTIONS` in `backend/agents/onboarding.py`) and
+the extractor stayed. It is now built per question, with the question text in its
+instruction, which made extraction measurably better at the one distinction it
+kept getting wrong: whether a place belongs in history or on the wishlist is
+carried almost entirely by which question prompted the answer.
+
+The general lesson above still holds — do not ask one call to do two registers.
+The additional lesson is narrower and easier to miss: **check whether the second
+register needs a model at all.** Here it did not, and removing it made the
+feature faster, more predictable, and for the first time properly testable.
+
 ## Intent routing
 
 A turn is classified into one of `compare | discover | local | memory | review`

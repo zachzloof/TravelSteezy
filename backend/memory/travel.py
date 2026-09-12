@@ -11,10 +11,11 @@ them apart keeps each readable.
 """
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from backend.db import get_conn
-from backend.memory.store import _record_write
+from backend.memory.store import _record_write, ensure_profile
 
 LOCATION_TYPES = {"country", "city", "town", "region"}
 VALID_INTERESTS = {
@@ -135,6 +136,53 @@ def get_travel_history(user_id: int) -> list[dict[str, Any]]:
     return [dict(r) for r in rows]
 
 
+def remove_travel_history(user_id: int, location: str, source: str = "user_edit") -> bool:
+    """Delete one stop from the route. Returns True if a row was actually removed.
+
+    The route is the user's own record of their trip, so they get to correct it -
+    a tracked visit inferred from "I might head to Pai" that they never made
+    would otherwise sit in their history forever and skew every recommendation.
+    """
+    location = _norm(location)
+    if not location:
+        return False
+    with get_conn() as conn:
+        removed = conn.execute(
+            "DELETE FROM travel_history WHERE user_id = ? AND location = ? COLLATE NOCASE",
+            (user_id, location),
+        ).rowcount
+        if removed:
+            _record_write(
+                conn, user_id, "remove_travel_history", {"location": location}, source
+            )
+    return bool(removed)
+
+
+def set_rating(user_id: int, location: str, rating: int | None, source: str = "user_edit") -> bool:
+    """Set or clear the star rating on a stop, without touching the review text."""
+    location = _norm(location)
+    if not location:
+        return False
+    if rating is not None:
+        try:
+            rating = int(rating)
+        except (TypeError, ValueError):
+            return False
+        if not 1 <= rating <= 5:
+            return False
+    with get_conn() as conn:
+        changed = conn.execute(
+            "UPDATE travel_history SET rating = ?, reviewed_at = datetime('now') "
+            "WHERE user_id = ? AND location = ? COLLATE NOCASE",
+            (rating, user_id, location),
+        ).rowcount
+        if changed:
+            _record_write(
+                conn, user_id, "set_rating", {"location": location, "rating": rating}, source
+            )
+    return bool(changed)
+
+
 def touch_location_mention(user_id: int, location: str) -> None:
     """Record that the user just talked about a place.
 
@@ -171,9 +219,11 @@ def add_wishlist(
         location_type = "city"
     priority = priority if priority in (1, 2, 3) else 2
 
-    # Never wishlist somewhere already visited.
-    if any(_key(h["location"]) == _key(location) for h in get_travel_history(user_id)):
-        return {"ok": False, "reason": "already visited", "location": location}
+    # Somewhere already visited CAN be wishlisted: wanting to go back to a place
+    # you loved is one of the most common things a long-term traveller says, and
+    # refusing it (as an earlier version did) silently dropped real intent. It is
+    # flagged as a revisit so the UI and the agents can tell the two apart.
+    revisit = any(_key(h["location"]) == _key(location) for h in get_travel_history(user_id))
 
     with get_conn() as conn:
         conn.execute(
@@ -188,23 +238,31 @@ def add_wishlist(
         )
         _record_write(
             conn, user_id, "add_wishlist",
-            {"location": location, "priority": priority}, source,
+            {"location": location, "priority": priority, **({"revisit": True} if revisit else {})},
+            source,
         )
-    return {"ok": True, "location": location, "priority": priority}
+    return {"ok": True, "location": location, "priority": priority, "revisit": revisit}
 
 
 def get_wishlist(user_id: int, status: str = "open") -> list[dict[str, Any]]:
     query = (
-        "SELECT id, location, location_type, country, priority, status, source, note, "
-        "       added_at, resolved_at FROM wishlist WHERE user_id = ?"
+        "SELECT w.id, w.location, w.location_type, w.country, w.priority, w.status, "
+        "       w.source, w.note, w.added_at, w.resolved_at, "
+        "       EXISTS(SELECT 1 FROM travel_history t "
+        "              WHERE t.user_id = w.user_id "
+        "                AND t.location = w.location COLLATE NOCASE) AS revisit "
+        "FROM wishlist w WHERE w.user_id = ?"
     )
     params: list[Any] = [user_id]
     if status != "all":
-        query += " AND status = ?"
+        query += " AND w.status = ?"
         params.append(status)
-    query += " ORDER BY priority ASC, added_at ASC"
+    query += " ORDER BY w.priority ASC, w.added_at ASC"
     with get_conn() as conn:
-        return [dict(r) for r in conn.execute(query, params).fetchall()]
+        rows = [dict(r) for r in conn.execute(query, params).fetchall()]
+    for row in rows:
+        row["revisit"] = bool(row.get("revisit"))
+    return rows
 
 
 def resolve_wishlist(
@@ -261,6 +319,7 @@ def set_interests(
     # Mirror into the free-text column so existing prompt rendering keeps working.
     all_interests = get_interests(user_id)
     if all_interests:
+        ensure_profile(user_id)
         with get_conn() as conn:
             conn.execute(
                 "UPDATE trip_profile SET interests = ?, updated_at = datetime('now') "
@@ -284,6 +343,12 @@ def set_social_style(user_id: int, style: str, source: str = "agent") -> str | N
     style = _key(style)
     if style not in SOCIAL_STYLES:
         return None
+    # UPDATE against a missing row matches nothing and reports no error, so this
+    # silently did nothing for a brand-new account whose profile row had not
+    # been created yet - which is every account arriving at onboarding. Found by
+    # the eval case onboarding-maps-plain-english-to-bands, which captured the
+    # budget, the pace and the interests correctly and lost only "solo".
+    ensure_profile(user_id)
     with get_conn() as conn:
         conn.execute(
             "UPDATE trip_profile SET social_style = ?, updated_at = datetime('now') "
@@ -292,6 +357,20 @@ def set_social_style(user_id: int, style: str, source: str = "agent") -> str | N
         )
         _record_write(conn, user_id, "set_social_style", {"social_style": style}, source)
     return style
+
+
+def clear_social_style(user_id: int, source: str = "user_edit") -> None:
+    """Unset who they travel with. Its own function because social_style lives on
+    trip_profile but is not one of store.PROFILE_FIELDS, so the generic clear
+    path cannot reach it."""
+    ensure_profile(user_id)
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE trip_profile SET social_style = NULL, updated_at = datetime('now') "
+            "WHERE user_id = ?",
+            (user_id,),
+        )
+        _record_write(conn, user_id, "clear_social_style", {}, source)
 
 
 # --------------------------------------------------------------------------- #
@@ -417,11 +496,40 @@ def get_onboarding(user_id: int) -> dict[str, Any]:
             "INSERT OR IGNORE INTO onboarding_state (user_id) VALUES (?)", (user_id,)
         )
         row = conn.execute(
-            "SELECT status, step, turns, started_at, completed_at "
+            "SELECT status, step, turns, started_at, completed_at, answered "
             "FROM onboarding_state WHERE user_id = ?",
             (user_id,),
         ).fetchone()
-    return dict(row)
+    state = dict(row)
+    # Stored as JSON text so the column stays a plain TEXT migration; decoded
+    # here so no caller ever has to know that.
+    try:
+        answered = json.loads(state.pop("answered") or "[]")
+    except (TypeError, ValueError):
+        answered = []
+    state["answered"] = [str(a) for a in answered if isinstance(a, (str, int))]
+    return state
+
+
+def mark_step_answered(user_id: int, step_id: str) -> list[str]:
+    """Record that one onboarding question has been dealt with.
+
+    Answering and skipping both land here: from the flow's point of view a
+    skipped question is answered, it just yielded nothing. Keeping them the same
+    is what stops a skipped optional question re-appearing on resume.
+    """
+    step_id = _norm(step_id)
+    if not step_id:
+        return get_onboarding(user_id)["answered"]
+    answered = get_onboarding(user_id)["answered"]
+    if step_id not in answered:
+        answered.append(step_id)
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE onboarding_state SET answered = ? WHERE user_id = ?",
+            (json.dumps(answered), user_id),
+        )
+    return answered
 
 
 def set_onboarding(
@@ -476,12 +584,34 @@ def format_travel_for_prompt(snapshot: dict[str, Any]) -> str:
     if history:
         route = " -> ".join(h["location"] for h in history)
         lines.append(f"- Route so far: {route}")
-        rated = [h for h in history if h.get("rating")]
-        for entry in rated[-4:]:
-            note = f" ({entry['review_notes'][:90]})" if entry.get("review_notes") else ""
-            lines.append(f"- Rated {entry['location']} {entry['rating']}/5{note}")
     else:
         lines.append("- Route so far: (nothing recorded yet)")
+
+    # Ratings are the strongest preference signal in the whole profile, and a LOW
+    # one is the most informative of all: somebody who rated Hanoi 2/5 is telling
+    # you something about big, loud, traffic-heavy cities, not only about Hanoi.
+    # An earlier version showed only the last four ratings with no framing, so a
+    # 1/5 read to the model as a neutral fact about one town.
+    def describe(entry: dict[str, Any]) -> str:
+        note = f" - \"{entry['review_notes'][:110]}\"" if entry.get("review_notes") else ""
+        return f"{entry['location']} {entry['rating']}/5{note}"
+
+    loved = [h for h in history if (h.get("rating") or 0) >= 4]
+    mixed = [h for h in history if (h.get("rating") or 0) == 3]
+    disliked = [h for h in history if 1 <= (h.get("rating") or 0) <= 2]
+    if loved:
+        lines.append("- Rated highly: " + "; ".join(describe(e) for e in loved[-6:]))
+    if mixed:
+        lines.append("- Felt lukewarm about: " + "; ".join(describe(e) for e in mixed[-4:]))
+    if disliked:
+        lines.append("- Did NOT enjoy: " + "; ".join(describe(e) for e in disliked[-6:]))
+    if loved or disliked:
+        lines.append(
+            "- Use those ratings: infer WHAT KIND of place they liked or disliked "
+            "and apply it to the candidates. Somewhere similar to a place they "
+            "rated 1-2/5 needs an explicit reason why it will land differently, "
+            "or it should rank lower. Say which past rating drove the call."
+        )
 
     if wishlist:
         labels = {1: "high", 2: "medium", 3: "low"}
@@ -501,7 +631,7 @@ def format_travel_for_prompt(snapshot: dict[str, Any]) -> str:
 # --------------------------------------------------------------------------- #
 # onboarding progress, computed from what is actually stored
 # --------------------------------------------------------------------------- #
-ONBOARDING_TOPICS = ("history", "wishlist", "preferences")
+ONBOARDING_TOPICS = ("history", "passports", "wishlist", "preferences")
 
 
 def onboarding_gaps(user_id: int) -> dict[str, Any]:
@@ -525,6 +655,8 @@ def onboarding_gaps(user_id: int) -> dict[str, Any]:
     missing = []
     if not history:
         missing.append("history")
+    if not (profile.get("passports") or profile.get("nationality")):
+        missing.append("passports")
     if not wishlist:
         missing.append("wishlist")
     if not have_preferences:
@@ -533,6 +665,13 @@ def onboarding_gaps(user_id: int) -> dict[str, Any]:
     captured = []
     if history:
         captured.append("been to " + ", ".join(h["location"] for h in history[:6]))
+    rated = [h for h in history if h.get("rating")]
+    if rated:
+        captured.append(
+            "rated " + ", ".join(f"{h['location']} {h['rating']}/5" for h in rated[:6])
+        )
+    if profile.get("passports"):
+        captured.append("travels on " + ", ".join(profile["passports"]))
     if wishlist:
         captured.append("wants " + ", ".join(w["location"] for w in wishlist[:6]))
     if interests:
@@ -541,11 +680,14 @@ def onboarding_gaps(user_id: int) -> dict[str, Any]:
         captured.append(f"{profile['budget_band']} budget")
     if profile.get("travel_style"):
         captured.append(f"{profile['travel_style']} pace")
+    if profile.get("climate_preference"):
+        captured.append(f"prefers it {profile['climate_preference']}")
     if profile.get("social_style"):
         captured.append(f"travelling {profile['social_style']}")
 
     labels = {
         "history": "where they have already been on this trip, and roughly in what order",
+        "passports": "which passport or passports they travel on",
         "wishlist": "where they most want to go next",
         "preferences": "how they travel: interests, budget level, pace, solo or with people",
     }

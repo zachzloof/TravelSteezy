@@ -208,3 +208,57 @@ passing, zero flaky cases.** Stored in `evals/results/extension-final.md` /
 `.json`. See note 08's decision log for the full timeline of getting a
 genuinely clean run recorded, including the two contaminated attempts kept on
 disk alongside it as evidence rather than discarded.
+
+## Attributing a regression before believing it: the `rag-backpacker-not-tourist` case
+
+During the onboarding rework, the full 35-case suite came back **34/35**, with
+`rag-backpacker-not-tourist` — a judge-scored case — failing. It had passed
+**3/3 in both** prior repeat-3 runs (`extension-repeat3`, `extension-final`), so
+"it used to pass and now it doesn't" looked like a clean regression signal.
+
+It was not one, and the way that was established is the point of this note.
+
+**Step 1 — get a rate, not a verdict.** One failure is not a measurement. Re-run
+on the current code: 2/4, then 5/6. Combined with the full run: **7/11 (64%)**.
+Lower than 6/6, but 6 historical samples against 11 is thin evidence for a real
+change (Fisher's exact on 6/6 vs 7/11 gives p ≈ 0.13 — suggestive, not
+conclusive).
+
+**Step 2 — isolate the suspect.** Exactly one change in the rework touches what
+this case's agents actually read: `format_profile_for_prompt` now expands a band
+into a labelled form (`shoestring (dorms, street food, night buses)`) and renders
+a `Travelling:` line. Everything else the rework changed — the questions, the
+extractor, the passports table, the ratings block — is either on a different code
+path or produces identical output for this case's seeded profile, which has no
+route, no wishlist and no ratings.
+
+So: temporarily revert *only* that rendering change and run the same 6 reps.
+
+| Condition | Attempts passing |
+|---|---|
+| With the band labels (current code) | 7/11 (64%) |
+| **Without** them (temporarily reverted) | **3/6 (50%)** |
+
+The case is no better without the change. If anything the labels help slightly.
+**The flakiness is pre-existing and not attributable to this work**, and the
+historical 6/6 was a run of luck on a case that genuinely sits near its judge
+threshold — which is precisely the phenomenon the top of this note was written
+about, showing up again in the one place it was easiest to misread.
+
+The change was restored.
+
+### Why this is written down
+
+Two failure modes were available here and both are bad:
+
+- **Shrug it off** — "judge cases are flaky, notes/06 says so" — which is true
+  in general and would have been an unfalsifiable excuse in this instance.
+- **Tune the product until the judge is happy**, which this note already warns
+  against at length, and which would have meant changing a prompt that the
+  measurement shows was never the problem.
+
+The isolation run costs about five minutes and replaces both with an answer. The
+general rule: **before accepting or dismissing a regression on a nondeterministic
+case, get a rate, then A/B the one change that could plausibly explain it.** A
+before/after comparison where only one side was measured repeatedly is not a
+comparison.

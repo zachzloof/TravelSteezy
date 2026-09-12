@@ -500,6 +500,81 @@ def run_travel_check(check: dict[str, Any], ctx: dict[str, Any]) -> dict[str, An
             "detail": f"review_prompt={prompt}",
         }
 
+    if kind == "rating_is":
+        entry = next(
+            (
+                h
+                for h in travel_store.get_travel_history(user_id)
+                if h["location"].strip().lower() == check["location"].lower()
+            ),
+            None,
+        )
+        if entry is None:
+            return {"passed": False, "detail": f"{check['location']} not in history"}
+        rating = entry.get("rating")
+        # A range, because a human rating is a judgement: "loved it" landing on 4
+        # or 5 is correct, landing on 2 is not. Pinning an exact number would
+        # measure the model's taste rather than whether it understood.
+        low = check.get("min", check.get("value", 1))
+        high = check.get("max", check.get("value", 5))
+        return {
+            "passed": rating is not None and low <= rating <= high,
+            "detail": f"{check['location']} rated {rating} (wanted {low}-{high})",
+        }
+
+    if kind == "ratings_absent":
+        rated = [
+            h["location"]
+            for h in travel_store.get_travel_history(user_id)
+            if h.get("rating") is not None
+            and h["location"].strip().lower() in {l.lower() for l in check["locations"]}
+        ]
+        return {
+            "passed": not rated,
+            "detail": f"invented a rating for {rated}" if rated else "no rating invented",
+        }
+
+    if kind == "history_count":
+        have = _history_locations(user_id)
+        ok = len(have) <= check.get("at_most", 99) and len(have) >= check.get("at_least", 0)
+        return {"passed": ok, "detail": f"{len(have)} stops: {have}"}
+
+    if kind == "wishlist_count":
+        have = _wishlist_locations(user_id)
+        ok = len(have) <= check.get("at_most", 99) and len(have) >= check.get("at_least", 0)
+        return {"passed": ok, "detail": f"{len(have)} wanted: {have}"}
+
+    if kind == "passports_contain":
+        have = [p.strip().lower() for p in get_profile(user_id).get("passports") or []]
+        missing = [p for p in check["passports"] if p.lower() not in have]
+        return {"passed": not missing, "detail": f"passports={have}, missing={missing}"}
+
+    if kind == "profile_field_in":
+        actual = (get_profile(user_id).get(check["field"]) or "").strip().lower()
+        wanted = [str(v).strip().lower() for v in check["values"]]
+        return {
+            "passed": actual in wanted,
+            "detail": f"{check['field']}={actual!r}, wanted one of {wanted}",
+        }
+
+    if kind == "profile_field_not":
+        # The negation checks. Getting "I cannot handle the heat" backwards is
+        # worse than capturing nothing at all, so this asserts the wrong answer
+        # specifically rather than asserting the right one loosely.
+        actual = (get_profile(user_id).get(check["field"]) or "").strip().lower()
+        forbidden = [str(v).strip().lower() for v in check["values"]]
+        return {
+            "passed": actual not in forbidden,
+            "detail": f"{check['field']}={actual!r}, must not be any of {forbidden}",
+        }
+
+    if kind == "no_writes_made":
+        writes = (ctx.get("result") or {}).get("memory_writes", [])
+        return {
+            "passed": not writes,
+            "detail": f"{len(writes)} write(s): {[w['operation'] for w in writes]}",
+        }
+
     if kind == "tool_called_any":
         called = (ctx.get("result") or {}).get("tool_calls", [])
         hits = [t for t in check["tools"] if t in called]
@@ -550,9 +625,74 @@ def reset_travel_state(user_id: int) -> None:
     with get_conn() as conn:
         for table in (
             "travel_history", "wishlist", "user_interests",
-            "recommendation_feedback", "onboarding_state",
+            "recommendation_feedback", "onboarding_state", "passports",
         ):
             conn.execute(f"DELETE FROM {table} WHERE user_id = ?", (user_id,))
+
+
+async def run_onboarding_case(case: dict[str, Any], account_ids: dict[str, int]) -> dict[str, Any]:
+    """Drive the welcome page's flow: fixed questions, plain-text answers.
+
+    This replaced a case that sent three chat messages at the old conversational
+    onboarding agent. That case could only assert the end state, because which
+    question got asked - and therefore what the extractor was even looking for -
+    changed from run to run. Here the questions are fixed, so a failure points at
+    exactly one step's extraction rather than at the flow as a whole.
+
+    The sequence mirrors POST /travel/me/onboarding/answer exactly, including
+    finishing on the review screen, so this exercises the shipped path rather
+    than a convenient approximation of it.
+    """
+    from backend.agents import onboarding as onboarding_flow
+    from backend.memory import travel as travel_store
+
+    user_id = account_ids[case.get("account", "a")]
+    other_key = "b" if case.get("account", "a") == "a" else "a"
+
+    store.forget_account_memory(user_id)
+    reset_travel_state(user_id)
+    if case.get("setup", {}).get("profile"):
+        store.update_profile(user_id, case["setup"]["profile"], source="seed")
+    apply_travel_setup(user_id, case.get("setup", {}))
+
+    started = time.perf_counter()
+    writes: list[dict[str, Any]] = []
+    captured_notes: list[str] = []
+
+    for answer in case.get("answers") or []:
+        step = answer["step"]
+        travel_store.set_onboarding(user_id, status="in_progress", bump_turn=True)
+        outcome = await onboarding_flow.answer_step(user_id, step, answer.get("text", ""))
+        writes.extend(outcome["writes"])
+        if outcome.get("note"):
+            captured_notes.append(f"{step}: {outcome['note']}")
+        answered = travel_store.mark_step_answered(user_id, step)
+        following = onboarding_flow.next_step(answered)
+        travel_store.set_onboarding(user_id, step=following or "done")
+
+    # Reaching the end of the questions puts the traveller on the review screen;
+    # pressing "Start exploring" there is what completes onboarding.
+    if onboarding_flow.next_step(travel_store.get_onboarding(user_id)["answered"]) is None:
+        travel_store.set_onboarding(user_id, status="complete", step="done")
+
+    elapsed = int((time.perf_counter() - started) * 1000)
+    result = {
+        "reply": "; ".join(
+            f"{w['operation']}({w['payload']})" for w in writes
+        ) or "(nothing captured)",
+        "memory_writes": writes,
+        "comparison": [],
+        "tool_calls": [],
+        "retrieved_sources": [],
+        "notes": captured_notes,
+    }
+    ctx = {
+        "result": result,
+        "user_id": user_id,
+        "other_user_id": account_ids[other_key],
+        "message": " | ".join(a.get("text", "") for a in case.get("answers") or []),
+    }
+    return {"ctx": ctx, "elapsed_ms": elapsed, "result": result}
 
 
 async def run_travel_case(case: dict[str, Any], account_ids: dict[str, int]) -> dict[str, Any]:
@@ -713,7 +853,9 @@ async def main() -> int:
         print(f"[{index}/{len(plan)}] {case['id']}{label_suffix} ... ", end="", flush=True)
         scenario = case.get("scenario")
         try:
-            if case.get("kind") == "travel":
+            if case.get("kind") == "onboarding":
+                run = await run_onboarding_case(case, account_ids)
+            elif case.get("kind") == "travel":
                 run = await run_travel_case(case, account_ids)
             elif scenario == "persistence":
                 run = run_persistence_case(case, account_ids)

@@ -69,6 +69,10 @@ class AdminActionResponse(BaseModel):
 # --------------------------------------------------------------------------- #
 class TripProfile(BaseModel):
     nationality: Optional[str] = None
+    # Every passport held, primary first. `nationality` mirrors passports[0], so
+    # anything written against the single-passport shape keeps working.
+    passports: list[str] = []
+    social_style: Optional[str] = None
     budget_band: Optional[str] = None
     travel_style: Optional[str] = None
     climate_preference: Optional[str] = None
@@ -107,9 +111,22 @@ class ProfilePatch(BaseModel):
     """Every field optional: a PATCH only touches what the user actually changed."""
 
     nationality: Optional[str] = None
-    budget_band: Optional[Literal["shoestring", "mid", "comfortable"]] = None
-    travel_style: Optional[Literal["slow", "balanced", "fast"]] = None
-    climate_preference: Optional[Literal["cool", "temperate", "hot", "no_preference"]] = None
+    budget_band: Optional[
+        Literal["shoestring", "budget", "mid", "comfortable", "luxury"]
+    ] = None
+    travel_style: Optional[
+        Literal["very_slow", "slow", "balanced", "fast", "very_fast"]
+    ] = None
+    climate_preference: Optional[
+        Literal["cold", "cool", "temperate", "warm", "hot"]
+    ] = None
+    social_style: Optional[Literal["solo", "couple", "group"]] = None
+    # Replaces the whole list. Sent by the About You panel, which edits passports
+    # as a set rather than one at a time.
+    passports: Optional[list[str]] = None
+    # Fields to blank. Named explicitly rather than inferred from an empty
+    # string, so a partial form can still never wipe a field it did not show.
+    clear: list[str] = []
     current_location: Optional[str] = None
     trip_start_date: Optional[str] = None
     trip_end_date: Optional[str] = None
@@ -206,6 +223,9 @@ class WishlistEntry(BaseModel):
     note: Optional[str] = None
     added_at: Optional[str] = None
     resolved_at: Optional[str] = None
+    # True when this is somewhere they have already been - a deliberate second
+    # visit, not a bookkeeping error.
+    revisit: bool = False
 
 
 class OnboardingState(BaseModel):
@@ -215,6 +235,7 @@ class OnboardingState(BaseModel):
     started_at: Optional[str] = None
     completed_at: Optional[str] = None
     missing: list[str] = []
+    answered: list[str] = []
 
 
 class TravelSnapshotResponse(BaseModel):
@@ -240,6 +261,56 @@ class WishlistRequest(BaseModel):
     country: Optional[str] = None
     priority: int = Field(default=2, ge=1, le=3)
     note: Optional[str] = None
+
+
+class OnboardingQuestion(BaseModel):
+    """One question on the welcome page. Served from the backend so the UI, the
+    extractor prompt and the eval suite cannot drift apart."""
+
+    id: str
+    title: str
+    prompt: str
+    hint: str = ""
+    placeholder: str = ""
+    captures: list[str] = []
+    optional: bool = False
+
+
+class OnboardingStartResponse(BaseModel):
+    questions: list[OnboardingQuestion]
+    state: OnboardingState
+    next_step: Optional[str] = None
+    profile: TripProfile
+    travel_history: list[TravelEntry] = []
+    wishlist: list[WishlistEntry] = []
+    interests: list[str] = []
+
+
+class OnboardingAnswerRequest(BaseModel):
+    step: str = Field(min_length=1, max_length=40)
+    text: str = Field(default="", max_length=4000)
+    # A question the traveller chose not to answer is marked done, not left to
+    # reappear. Skipping is a legitimate answer, and pretending otherwise is how
+    # onboarding flows become walls.
+    skipped: bool = False
+
+
+class OnboardingAnswerResponse(BaseModel):
+    step: str
+    next_step: Optional[str] = None
+    captured: list[MemoryWriteEntry] = []
+    note: Optional[str] = None
+    state: OnboardingState
+    profile: TripProfile
+    travel_history: list[TravelEntry] = []
+    wishlist: list[WishlistEntry] = []
+    interests: list[str] = []
+
+
+class RatingRequest(BaseModel):
+    location: str = Field(min_length=1, max_length=120)
+    # None clears the rating, for a star tapped by mistake.
+    rating: Optional[int] = Field(default=None, ge=1, le=5)
 
 
 class ReviewRequest(BaseModel):

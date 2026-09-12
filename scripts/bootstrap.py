@@ -93,7 +93,6 @@ def ensure_demo_account() -> None:
         store.update_profile(
             user_id,
             {
-                "nationality": "United Kingdom",
                 "budget_band": "shoestring",
                 "travel_style": "slow",
                 "climate_preference": "temperate",
@@ -104,6 +103,41 @@ def ensure_demo_account() -> None:
             },
             source="seed",
         )
+        store.set_passports(user_id, ["United Kingdom"], source="seed")
+
+        from backend.memory import travel
+
+        # A route with ratings on it, because the ratings are what the profile is
+        # FOR: a marker landing cold should be able to see a 2/5 in the history
+        # panel and then watch it argue against a similar destination.
+        for order, (location, country, rating, note) in enumerate(
+            [
+                ("Bangkok", "Thailand", 3, "fine, but I would not rush back"),
+                ("Koh Tao", "Thailand", 5, "did my Open Water here, best two weeks of the trip"),
+                ("Hanoi", "Vietnam", 2, "too loud and too busy for me"),
+                ("Chiang Mai", "Thailand", None, None),
+            ],
+            start=1,
+        ):
+            travel.add_travel_history(
+                user_id, location=location, country=country,
+                source="seed", order_index=order,
+            )
+            if rating is not None:
+                travel.save_review(
+                    user_id, location=location, rating=rating,
+                    review_notes=note, source="seed",
+                )
+        travel.add_wishlist(user_id, "Pai", country="Thailand", priority=1, source="seed")
+        travel.set_interests(
+            user_id, ["diving", "trekking", "food"], source="seed", replace=True
+        )
+        travel.set_social_style(user_id, "solo", source="seed")
+
+        # Mark it onboarded, or the demo account lands on the welcome page and is
+        # asked for a profile it already has. A marker seeing onboarding should
+        # register a NEW account, which is what the README's demo script says.
+        travel.set_onboarding(user_id, status="complete", step="done")
         print(f"[bootstrap] created pre-approved demo account {username!r} with a seeded profile")
     else:
         print(f"[bootstrap] demo account {username!r} already exists (approved, profile untouched)")

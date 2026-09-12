@@ -82,10 +82,17 @@ warnings hostels actually pass around, rather than a list of landmarks.
 Built on **Google ADK** (`LlmAgent`, `FunctionTool`, `Runner`, `InMemorySessionService`),
 with **OpenAI** models reached through ADK's `LiteLlm` bridge.
 
-The extension adds four more agents on the same pattern - an onboarding pair
-(extractor plus conversationalist), a local guide for on-the-ground questions,
-and a discovery agent for town-level "where next". A turn is routed to one of
-them by intent. See [docs/EXTENSION.md](docs/EXTENSION.md).
+The extension adds three more agents on the same pattern - a local guide for
+on-the-ground questions, a discovery agent for town-level "where next", and an
+onboarding extractor. A turn is routed to one of them by intent. See
+[docs/EXTENSION.md](docs/EXTENSION.md).
+
+**Onboarding is not on this path at all.** It used to hijack the first few turns
+of `/chat` with a pair of agents, one of which chose what to ask next. It is now
+a welcome page with a fixed set of questions and its own endpoint, and the only
+model left in it turns one plain-text answer into structured fields. The
+questions being data rather than a model output is what makes onboarding
+testable; see [docs/EXTENSION.md](docs/EXTENSION.md) section 2.
 
 ### Two guards computed in code, not prompted for
 
@@ -127,15 +134,32 @@ distinct things:
 
 | Table | Role |
 |---|---|
-| `trip_profile` | **Active context**, one row per account: nationality, budget band, travel style, climate preference, current location, trip dates, visa deadline, interests. |
+| `trip_profile` | **Active context**, one row per account: budget band, travel pace, climate preference, current location, trip dates, visa deadline, interests. |
+| `passports` | Every passport held, primary first. `trip_profile.nationality` mirrors the primary, so everything written against that single field still works. |
 | `visited_history` | **Append-only log**: country, arrival/departure dates, notes. |
 | `conversation_turns` | Chat scrollback, capped at `WORKING_MEMORY_TURNS` (default 20). |
 | `memory_writes` | Audit trail of every write, with its source (`agent`, `user_edit`, `seed`). |
 
 The extension adds `travel_history`, `wishlist`, `user_interests`,
-`recommendation_feedback` and `onboarding_state`, which hold the route at town
-granularity with post-visit reviews attached. `visited_history` is still
-maintained and its rows are migrated across on boot.
+`recommendation_feedback`, `passports` and `onboarding_state`, which hold the
+route at town granularity with post-visit reviews attached. `visited_history` is
+still maintained and its rows are migrated across on boot.
+
+**Budget, pace and climate are five-point ordered scales**, not three-point sets.
+Three was not enough to be useful: "hot" covered both a Thai beach in March and a
+Nepali hill town in October, and a traveller on GBP 15 a day and one on GBP 45 a
+day both had to answer "shoestring". Free text is mapped onto the scale in Python
+by `store.normalise_band`, never by trusting a model to emit a valid token - and
+a negated phrase ("I hate the heat") is inverted or dropped rather than matched
+on its keyword, which is the difference between storing a preference and storing
+its opposite.
+
+**A star rating on somewhere they have been is the strongest preference signal in
+the profile**, and a low one is the most informative of all. Somebody who rated
+Hanoi 2/5 is telling you something about big, loud, traffic-heavy cities, not
+only about Hanoi. Ratings are rendered into every prompt split into liked and
+disliked, with a standing instruction to generalise from them and to say which
+past rating drove a call.
 
 ### When we write
 
@@ -250,9 +274,9 @@ and the bugs found building it.
 | `DELETE /profile/me` | Forget this account's memory |
 | `GET /health` | Honest per-dependency status |
 
-The extension adds `/travel/*` — structured route, wishlist, interest and
-review endpoints backing onboarding and trip tracking. Full list in
-[docs/EXTENSION.md](docs/EXTENSION.md) section 8.
+The extension adds `/travel/*` — structured route, wishlist, interest, rating and
+review endpoints, plus the onboarding question set and answer endpoint. Full list
+in [docs/EXTENSION.md](docs/EXTENSION.md) section 8.
 
 ---
 
@@ -322,7 +346,8 @@ specialist work completed in 9.87 seconds of wall clock.
 
 ## 7. Evals (TRACE)
 
-19 cases in `evals/cases.jsonl`, run by `python -m evals.run_evals`.
+19 base-app cases in `evals/cases.jsonl`, run by `python -m evals.run_evals`.
+The extension adds 16 more (8 `travel`, 8 `onboarding`) for 35 in total.
 
 Scoring is **assertion-first**: did the retrieval tool actually fire, is this
 destination ranked below another, did a row land in `visited_history`. Those are
@@ -406,10 +431,11 @@ python -m evals.run_evals --case season-nepal-monsoon
 python -m evals.run_evals --no-judge           # assertions only, no judge calls
 ```
 
-Unit tests (no API keys needed, ~12s):
+Unit tests (no API keys needed, ~20s):
 
 ```bash
-python -m pytest tests -q      # 21 tests: memory contract, auth, isolation
+python -m pytest tests -q      # 82 tests: memory contract, auth, isolation,
+                               # structured travel memory, ranking, onboarding
 ```
 
 ---
@@ -498,11 +524,22 @@ You can run both: auto-approve off, demo account on.
 
 **Extension flow** (a brand-new account, so onboarding fires):
 
-9. **Onboard.** Register a fresh account. First message: *"I started in
-   Bangkok, then Koh Tao, and I'm in Chiang Mai now. I want to get to Pai next.
-   Shoestring, solo, slow, into nature and street food."* One turn captures the
-   route, wishlist, interests, pace and budget — visible immediately in the new
-   trip panel in the sidebar.
+9. **Onboard.** Register a fresh account. It lands on the welcome page, not the
+   chat. Answer the first question in plain English, messily and with opinions:
+   *"Started in Bangkok, fine but I wouldn't rush back, 3/5. Then Koh Tao where I
+   did my Open Water, loved it, easily a 5. Hanoi after that, way too loud for me,
+   2 out of 5. I'm in Chiang Mai now."* The panel beside it fills in immediately
+   with the ordered route and the three ratings — that echo is the point, because
+   a misread is visible in the same second it happens. Then: *"British, and I've
+   got an Irish passport too"*, *"Dead set on Pai, and I'd go back to Koh Tao in a
+   heartbeat"*, and *"Tight budget, I like staying put for a couple of weeks, I
+   melt in the heat, travelling on my own, mostly hiking and diving."*
+9a. **Show what that became.** Go to My Preferences. Both passports are listed.
+    Budget sits on `shoestring`, pace on `slow`, and climate on **`cool`** — not
+    `hot`, even though the only weather word they typed was "heat". Koh Tao is in
+    the history at 5/5 *and* on the wishlist as "going back".
+9b. **Show it is not a one-way door.** Change a star rating in the history panel;
+    it saves on the tap.
 10. **Discover, then track.** Ask *"Where next from here?"* — it prioritises
     Pai because it's on the wishlist, citing the route corpus. Say *"I'm in Pai
     now"* — the trip panel updates live: Pai moves from wishlist to route.
@@ -525,13 +562,13 @@ Full extension design (and every bug found building it) is in
 | Problem / product | Section 1 |
 | Architecture: agents, memory, tools, APIs | Section 2, extended by [docs/EXTENSION.md](docs/EXTENSION.md) |
 | Stack | Section 5 — all of it live, including Pinecone, Langfuse and Places |
-| Evals: what TRACE proved + a shipped fix | Base app: Section 7, 14/19 → 19/19, four fixes. Extension: 27 more cases, `evals/results/extension-final.md` — six fixes, including a bug in the eval harness itself (two runs corrupting each other's data), documented in [notes/06-eval-methodology.md](notes/06-eval-methodology.md) |
-| Memory: keep / write / lives / retrieve / forget | Section 3 — five separately implemented answers, extended with structured route/wishlist/review tables |
+| Evals: what TRACE proved + a shipped fix | Base app: Section 7, 14/19 → 19/19, four fixes. Extension: 16 more cases — six fixes, including a bug in the eval harness itself (two runs corrupting each other's data). The onboarding rework added 8 more cases which caught two real bugs on their first run, `evals/results/onboarding-v2.md`. All in [notes/06-eval-methodology.md](notes/06-eval-methodology.md) and [notes/08-decisions-log.md](notes/08-decisions-log.md) |
+| Memory: keep / write / lives / retrieve / forget | Section 3 — five separately implemented answers, extended with structured route/wishlist/review tables, a passport list, and five-point preference scales |
 | URL loads for a stranger in incognito | Needs the Railway deploy; no hostname is baked into the frontend build |
 | Core task works end to end | Verified locally against the live OpenAI API, including the full onboarding → discover → track → review loop |
 | Memory persists across a fresh session | **Verified** against a real process restart, plus tests and an eval case |
-| Eval suite passes / latest score shown | Base app 19/19 on local fallback and live services. Extension: **27/27 (100%)**, every case passing all 3 repeated runs, 81/81 individual attempts — `evals/results/extension-final.md`. Why a repeat-mode number rather than one run: [notes/06-eval-methodology.md](notes/06-eval-methodology.md) |
-| At least one fix from TRACE shipped | Ten total across both phases — four base-app (Section 7), six extension ([notes/08-decisions-log.md](notes/08-decisions-log.md)) |
+| Eval suite passes / latest score shown | **34/35** on the full suite after the onboarding rework (`evals/results/full-after-onboarding-rework.md`). The onboarding cases specifically: **9/9 passing all 3 runs, 27/27 attempts** (`evals/results/onboarding-v2.md`). The one failure is the judge case `rag-backpacker-not-tourist`, which an A/B isolation run showed is flaky independently of this work (3/6 without the change, 7/11 with it) — the investigation is written up in [notes/06-eval-methodology.md](notes/06-eval-methodology.md) |
+| At least one fix from TRACE shipped | Twelve across three phases — four base-app (Section 7), six extension, and two from the onboarding rework's first eval run: a `set_social_style` write that silently no-opped for every brand-new account, and a dropped revisit ([notes/08-decisions-log.md](notes/08-decisions-log.md)) |
 | README covers problem/architecture/stack/demo | This file, plus [docs/EXTENSION.md](docs/EXTENSION.md) and [notes/](notes/00-index.md) for depth |
 | Backup recording exported | **Outstanding** — record once deployed |
 

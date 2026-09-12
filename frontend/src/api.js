@@ -11,11 +11,22 @@ const USER_TOKEN_KEY = 'onward.userToken'
 const ADMIN_TOKEN_KEY = 'onward.adminToken'
 const USERNAME_KEY = 'onward.username'
 
+// Per-session flags that must be cleared whenever the signed-in account changes.
+// Kept here rather than in the router so that logging out cannot leave the next
+// account looking at the previous one's onboarding state.
+export const session = {
+  onboarded: false,
+  reset() {
+    session.onboarded = false
+  }
+}
+
 export const tokens = {
   user: () => localStorage.getItem(USER_TOKEN_KEY),
   admin: () => localStorage.getItem(ADMIN_TOKEN_KEY),
   username: () => localStorage.getItem(USERNAME_KEY),
   setUser(token, username) {
+    session.reset()
     localStorage.setItem(USER_TOKEN_KEY, token)
     if (username) localStorage.setItem(USERNAME_KEY, username)
   },
@@ -23,6 +34,7 @@ export const tokens = {
     localStorage.setItem(ADMIN_TOKEN_KEY, token)
   },
   clearUser() {
+    session.reset()
     localStorage.removeItem(USER_TOKEN_KEY)
     localStorage.removeItem(USERNAME_KEY)
   },
@@ -105,6 +117,21 @@ export const api = {
   saveReview: (payload) => request('/travel/me/reviews', { method: 'POST', body: payload }),
   setInterests: (interests) =>
     request('/travel/me/interests', { method: 'POST', body: interests }),
-  skipOnboarding: () => request('/travel/me/onboarding/skip', { method: 'POST' }),
-  pendingReviews: () => request('/travel/me/pending-reviews')
+  pendingReviews: () => request('/travel/me/pending-reviews'),
+
+  // route editing: rate a stop, or drop one that was logged wrongly
+  rateStop: (location, rating) =>
+    request('/travel/me/history/rating', { method: 'POST', body: { location, rating } }),
+  removeStop: (location) =>
+    request(`/travel/me/history/${encodeURIComponent(location)}`, { method: 'DELETE' }),
+
+  // onboarding: fixed questions from the backend, plain-text answers back
+  startOnboarding: () => request('/travel/me/onboarding'),
+  answerOnboarding: (step, text, skipped = false) =>
+    request('/travel/me/onboarding/answer', {
+      method: 'POST',
+      body: { step, text, skipped }
+    }),
+  completeOnboarding: () => request('/travel/me/onboarding/complete', { method: 'POST' }),
+  skipOnboarding: () => request('/travel/me/onboarding/skip', { method: 'POST' })
 }

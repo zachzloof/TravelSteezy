@@ -160,6 +160,22 @@ CREATE TABLE IF NOT EXISTS recommendation_feedback (
 );
 CREATE INDEX IF NOT EXISTS idx_recfeedback_user ON recommendation_feedback(user_id);
 
+-- Passports the traveller holds. A real long-term traveller often has two, and
+-- which one they present changes the visa answer entirely - an Irish passport
+-- and a UK passport are not the same at a Schengen or an ASEAN border. Stored as
+-- rows rather than a comma-joined column so the logistics agent can reason over
+-- them one at a time. trip_profile.nationality mirrors the primary passport, so
+-- every existing prompt, tool and eval that reads `nationality` keeps working.
+CREATE TABLE IF NOT EXISTS passports (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    country     TEXT    NOT NULL,
+    is_primary  INTEGER NOT NULL DEFAULT 0,
+    added_at    TEXT    NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(user_id, country)
+);
+CREATE INDEX IF NOT EXISTS idx_passports_user ON passports(user_id);
+
 -- Google Places response cache. Places bills per call and rate limits, so
 -- identical lookups inside the TTL are served from here.
 CREATE TABLE IF NOT EXISTS places_cache (
@@ -208,6 +224,10 @@ def init_db() -> None:
 LATE_COLUMNS: tuple[tuple[str, str, str], ...] = (
     ("trip_profile", "social_style", "TEXT"),          # solo | couple | group
     ("trip_profile", "onboarded", "INTEGER NOT NULL DEFAULT 0"),
+    # Which onboarding questions have actually been answered, as a JSON list.
+    # Progress used to be a single "step" cursor, which could not express "they
+    # skipped question 2 and answered 3", and so could not resume correctly.
+    ("onboarding_state", "answered", "TEXT"),
 )
 
 

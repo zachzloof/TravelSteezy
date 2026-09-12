@@ -3,6 +3,7 @@
 // the same rows the agents query, so "it remembered where I went" is visible
 // rather than merely claimed in a reply.
 import { computed } from 'vue'
+import StarRating from './StarRating.vue'
 
 const props = defineProps({
   history: { type: Array, default: () => [] },
@@ -25,7 +26,7 @@ const route = computed(() => [...props.history].reverse())
         <span class="dot" :class="{ rated: entry.rating }" />
         <div class="body">
           <span class="place">{{ entry.location }}</span>
-          <span v-if="entry.rating" class="rating">{{ entry.rating }}/5</span>
+          <StarRating v-if="entry.rating" :model-value="entry.rating" readonly />
           <div v-if="entry.review_notes" class="muted small note">{{ entry.review_notes }}</div>
           <div class="muted small meta">
             <span v-if="entry.country">{{ entry.country }}</span>
@@ -40,7 +41,9 @@ const route = computed(() => [...props.history].reverse())
     <ul v-if="wishlist.length" class="wish">
       <li v-for="item in wishlist" :key="item.location">
         <span class="place">{{ item.location }}</span>
-        <span class="tag" :class="{ go: item.priority === 1 }">{{ PRIORITY[item.priority] }}</span>
+        <span class="tag" :class="{ go: item.priority === 1 }">
+          {{ item.revisit ? 'again' : PRIORITY[item.priority] }}
+        </span>
         <button
           class="ghost drop"
           :title="`Remove ${item.location}`"
@@ -56,6 +59,10 @@ const route = computed(() => [...props.history].reverse())
         <span v-for="i in interests" :key="i" class="tag">{{ i }}</span>
       </div>
     </template>
+
+    <RouterLink class="manage small" to="/preferences">
+      Rate a stop or edit this list →
+    </RouterLink>
   </section>
 </template>
 
@@ -94,8 +101,7 @@ h4:not(:first-child) { margin-top: 16px; }
 .dot.rated { background: var(--accent); border-color: var(--accent); }
 
 .body { min-width: 0; }
-.place { font-size: 13.5px; text-transform: capitalize; }
-.rating { color: var(--accent); font-size: 12px; margin-left: 6px; }
+.place { font-size: 13.5px; text-transform: capitalize; margin-right: 6px; }
 .note { font-style: italic; word-break: break-word; }
 .meta { display: flex; gap: 8px; text-transform: capitalize; }
 .tracked { color: var(--accent-dim); text-transform: none; }
@@ -110,4 +116,6 @@ h4:not(:first-child) { margin-top: 16px; }
 .drop:hover { color: var(--bad); }
 
 .chips { display: flex; flex-wrap: wrap; gap: 5px; }
+
+.manage { display: inline-block; margin-top: 14px; color: var(--accent); text-decoration: none; }
 </style>

@@ -51,8 +51,8 @@ STATE_KEYS = (
     "nationality", "current_location", "budget_band", "travel_style", "interests",
     "weather_assessment", "logistics_assessment", "recommendations",
     "turn_parse", "decision", "concierge_reply", "coverage_note", "deadline_note",
-    "travel_block", "pending_reviews", "focus_location", "route_note", "onboarding_step",
-    "onboarding_turns", "onboarding_reply", "local_guide_reply", "discovery_reply",
+    "travel_block", "pending_reviews", "focus_location", "route_note",
+    "local_guide_reply", "discovery_reply", "passports",
 )
 
 
@@ -249,12 +249,11 @@ async def run_turn(user_id: int, message: str, username: str = "") -> dict[str, 
             "pending_reviews": ", ".join(pending) if pending else "(none)",
         }
 
-        # ---- onboarding takes over the first few turns of a new account ----
-        onboarding = travel_snapshot["onboarding"]
-        if onboarding["status"] in {"not_started", "in_progress"}:
-            return await _run_onboarding(
-                user_id, message, base_state, onboarding, trace, recorder
-            )
+        # Onboarding is NOT handled here any more. It used to hijack the first
+        # few turns of /chat, which meant a brand-new account's first question
+        # was answered with a question back. It is now its own page and its own
+        # endpoint (backend/agents/onboarding.py, POST /travel/me/onboarding/
+        # answer), so a turn that reaches this function is always a real turn.
 
         # ---- 2. parse the turn ----------------------------------------------
         parse: dict[str, Any] = {}
@@ -301,7 +300,13 @@ async def run_turn(user_id: int, message: str, username: str = "") -> dict[str, 
             **base_state,
             "candidates": ", ".join(candidates) if candidates else "(none named)",
             "travel_month": travel_month,
-            "nationality": profile.get("nationality") or "(unknown)",
+            # A dual national's second passport is only useful if the specialist
+            # can see it, so {nationality?} carries the full list when there is
+            # one. It still reads as a single passport for everyone else.
+            "nationality": ", ".join(profile.get("passports") or [])
+            or profile.get("nationality")
+            or "(unknown)",
+            "passports": ", ".join(profile.get("passports") or []) or "(unknown)",
             "current_location": profile.get("current_location") or "(unknown)",
             "budget_band": profile.get("budget_band") or "(unknown)",
             "travel_style": profile.get("travel_style") or "(unknown)",
@@ -385,209 +390,6 @@ async def run_turn(user_id: int, message: str, username: str = "") -> dict[str, 
         }
     finally:
         reset_recorder(token)
-
-
-async def _run_onboarding(
-    user_id: int,
-    message: str,
-    base_state: dict[str, Any],
-    onboarding: dict[str, Any],
-    trace: Trace,
-    recorder: ToolRecorder,
-) -> dict[str, Any]:
-    """Conversational onboarding for a brand-new account.
-
-    Two agents, on purpose. An extractor turns the message into structured facts,
-    then THIS function writes them, then a separate conversational agent asks for
-    whatever is still missing. One agent asked to do both reliably produced the
-    chat and silently dropped the structured block, so nothing was ever captured
-    and onboarding asked the same question on every turn.
-
-    Progress is judged from what is actually stored, never from the model's own
-    claim about which step it is on.
-    """
-    travel.set_onboarding(user_id, status="in_progress", bump_turn=True)
-
-    # ---- 1. extract structured facts from this message --------------------
-    captured: dict[str, Any] = {}
-    with trace.span("agent.onboarding_extractor"):
-        try:
-            text, _, _ = await _run_agent(
-                graph.make_onboarding_extractor(), base_state, message,
-                str(user_id), f"onboard-extract-{user_id}",
-            )
-            captured = graph.parse_json_block(text) or {}
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("onboarding extraction failed: %s", exc)
-    trace.set_span_summary(
-        "agent.onboarding_extractor",
-        ", ".join(k for k, v in captured.items() if v) or "nothing captured",
-    )
-
-    # ---- 2. write what we learned ------------------------------------------
-    with trace.span("memory.write"):
-        writes = _apply_onboarding_capture(user_id, captured)
-    trace.set_span_summary("memory.write", f"{len(writes)} write(s)")
-
-    # ---- 3. decide whether we are done, from stored data --------------------
-    gaps = travel.onboarding_gaps(user_id)
-    skip_requested = bool(captured.get("skip_requested"))
-    state_now = travel.get_onboarding(user_id)
-    # Hard cap so onboarding can never trap someone in a loop.
-    exhausted = state_now["turns"] >= 6
-
-    finishing = gaps["complete"] or skip_requested or exhausted
-    conversation_state = {
-        **base_state,
-        "onboarding_gaps": "nothing" if finishing else gaps["missing_text"],
-        "onboarding_captured": gaps["captured_text"],
-    }
-
-    # ---- 4. converse --------------------------------------------------------
-    with trace.span("agent.onboarding"):
-        try:
-            reply, _, _ = await _run_agent(
-                graph.make_onboarding_agent(), conversation_state, message,
-                str(user_id), f"onboard-{user_id}",
-            )
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("onboarding conversation failed: %s", exc)
-            reply = ""
-    reply = (reply or "").strip()
-
-    if finishing:
-        travel.set_onboarding(user_id, status="complete", step="done")
-        if not reply:
-            reply = "Thanks - that's everything I need to get started."
-        reply += (
-            "\n\nYou can change any of this any time in My Preferences. "
-            "Ask me where to go next whenever you are ready."
-        )
-    else:
-        travel.set_onboarding(user_id, step=gaps["missing"][0])
-        if not reply:
-            reply = "Tell me a bit about where you have been so far on this trip."
-
-    store.append_turn(user_id, "user", message)
-    store.append_turn(user_id, "assistant", reply)
-    trace.end(output={"reply": reply, "onboarding": True})
-
-    return {
-        "reply": reply,
-        "comparison": [],
-        "agents_fired": trace.spans,
-        "memory_writes": writes,
-        "retrieved_sources": recorder.retrieved,
-        "trace_id": trace.id,
-        "trace_url": trace.url,
-        "tool_calls": recorder.tool_names,
-        "profile": store.get_profile(user_id),
-        "visited_history": store.get_visited_history(user_id),
-        "specialists": ["onboarding_extractor", "onboarding_agent"],
-        "intent": "onboarding",
-        "travel_history": travel.get_travel_history(user_id),
-        "wishlist": travel.get_wishlist(user_id),
-        "review_prompt": None,
-        "onboarding": travel.get_onboarding(user_id),
-    }
-
-
-def _apply_onboarding_capture(user_id: int, captured: dict[str, Any]) -> list[dict[str, Any]]:
-    """Write what onboarding learned. Explicit calls, one per field."""
-    writes: list[dict[str, Any]] = []
-    if not isinstance(captured, dict) or not captured:
-        return writes
-
-    for index, entry in enumerate(captured.get("travel_history") or [], start=1):
-        if not isinstance(entry, dict) or not entry.get("location"):
-            continue
-        order = entry.get("order")
-        try:
-            order = int(order) if order is not None else None
-        except (TypeError, ValueError):
-            order = None
-        result = travel.add_travel_history(
-            user_id,
-            location=str(entry["location"]),
-            location_type=str(entry.get("location_type") or "city"),
-            country=entry.get("country"),
-            arrival_date=entry.get("arrival_date"),
-            departure_date=entry.get("departure_date"),
-            source="onboarding",
-            order_index=order if order is not None else index,
-        )
-        if result.get("ok"):
-            writes.append(
-                {
-                    "operation": "add_travel_history",
-                    "payload": {"location": entry["location"], "order": order or index},
-                    "source": "onboarding",
-                }
-            )
-
-    for entry in captured.get("wishlist") or []:
-        if not isinstance(entry, dict) or not entry.get("location"):
-            continue
-        try:
-            priority = int(entry.get("priority") or 2)
-        except (TypeError, ValueError):
-            priority = 2
-        result = travel.add_wishlist(
-            user_id,
-            location=str(entry["location"]),
-            location_type=str(entry.get("location_type") or "city"),
-            country=entry.get("country"),
-            priority=priority,
-            source="onboarding",
-        )
-        if result.get("ok"):
-            writes.append(
-                {
-                    "operation": "add_wishlist",
-                    "payload": {"location": entry["location"], "priority": priority},
-                    "source": "onboarding",
-                }
-            )
-
-    interests = [str(i) for i in (captured.get("interests") or []) if str(i).strip()]
-    if interests:
-        travel.set_interests(user_id, interests, source="onboarding")
-        writes.append(
-            {
-                "operation": "set_interests",
-                "payload": {"interests": interests},
-                "source": "onboarding",
-            }
-        )
-
-    if captured.get("social_style"):
-        if travel.set_social_style(user_id, str(captured["social_style"]), source="onboarding"):
-            writes.append(
-                {
-                    "operation": "set_social_style",
-                    "payload": {"social_style": captured["social_style"]},
-                    "source": "onboarding",
-                }
-            )
-
-    profile_updates = {
-        key: captured[key]
-        for key in (
-            "budget_band", "travel_style", "climate_preference",
-            "current_location", "nationality", "trip_start_date", "trip_end_date",
-        )
-        if captured.get(key)
-    }
-    if profile_updates:
-        store.update_profile(user_id, profile_updates, source="onboarding")
-        writes.append(
-            {
-                "operation": "update_profile",
-                "payload": profile_updates,
-                "source": "onboarding",
-            }
-        )
-    return writes
 
 
 async def _run_local_guide(
