@@ -6,7 +6,12 @@ import { tokens } from './api'
 const route = useRoute()
 const router = useRouter()
 
-const loggedIn = computed(() => !!tokens.user() && route.path !== '/login')
+// route.path is read first so it's always tracked as a reactive dependency -
+// otherwise, if tokens.user() started out falsy (the /login screen), `&&`
+// short-circuits before ever reading route.path, and this computed would
+// never re-run on later navigation. That left the nav bar stuck hidden after
+// a client-side login until a full page reload forced a fresh evaluation.
+const loggedIn = computed(() => route.path !== '/login' && !!tokens.user())
 const username = computed(() => tokens.username())
 
 function logout() {
@@ -47,9 +52,13 @@ header {
   justify-content: space-between;
   align-items: center;
   gap: 16px;
-  padding: 12px 20px;
+  height: var(--header-h);
+  padding: 0 clamp(14px, 3vw, 32px);
   border-bottom: 1px solid var(--line);
   background: var(--panel);
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   /* Always reachable: a page like Preferences that scrolls its own content
      used to let the only way back to Chat scroll off the top with it. */
   position: sticky;
@@ -57,15 +66,35 @@ header {
   z-index: 20;
 }
 
-.brand { display: flex; align-items: baseline; gap: 9px; font-weight: 650; font-size: 17px; }
-.mark { color: var(--accent); font-size: 18px; }
+.brand { display: flex; align-items: baseline; gap: 9px; font-weight: 700; font-size: 17px; flex: none; }
+.mark {
+  color: var(--on-accent);
+  background: var(--accent);
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  font-size: 15px;
+  box-shadow: var(--shadow-sm);
+}
 .tagline { color: var(--muted); font-weight: 400; font-size: 13px; }
 
-nav { display: flex; align-items: center; gap: 16px; }
-nav a { color: var(--muted); text-decoration: none; font-size: 14px; }
-nav a:hover { color: var(--text); }
-nav a.router-link-active { color: var(--accent); }
-.who { color: var(--muted); font-size: 13px; }
+nav { display: flex; align-items: center; gap: 4px; overflow-x: auto; scrollbar-width: none; }
+nav::-webkit-scrollbar { display: none; }
+nav a {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 550;
+  padding: 7px 12px;
+  border-radius: 999px;
+  white-space: nowrap;
+  transition: background-color .15s ease, color .15s ease;
+}
+nav a:hover { color: var(--text); background: var(--panel-2); }
+nav a.router-link-active { color: var(--on-accent); background: var(--accent); }
+.who { color: var(--muted); font-size: 13px; margin-left: 6px; white-space: nowrap; }
 
-main { flex: 1; padding: 20px; }
+main { flex: 1; padding: clamp(16px, 3vw, 32px) clamp(14px, 3vw, 32px); }
 </style>

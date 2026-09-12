@@ -105,13 +105,13 @@ async function submit() {
 </template>
 
 <style scoped>
-.wrap { display: flex; justify-content: center; padding-top: 6vh; }
-.card { width: 100%; max-width: 420px; }
-h1 { margin: 0 0 6px; font-size: 24px; }
-.intro { margin: 0 0 18px; }
-.tabs { display: flex; gap: 8px; margin-bottom: 16px; }
-.tabs button { flex: 1; }
-.tabs button.active { border-color: var(--accent-dim); color: var(--accent); }
+.wrap { display: flex; justify-content: center; align-items: center; min-height: calc(100vh - var(--header-h) - 2 * clamp(16px, 3vw, 32px)); padding: 4vh 0; }
+.card { width: 100%; max-width: 440px; border-radius: var(--radius-lg); box-shadow: var(--shadow-md); }
+h1 { margin: 0 0 6px; font-size: 26px; }
+.intro { margin: 0 0 20px; }
+.tabs { display: flex; gap: 8px; margin-bottom: 18px; background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 4px; }
+.tabs button { flex: 1; border-color: transparent; background: transparent; }
+.tabs button.active { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-bright); }
 .full { width: 100%; }
 .foot { margin: 14px 0 0; text-align: center; }
 </style>

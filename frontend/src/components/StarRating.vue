@@ -50,7 +50,7 @@ function set(value) {
   padding: 0 1px;
   font-size: 15px;
   line-height: 1;
-  color: #3b4250;
+  color: var(--stone-700);
   transition: color .12s, transform .12s;
 }
 .star:hover:not(:disabled) { transform: scale(1.15); }

@@ -73,7 +73,7 @@ h3 { margin: 0 0 2px; font-size: 15px; }
 dl { display: grid; grid-template-columns: 88px 1fr; gap: 5px 10px; margin: 0; font-size: 13.5px; }
 dt { color: var(--muted); }
 dd { margin: 0; text-transform: capitalize; word-break: break-word; }
-dd.unknown { color: #5d6472; font-style: italic; text-transform: none; }
+dd.unknown { color: var(--muted-2); font-style: italic; text-transform: none; }
 dd.deadline { color: var(--warn); text-transform: none; }
 
 .section { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 14px; }

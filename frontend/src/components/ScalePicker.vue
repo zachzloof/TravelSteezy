@@ -78,7 +78,7 @@ function pick(option) {
 .option.on {
   background: var(--accent-dim);
   border-color: var(--accent);
-  color: #e9fff4;
+  color: var(--text);
   font-weight: 600;
 }
 

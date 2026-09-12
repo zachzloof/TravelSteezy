@@ -357,7 +357,7 @@ const FIELD_LABELS = {
 </template>
 
 <style scoped>
-.welcome { max-width: 980px; margin: 0 auto; }
+.welcome { max-width: var(--container); margin: 0 auto; }
 .loading { text-align: center; padding: 60px 20px; }
 
 .intro { text-align: center; margin-bottom: 22px; }
@@ -379,7 +379,7 @@ const FIELD_LABELS = {
 }
 .steps li { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--muted); min-width: 0; }
 .steps li.clickable { cursor: pointer; }
-.steps li.done .pip { background: var(--accent); border-color: var(--accent); color: #07130e; }
+.steps li.done .pip { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .steps li.current { color: var(--text); }
 .steps li.current .pip { border-color: var(--accent); color: var(--accent); }
 .steps li.done:hover .name { color: var(--text); }
@@ -415,7 +415,7 @@ textarea {
   min-height: 120px;
   line-height: 1.55;
 }
-textarea::placeholder { color: #5d6472; }
+textarea::placeholder { color: var(--muted-2); }
 
 .actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 14px; }
 .shortcut { margin-left: auto; }
@@ -447,17 +447,17 @@ h4 {
 }
 
 .just {
-  background: #17251f;
-  border: 1px solid var(--accent-dim);
-  border-radius: 8px;
+  background: var(--moss-soft);
+  border: 1px solid var(--moss-dim);
+  border-radius: var(--radius-sm);
   padding: 11px 12px;
   margin-bottom: 16px;
 }
 .just ul { margin: 0; padding: 0; list-style: none; }
 .just li { display: flex; gap: 8px; font-size: 13px; margin-bottom: 4px; }
 .just li:last-child { margin-bottom: 0; }
-.op { flex: none; color: var(--accent); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; padding-top: 2px; }
-.what { color: #d8efe3; word-break: break-word; }
+.op { flex: none; color: var(--moss-bright); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; padding-top: 2px; }
+.what { color: var(--text); word-break: break-word; }
 
 .group { margin-bottom: 16px; }
 .group:last-child { margin-bottom: 0; }

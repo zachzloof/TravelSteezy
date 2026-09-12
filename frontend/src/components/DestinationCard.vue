@@ -46,9 +46,11 @@ defineProps({ card: { type: Object, required: true } })
   border: 1px solid var(--line);
   border-left: 3px solid var(--line);
   border-radius: var(--radius);
-  padding: 14px 16px;
+  padding: 15px 17px;
+  box-shadow: var(--shadow-sm);
+  height: 100%;
 }
-.card.go { border-left-color: var(--accent); }
+.card.go { border-left-color: var(--moss); }
 .card.maybe { border-left-color: var(--warn); }
 .card.avoid { border-left-color: var(--bad); }
 
@@ -61,11 +63,11 @@ h4 { margin: 0; font-size: 16px; flex: 1; text-transform: capitalize; }
 .flag {
   font-size: 13px;
   padding: 7px 10px;
-  border-radius: 7px;
+  border-radius: var(--radius-sm);
   margin-bottom: 8px;
 }
-.flag.season { background: #2a2216; border: 1px solid #5e4d2c; color: #f0cb95; }
-.flag.visa { background: #2a1a1a; border: 1px solid #5a2f2e; color: #f0b9b7; }
+.flag.season { background: var(--warn-soft); border: 1px solid var(--warn-dim); color: #f0cb95; }
+.flag.visa { background: var(--bad-soft); border: 1px solid var(--bad-dim); color: #f0b9b7; }
 
 .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 6px; }
 @media (max-width: 700px) { .cols { grid-template-columns: 1fr; } }
@@ -86,7 +88,7 @@ li { margin-bottom: 3px; }
   padding-top: 10px;
 }
 .notes ul { font-size: 13.5px; }
-.sources { margin: 8px 0 0; font-size: 11px; color: #5d6472; }
+.sources { margin: 8px 0 0; font-size: 11px; color: var(--muted-2); }
 
 .cost { margin: 12px 0 0; font-size: 13px; color: var(--muted); }
 </style>

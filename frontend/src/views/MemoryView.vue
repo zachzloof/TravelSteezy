@@ -382,7 +382,7 @@ const DEPRECATED_ROWS = [
 </template>
 
 <style scoped>
-.wrap { max-width: 1080px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+.wrap { max-width: var(--container-wide); margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
 .top h1 { margin: 0 0 4px; font-size: 22px; }
 .intro { margin: 0; max-width: 640px; }
 
@@ -413,7 +413,7 @@ h4:first-of-type { margin-top: 0; }
 .kv td { padding: 5px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
 .kv .key { color: var(--muted); width: 46%; }
 .kv .val { word-break: break-word; }
-.kv .val.unset { color: #5d6472; font-style: italic; }
+.kv .val.unset { color: var(--muted-2); font-style: italic; }
 .kv .op { width: 60px; text-align: right; }
 .kv tr.deprecated .key, .kv tr.deprecated .val { opacity: .6; }
 
@@ -451,6 +451,6 @@ table.raw .notes { max-width: 220px; word-break: break-word; }
 .op { font-size: 11.5px; color: var(--accent); }
 .payload { flex-basis: 100%; }
 
-.danger { border-color: #5a2f2e; }
+.danger { border-color: var(--bad-dim); }
 .danger h2 { margin: 0 0 6px; font-size: 15.5px; }
 </style>

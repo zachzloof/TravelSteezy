@@ -509,7 +509,7 @@ async function redoOnboarding() {
 </template>
 
 <style scoped>
-.wrap { max-width: 1080px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+.wrap { max-width: var(--container-wide); margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
 
 .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
 h1 { margin: 0 0 4px; font-size: 22px; }
@@ -565,7 +565,7 @@ ul { margin: 0; padding: 0; list-style: none; }
   background: transparent;
   color: var(--muted);
 }
-.pri.on { background: var(--accent-dim); border-color: var(--accent); color: #e9fff4; }
+.pri.on { background: var(--accent-dim); border-color: var(--accent); color: var(--text); }
 
 .add { display: flex; gap: 8px; margin-top: 12px; }
 .add .narrow { max-width: 140px; }

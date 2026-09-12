@@ -121,14 +121,15 @@ function logout() {
 </template>
 
 <style scoped>
-.wrap { max-width: 900px; margin: 0 auto; }
-.card { max-width: 400px; margin: 6vh auto 0; }
+.wrap { max-width: var(--container); margin: 0 auto; }
+.card { max-width: 420px; margin: 6vh auto 0; border-radius: var(--radius-lg); box-shadow: var(--shadow-md); }
 h1 { margin: 0 0 4px; font-size: 22px; }
 .full { width: 100%; }
 .foot { margin: 14px 0 0; text-align: center; }
 
 .head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
 
+.panel { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; font-size: 14px; }
 th {
   text-align: left;

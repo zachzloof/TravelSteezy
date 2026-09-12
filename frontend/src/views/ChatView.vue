@@ -321,39 +321,44 @@ async function scrollDown() {
 <style scoped>
 .layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 280px;
-  gap: 18px;
-  max-width: 1180px;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+  gap: 20px;
+  max-width: var(--container-wide);
   margin: 0 auto;
   align-items: start;
 }
 @media (max-width: 900px) {
-  .layout { grid-template-columns: 1fr; }
+  .layout { grid-template-columns: 1fr; max-width: var(--container); }
 }
 
-.chat { display: flex; flex-direction: column; height: calc(100vh - 105px); padding: 0; }
+.chat { display: flex; flex-direction: column; height: calc(100vh - var(--header-h) - 2 * clamp(16px, 3vw, 32px)); padding: 0; }
 
-.stream { flex: 1; overflow-y: auto; padding: 18px; display: flex; flex-direction: column; gap: 16px; }
+.stream { flex: 1; overflow-y: auto; padding: clamp(14px, 2vw, 24px); display: flex; flex-direction: column; gap: 16px; }
 
 .empty { margin: auto 0; text-align: center; padding: 20px; }
-.empty h2 { margin: 0 0 8px; font-size: 20px; }
-.empty p { max-width: 460px; margin: 0 auto 18px; font-size: 14px; }
+.empty h2 { margin: 0 0 8px; font-size: 22px; }
+.empty p { max-width: 480px; margin: 0 auto 18px; font-size: 14px; }
 .suggestions { display: flex; flex-direction: column; gap: 8px; align-items: center; }
-.suggestions button { max-width: 420px; }
+.suggestions button { max-width: 440px; }
 
 .msg.user { display: flex; justify-content: flex-end; }
 
-.bubble { padding: 11px 14px; border-radius: 12px; max-width: 88%; }
+.bubble { padding: 11px 15px; border-radius: var(--radius); max-width: min(88%, 70ch); }
 /* The user's own typed message stays literal plain text - pre-wrap so their own
    line breaks survive, and no markdown rendering (it is not the LLM's output). */
-.bubble.user { background: var(--accent-dim); color: #e9fff4; border-bottom-right-radius: 4px; white-space: pre-wrap; }
+.bubble.user { background: var(--moss-dim); color: var(--text); border-bottom-right-radius: 4px; white-space: pre-wrap; }
 /* The assistant bubble renders real markdown (see components/Markdown.vue), so
    spacing comes from its own paragraph/list styles rather than pre-wrap. */
 .bubble.assistant { background: var(--panel-2); border: 1px solid var(--line); border-bottom-left-radius: 4px; }
 
 .assistant-block { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; width: 100%; }
 
-.cards { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+  width: 100%;
+}
 
 .detail-toggle { align-self: flex-start; }
 .detail {
