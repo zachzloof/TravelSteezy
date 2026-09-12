@@ -393,3 +393,66 @@ succeeds.
   vs. `ADMIN_AUTO_APPROVE`), and the backup screen recording remain outstanding
   from the original build — unrelated to the extension, carried over from
   before it started.
+
+---
+
+# Phase 5 — self-healing RAG gaps and a much larger corpus
+
+Requested directly: "if RAG finds nothing, use the LLM to find out accurately,
+double-check it, then ingest it so next time it's in the RAG" — plus a
+separate ask to roughly double the seed corpus (45 → ~100 documents) and
+specifically add India and Mongolia, which had been named as obvious gaps.
+
+## 37. The literal version of the self-healing request was rejected; a three-tier version was built instead
+
+"Ask the LLM, then ask it to double-check itself" is the same model's blind
+spots checking themselves — not real verification, and a direct undermining
+of the `coverage` guard and `honesty-unknown-destination` eval this project
+already built specifically to stop confabulated visa/price specifics (note
+03). What shipped instead, gated entirely behind an optional `TAVILY_API_KEY`
+(`backend/rag/live_lookup.py`): a real web search, an LLM pass constrained to
+answer only from the search results (`NOT_FOUND` if they don't), a second LLM
+pass that checks the first pass's own draft against those same results and
+strips unsupported claims, then ingestion into a new `unverified` namespace —
+never into the curated `visa`/`seasonal`/`tips` namespaces, always flagged to
+the traveller as unconfirmed, and never counted as "covered" by the hard
+honesty guard. Full rationale in note 03.
+
+## 38. Adding Mongolia to the corpus broke its own honesty eval, on purpose-adjacent grounds
+
+`honesty-unknown-destination` used Mongolia and Uzbekistan as known-uncovered
+probes. Flagged before writing any content, not discovered afterward: adding
+Mongolia as requested would make that eval assert honesty about a destination
+that was now, correctly, answered with real data — passing for the wrong
+reason rather than actually verifying anything. Resolved by swapping the
+probe to Nauru (explicit user choice among three options offered), which
+stays genuinely uncovered by every tier this app now holds.
+
+## 39. Country-table parity enforced by hand for every new country
+
+`CLIMATE_TABLE` (climate.py) got full month-by-month entries for India,
+Mongolia, Myanmar and Bhutan alongside their RAG seed documents, specifically
+so `coverage.SUPPORTED` (which unions `CLIMATE_TABLE` keys with RAG
+`KNOWN_DESTINATIONS`) never marks a country "covered" while
+`check_seasonal_conditions` still returns `known: false` for it — the same
+class of two-sources-of-truth bug as the original `resolve_country` fix (note
+03, decision #18), caught here before it could ship rather than after.
+
+## 40. Corpus grew 45 → 99 documents: four new countries, 31 new route documents, 12 region-wide tips documents
+
+India and Myanmar got full visa/seasonal/tips triads (India's seasonal split
+into north/south documents, since one document undersold how differently
+Rajasthan's summer and Kerala's monsoon behave). Mongolia got the same triad.
+Bhutan got a single combined `tips` document instead of a triad, because the
+one fact that actually matters to a *backpacker* assistant is that
+independent shoestring travel there isn't possible (a mandatory operator
+package plus a USD 100/night government fee) — three separate documents would
+have implied a normal backpacker circuit that doesn't exist. 31 new `routes`
+documents cover a full India sub-circuit, a Myanmar circuit, Mongolia's
+Ulaanbaatar gateway, and 15 towns that earlier route documents already named
+as onward hops but had never been given their own. 12 region-wide `tips`
+documents (diving, solo female travel, visa-run comparison, ethical wildlife
+tourism, and others) were each checked against the existing corpus before
+writing to avoid restating a fact already covered under a different heading —
+matching the user's explicit ask to grow the corpus "without too much
+duplicate information."

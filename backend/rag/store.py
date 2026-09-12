@@ -29,7 +29,12 @@ from backend.rag.seed_data import KNOWN_DESTINATIONS, SEED_DOCUMENTS
 # routes is city-level hop knowledge ("where next from Chiang Mai").
 # experience is written at runtime from real user reviews and from whether a
 # suggestion was accepted, so the store improves with use.
-NAMESPACES = ("visa", "seasonal", "tips", "routes", "experience")
+# unverified is written at runtime by backend/rag/live_lookup.py when a scoped
+# search of the curated corpus comes back empty - real web search, grounded LLM
+# synthesis, one verification pass against its own sources, then ingested here
+# rather than into visa/seasonal/tips, so it can never be mistaken for curated
+# data. See notes/03-rag-and-retrieval.md.
+NAMESPACES = ("visa", "seasonal", "tips", "routes", "experience", "unverified")
 
 ALL_SEED_DOCUMENTS = SEED_DOCUMENTS + ROUTE_DOCS
 
@@ -92,6 +97,30 @@ def detect_destinations(text: str) -> list[str]:
         "arugam": "sri lanka",
         "kandy": "sri lanka",
         "mirissa": "sri lanka",
+        "delhi": "india",
+        "agra": "india",
+        "jaipur": "india",
+        "udaipur": "india",
+        "jaisalmer": "india",
+        "jodhpur": "india",
+        "rishikesh": "india",
+        "varanasi": "india",
+        "amritsar": "india",
+        "hampi": "india",
+        "goa": "india",
+        "mumbai": "india",
+        "pushkar": "india",
+        "mcleod ganj": "india",
+        "dharamshala": "india",
+        "yangon": "myanmar",
+        "bagan": "myanmar",
+        "mandalay": "myanmar",
+        "inle": "myanmar",
+        "kalaw": "myanmar",
+        "ulaanbaatar": "mongolia",
+        "gobi": "mongolia",
+        "thimphu": "bhutan",
+        "paro": "bhutan",
     }
 
     found: list[str] = []
@@ -372,13 +401,25 @@ def fetch_by_ids(ids: list[str], namespace: str = "experience") -> list[dict[str
 
 
 def format_passages(hits: list[dict[str, Any]]) -> str:
-    """Render hits as a numbered, citable block for an agent prompt."""
+    """Render hits as a numbered, citable block for an agent prompt.
+
+    Live-sourced (``unverified`` namespace) hits carry real URLs in
+    ``metadata.source_urls`` - surfaced here so the agent can actually hand the
+    traveller a link to check, rather than a disclaimer with nothing to click.
+    Curated hits have no such field and this is a no-op for them.
+    """
     if not hits:
         return "(no passages retrieved)"
     lines = []
     for i, hit in enumerate(hits, start=1):
-        dest = hit.get("metadata", {}).get("destination", "general")
-        lines.append(f"[{i}] (source_id={hit['id']}, destination={dest})\n{hit['text']}")
+        metadata = hit.get("metadata", {})
+        dest = metadata.get("destination", "general")
+        header = f"[{i}] (source_id={hit['id']}, destination={dest}"
+        urls = metadata.get("source_urls")
+        if urls:
+            header += f", sources={', '.join(urls)}"
+        header += ")"
+        lines.append(f"{header}\n{hit['text']}")
     return "\n\n".join(lines)
 
 

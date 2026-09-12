@@ -61,6 +61,14 @@ class Settings:
             os.getenv("LOCAL_RAG_PATH", str(self.data_dir / "local_rag_index.json"))
         )
 
+        # --- live RAG-gap lookup (optional) ---------------------------------
+        # When a scoped RAG search comes back empty, and this key is set, the
+        # search tools fall back to a real web search + LLM synthesis pass
+        # instead of just reporting "no data" - see backend/rag/live_lookup.py.
+        # Absent this key the behaviour is unchanged: an empty scoped search
+        # stays empty, honestly.
+        self.tavily_api_key: str | None = os.getenv("TAVILY_API_KEY")
+
         # --- places / booking ----------------------------------------------
         self.google_places_api_key: str | None = os.getenv("GOOGLE_PLACES_API_KEY")
         # Places bills per call, so identical lookups are served from the SQLite
@@ -102,6 +110,12 @@ class Settings:
     @property
     def places_enabled(self) -> bool:
         return bool(self.google_places_api_key)
+
+    @property
+    def live_lookup_enabled(self) -> bool:
+        # Needs both a search key (to find real sources) and an LLM (to
+        # synthesise and then verify the answer against them).
+        return bool(self.tavily_api_key) and self.llm_enabled
 
     @property
     def langfuse_enabled(self) -> bool:

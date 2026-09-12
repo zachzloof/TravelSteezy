@@ -215,8 +215,9 @@ address account B's row. Two eval cases and four unit tests assert this.
 
 ## 4. RAG
 
-Seed corpus: 29 curated country-level documents covering the Southeast Asia
-backpacker circuit plus Nepal and Sri Lanka, in three namespaces:
+Seed corpus: 52 curated country-level documents covering the Southeast Asia
+backpacker circuit, South Asia (Nepal, Sri Lanka, India, Bhutan) and Mongolia
+and Myanmar, in three namespaces:
 
 | Namespace | Contents | Read by |
 |---|---|---|
@@ -233,11 +234,14 @@ Ingest with `python -m scripts.ingest_rag` (or `--stats` to inspect the index).
 > retried unscoped, which handed the agent passages about entirely different
 > countries and led directly to confabulation. That fallback was removed.
 
-The extension adds two more namespaces on top of these — `routes` (16
-town-level "where next from here" documents) and `experience` (written at
+The extension adds three more namespaces on top of these — `routes` (47
+town-level "where next from here" documents), `experience` (written at
 runtime from reviews and accepted/rejected suggestions, so recommendations
-improve with use) — bringing the live index to 45 curated documents plus
-runtime content. See [docs/EXTENSION.md](docs/EXTENSION.md) section 6 and
+improve with use), and `unverified` (written at runtime from a live web
+search + two-pass LLM synthesis/verification, only when a scoped curated
+search comes back empty and `TAVILY_API_KEY` is set - see note 03) — bringing
+the live index to 99 curated documents plus runtime content. See
+[docs/EXTENSION.md](docs/EXTENSION.md) section 6 and
 [notes/03-rag-and-retrieval.md](notes/03-rag-and-retrieval.md) for the design
 and the bugs found building it.
 
@@ -576,8 +580,9 @@ Full extension design (and every bug found building it) is in
 
 1. Deploy to Railway with a `/data` volume and verify in incognito.
 2. Decide the demo-safety mechanism (Section 9).
-3. Run `python -m scripts.ingest_rag` against the production Pinecone index if
-   it hasn't already seen the `routes` namespace (45 documents total once it has).
+3. Run `python -m scripts.ingest_rag` against the production Pinecone index to
+   pick up the expanded corpus (99 curated documents total once it has - see
+   [notes/03-rag-and-retrieval.md](notes/03-rag-and-retrieval.md)).
 4. Screen-record the Section 10 flow, extension steps included.
 
 Pinecone and Langfuse are done — keys supplied, corpus ingested, traces verified,

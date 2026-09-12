@@ -22,7 +22,7 @@ from google.adk.sessions import InMemorySessionService
 from google.genai import types
 
 from backend.agents import catchup, coverage, graph, tracking
-from backend.agents.tools import ToolRecorder, reset_recorder, set_recorder
+from backend.agents.tools import ToolRecorder, current_recorder, reset_recorder, set_recorder
 from backend.config import settings
 from backend.memory import store, travel
 from backend.rag import store as rag_store
@@ -408,7 +408,9 @@ async def run_turn(user_id: int, message: str, username: str = "") -> dict[str, 
         elif intent in {"memory", "review"}:
             reply, cards, fired = await _run_concierge(state, message, user_id, trace)
         else:
-            reply, cards, fired = await _run_comparison(state, message, user_id, parse, trace)
+            reply, cards, fired = await _run_comparison(
+                state, message, user_id, parse, trace, candidates
+            )
 
         # ---- post-visit review nudge, appended rather than hijacking the turn --
         just_reviewed = [str(r.get("location", "")) for r in (parse.get("reviews") or []) if isinstance(r, dict)]
@@ -537,6 +539,7 @@ async def _run_comparison(
     user_id: int,
     parse: dict[str, Any],
     trace: Trace,
+    candidates: list[str] | None = None,
 ) -> tuple[str, list[dict[str, Any]], list[str]]:
     """Stage 1: run the relevant specialists concurrently.
     Stage 2: hand their reports to the Decision-Weigher.
@@ -581,7 +584,26 @@ async def _run_comparison(
     trace.set_span_summary("agents.fan_out", summary)
 
     # ---- stage 2: decision weigher ----------------------------------------
-    weigher_state = {**state, **reports}
+    # Recompute the coverage note now that the specialists' tool calls have
+    # actually run: the pre-fan-out note (still in `state["coverage_note"]`)
+    # was necessarily written before anyone knew whether a live lookup would
+    # succeed. The ToolRecorder is a single mutable object shared across the
+    # gathered specialist tasks (contextvars carry the same reference, not a
+    # copy), so by this point it holds every retrieval any specialist made,
+    # including any "unverified" namespace hit from live_lookup - checking it
+    # here is how the weigher finds out a gap got filled this turn instead of
+    # relying on the stale, necessarily-more-cautious pre-run note.
+    recorder = current_recorder()
+    live_sourced = {
+        (r.get("destination") or "").strip().lower()
+        for r in (recorder.retrieved if recorder else [])
+        if r.get("namespace") == "unverified" and r.get("destination")
+    }
+    weigher_state = {
+        **state,
+        **reports,
+        "coverage_note": coverage.coverage_note(candidates or [], live_sourced),
+    }
     cards: list[dict[str, Any]] = []
     reply = ""
     text = ""

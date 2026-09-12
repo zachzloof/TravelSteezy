@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from backend.agents import climate, routes
+from backend.rag import live_lookup
 from backend.rag import store as rag_store
 
 
@@ -99,6 +100,23 @@ def check_seasonal_conditions(destination: str, month: str) -> dict[str, Any]:
     return result
 
 
+def _search_with_live_fallback(
+    query: str, namespace: str, destination: str, live_question: str, top_k: int
+) -> list[dict[str, Any]]:
+    """Curated search first. Only on a genuine empty result, try the live-lookup
+    fallback - dormant unless TAVILY_API_KEY is configured, in which case it
+    returns [] immediately (see backend/rag/live_lookup.py) and this behaves
+    exactly as it always has: an empty scoped search stays empty.
+    """
+    hits = rag_store.search(query, namespace=namespace, destinations=[destination], top_k=top_k)
+    _record_retrieval(namespace, hits)
+    if hits:
+        return hits
+    live_hits = live_lookup.get_or_fetch(destination, namespace, live_question, top_k=top_k)
+    _record_retrieval("unverified", live_hits)
+    return live_hits
+
+
 # --------------------------------------------------------------------------- #
 # Logistics tools
 # --------------------------------------------------------------------------- #
@@ -127,13 +145,18 @@ def search_visa_rules(destination: str, nationality: str) -> dict[str, Any]:
         nationality: The traveller's passport nationality, e.g. "United Kingdom".
     """
     query = f"visa requirements for {nationality} passport holders entering {destination}"
-    hits = rag_store.search(query, namespace="visa", destinations=[destination], top_k=2)
-    _record_retrieval("visa", hits)
+    hits = _search_with_live_fallback(
+        query, "visa", destination,
+        f"{nationality} passport visa requirements to enter {destination}: cost, duration, "
+        f"how to apply, processing/lead time",
+        top_k=2,
+    )
     result = {
         "destination": destination,
         "nationality": nationality,
         "passages": rag_store.format_passages(hits),
         "source_ids": [h["id"] for h in hits if h.get("id") != "retrieval-error"],
+        "live_sourced": bool(hits) and hits[0].get("namespace") == "unverified",
     }
     _record("search_visa_rules", {"destination": destination, "nationality": nationality}, result)
     return result
@@ -154,12 +177,16 @@ def search_backpacker_tips(destination: str, topic: str) -> dict[str, Any]:
         topic: What the traveller cares about, e.g. "diving and cheap islands".
     """
     query = f"backpacker things to do, daily budget and safety in {destination}: {topic}"
-    hits = rag_store.search(query, namespace="tips", destinations=[destination], top_k=3)
-    _record_retrieval("tips", hits)
+    hits = _search_with_live_fallback(
+        query, "tips", destination,
+        f"backpacker daily budget, things to do, and safety notes for {destination}: {topic}",
+        top_k=3,
+    )
     result = {
         "destination": destination,
         "passages": rag_store.format_passages(hits),
         "source_ids": [h["id"] for h in hits if h.get("id") != "retrieval-error"],
+        "live_sourced": bool(hits) and hits[0].get("namespace") == "unverified",
     }
     _record("search_backpacker_tips", {"destination": destination, "topic": topic}, result)
     return result
@@ -173,17 +200,17 @@ def search_seasonal_notes(destination: str) -> dict[str, Any]:
     Args:
         destination: Country to retrieve seasonal notes for.
     """
-    hits = rag_store.search(
+    hits = _search_with_live_fallback(
         f"seasonal weather monsoon safety in {destination}",
-        namespace="seasonal",
-        destinations=[destination],
+        "seasonal", destination,
+        f"seasonal weather, monsoon or hazard season timing for {destination} for travellers",
         top_k=2,
     )
-    _record_retrieval("seasonal", hits)
     result = {
         "destination": destination,
         "passages": rag_store.format_passages(hits),
         "source_ids": [h["id"] for h in hits if h.get("id") != "retrieval-error"],
+        "live_sourced": bool(hits) and hits[0].get("namespace") == "unverified",
     }
     _record("search_seasonal_notes", {"destination": destination}, result)
     return result

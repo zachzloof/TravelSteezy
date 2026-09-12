@@ -73,13 +73,19 @@ decided rather than re-litigating it.
 
 ## Things that would need to change before this scales past a demo
 
-- **The `SUPPORTED_COUNTRIES` / `KNOWN_CITIES` vocabulary is Southeast Asia +
-  Nepal + Sri Lanka only.** Every guard, every table, every eval case assumes
-  this scope. Extending to another region means extending all three
-  data files (`seed_data.py`, `route_data.py`, `climate.py`'s `CLIMATE_TABLE`)
-  in lockstep, or the coverage guard will (correctly, but confusingly for a
-  user) start refusing destinations that feel like they should obviously be
-  covered.
+- **The `SUPPORTED_COUNTRIES` / `KNOWN_CITIES` vocabulary is a fixed, closed
+  list** — Southeast Asia, South Asia (Nepal, Sri Lanka, India, Bhutan),
+  Mongolia and Myanmar, as of the corpus expansion in note 03. Every guard,
+  every table, every eval case assumes this exact scope. Extending to another
+  region means extending all three data files (`seed_data.py`,
+  `route_data.py`, `climate.py`'s `CLIMATE_TABLE`) in lockstep, or the
+  coverage guard will (correctly, but confusingly for a user) start refusing
+  destinations that feel like they should obviously be covered. The
+  `unverified` live-lookup tier (note 03) narrows this limitation for
+  factual gaps when `TAVILY_API_KEY` is set, but does not remove it: a
+  destination still needs `CLIMATE_TABLE`/`route_data.py` entries before the
+  structured tools (seasonal verdicts, onward-hop graphs) can say anything
+  about it at all, live search or not.
 - **The onboarding extractor and turn parser both make one full LLM round-trip
   per turn on top of the specialist calls.** For a chat-latency-sensitive
   product this is a real cost (visible in the Langfuse spans: `turn_parser`

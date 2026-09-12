@@ -195,6 +195,72 @@ VISA_DOCS = [
         nationalities=WESTERN_PASSPORTS,
         lead_time_days=2,
     ),
+    _doc(
+        "visa-india-western",
+        """
+        India e-Visa: UK, US, Australian, Canadian, Irish and New Zealand passport
+        holders apply online for an e-Tourist Visa before travel - there is no visa
+        on arrival for these nationalities. Options are 30 days (double entry, around
+        USD 25-40), 1 year (multiple entry, around USD 40-80) or 5 years (multiple
+        entry, around USD 80-120), with the 1-year and 5-year versions capping any
+        single stay at 90 days (180 for US, UK and Japanese citizens) regardless of
+        the visa's overall validity. Apply only at the official indianvisaonline.gov.in
+        - third-party sites charge large markups. Processing is officially "within
+        72 hours" but budget 4-5 working days in practice, and note a fixed number of
+        designated entry airports/ports apply to e-Visa holders. Passport needs 6
+        months validity and two blank pages. Registration (FRRO) is generally not
+        required for stays under 180 days on a tourist e-Visa.
+        """,
+        "visa",
+        "india",
+        region="south asia",
+        nationalities=WESTERN_PASSPORTS,
+        lead_time_days=5,
+    ),
+    _doc(
+        "visa-mongolia-western",
+        """
+        Mongolia visa-free entry: UK, US, and most EU passport holders can enter
+        visa-free for tourism - UK citizens get 30 days, but the popular allowance
+        varies by nationality and by exactly which bilateral agreement is current, so
+        confirm your specific nationality's allowance before flying since these
+        agreements are renewed and occasionally lapse. Canadian, Australian and New
+        Zealand passport holders have historically needed to apply for a visa in
+        advance through a Mongolian embassy or consulate (around USD 50-80, several
+        working days), so do not assume visa-free purely from being "Western" -
+        check per passport. Extensions beyond the visa-free window are handled at the
+        Immigration Agency office in Ulaanbaatar. Land border crossings from Russia
+        and China exist but have limited operating hours and are far less
+        straightforward than flying into Ulaanbaatar's Chinggis Khaan airport.
+        """,
+        "visa",
+        "mongolia",
+        region="east asia",
+        nationalities=WESTERN_PASSPORTS,
+    ),
+    _doc(
+        "visa-myanmar-western",
+        """
+        Myanmar e-Visa: UK, US, Australian, Canadian, Irish and New Zealand passport
+        holders can apply online for a tourist e-Visa (around USD 50, 28 days,
+        single entry, processing a few working days), entering through Yangon,
+        Mandalay or Naypyidaw international airports. IMPORTANT SAFETY CONTEXT, not
+        just a bureaucratic note: Myanmar has been in a state of civil war and
+        military rule since the February 2021 coup, and most Western governments
+        (UK FCDO, US State Department, Australian DFAT) advise against all but
+        essential travel to large parts of the country outside the main tourist
+        circuit (Yangon, Bagan, Mandalay, Inle Lake), citing armed conflict, arbitrary
+        detention risk, and patchy insurance coverage in conflict-affected states and
+        regions. Internal flights and overland routes between the main tourist towns
+        can be curtailed at short notice depending on the security situation. Check
+        current government travel advisories immediately before booking, not months
+        in advance - this situation moves fast and this document cannot track it.
+        """,
+        "visa",
+        "myanmar",
+        nationalities=WESTERN_PASSPORTS,
+        lead_time_days=4,
+    ),
 ]
 
 # --------------------------------------------------------------------------- #
@@ -348,6 +414,85 @@ SEASONAL_DOCS = [
         "sri lanka",
         region="south asia",
         monsoon_months=[5, 6, 7, 8, 9],
+    ),
+    _doc(
+        "seasonal-india",
+        """
+        North and central India (Delhi, Rajasthan, Agra, Varanasi, Uttarakhand foothills)
+        has three seasons, not two: a pleasant, dry, cool winter (October to March, the
+        best window for almost everything except beaches - Rajasthan in December can drop
+        near freezing at night in the desert); a brutal pre-monsoon hot season (April to
+        June) when Rajasthan and the Gangetic plain regularly hit 43-47C and daytime
+        sightseeing becomes genuinely dangerous; and the monsoon (roughly late June to
+        September) which cools things down but brings heavy rain, humidity and flooding
+        risk, especially in the hills. The Himalayan trekking regions (Himachal, Ladakh,
+        Uttarakhand) invert this: Ladakh's short season is June to September precisely
+        because it is a high-altitude desert cut off by snow the rest of the year, while
+        Himachal trekking (Kasol, Tosh, the Parvati Valley) is best May-June and
+        September-October, avoiding both winter snow and the monsoon.
+        """,
+        "seasonal",
+        "india",
+        region="south asia",
+        monsoon_months=[6, 7, 8, 9],
+    ),
+    _doc(
+        "seasonal-india-south",
+        """
+        South India and the west coast (Goa, Kerala, Karnataka, Tamil Nadu) run on the
+        opposite clock to the north. The southwest monsoon hits Kerala first and hardest,
+        roughly June to September, with Goa's beach shacks and most water-based tourism
+        shutting down for the season - many close completely from June to September and
+        rebuild for the winter. The dry season, October/November to March, is peak
+        season for Goa and Kerala's backwaters alike, with December-January the most
+        expensive and crowded stretch (Goa's New Year parties especially). Tamil Nadu's
+        east coast gets a second, separate northeast monsoon October to December,
+        driven by the retreating monsoon crossing the Bay of Bengal, which can bring
+        cyclones - check forecasts specifically if travelling the Tamil Nadu coast in
+        that window, since it does not follow the west coast's calendar at all.
+        """,
+        "seasonal",
+        "india",
+        region="south asia",
+        monsoon_months=[6, 7, 8, 9],
+    ),
+    _doc(
+        "seasonal-mongolia",
+        """
+        Mongolia has one short travel season and everything else is a hard closure. The
+        window is late May to early September, and even within it July and August are
+        the only months most Gobi Desert and steppe tour operators run full itineraries,
+        because the shoulder months bring cold nights and unpredictable early/late snow.
+        Winters (November to March) are ferociously cold - Ulaanbaatar is one of the
+        coldest capital cities on Earth, regularly below -20C, and most tourist
+        infrastructure outside the capital simply closes. The Naadam festival (July)
+        is the single best-known cultural event and also the most expensive, busiest
+        week to visit. Pack for enormous day-to-night temperature swings even in
+        summer - a 30C desert afternoon in the Gobi can drop to near freezing overnight.
+        """,
+        "seasonal",
+        "mongolia",
+        region="east asia",
+        monsoon_months=[],
+    ),
+    _doc(
+        "seasonal-myanmar",
+        """
+        Myanmar's climate follows the same three-season pattern as its neighbours:
+        a cool, dry season (November to February, the best time to visit - Bagan's
+        temple sunrises are least hazy then), a hot season (March to May, often over
+        40C in the central plain around Bagan and Mandalay), and a wet monsoon (June to
+        October, heaviest on the Rakhine and Tanintharyi coasts and in the delta,
+        lighter and more travellable in the central dry zone around Bagan and Mandalay
+        which sits in a genuine rain shadow). Inle Lake's floating gardens and stilt
+        villages are pleasant nearly year-round but coolest and clearest October to
+        February. Whatever the season, current safety conditions (see the visa
+        document's note on the post-2021 conflict) matter far more to a trip than the
+        weather does - check government travel advisories before the forecast.
+        """,
+        "seasonal",
+        "myanmar",
+        monsoon_months=[6, 7, 8, 9, 10],
     ),
 ]
 
@@ -562,6 +707,387 @@ TIPS_DOCS = [
         machine offers to bill you in your home currency. Border-crossing scams cluster at
         Poipet (Thailand-Cambodia) and at the Laos slow-boat ticket offices. Keep a
         photographed copy of your passport and a spare card separate from your wallet.
+        """,
+        "tips",
+        "southeast asia",
+    ),
+    _doc(
+        "tips-india",
+        """
+        India backpacker notes. Daily budget: shoestring USD 15-25 - among the cheapest
+        countries in Asia to travel if you eat and sleep like a local, though intercity
+        distances are enormous, so budget real money for overnight trains and the
+        occasional flight. The classic first-timer route is the "Golden Triangle plus"
+        - Delhi, Agra (Taj Mahal at sunrise, before the tour buses), Jaipur and Pushkar -
+        extendable west to Jodhpur, Udaipur and Jaisalmer for a full Rajasthan loop.
+        Rishikesh (yoga, the Ganges, the Beatles Ashram) and Varanasi (the ghats at dawn,
+        genuinely one of the most intense travel experiences in Asia) are the other two
+        first-timer must-sees. Sleeper trains booked on the IRCTC app or via a hostel
+        are the backbone of budget travel here; book the "Tatkal" quota if you left it
+        late. Goa and Kerala's backwaters are the beach/relaxation leg, usually done
+        separately from the north given the distance. Belly trouble in the first week
+        is close to universal - stick to bottled or filtered water, freshly cooked hot
+        food, and be cautious with roadside dairy. Train and hotel touts at major
+        stations (especially Delhi and Agra) routinely claim your booked hotel is
+        "closed" or "full" to redirect you to one paying them commission - confirm
+        directly with your guesthouse if this happens, never trust the tout.
+        """,
+        "tips",
+        "india",
+        region="south asia",
+        budget_shoestring_usd=20,
+    ),
+    _doc(
+        "tips-mongolia",
+        """
+        Mongolia backpacker notes. Daily budget: shoestring USD 25-40 - cheaper than it
+        looks on paper for food and guesthouses in Ulaanbaatar, but a multi-day Gobi or
+        steppe tour (driver, guide, jeep, ger accommodation, all meals) is the main
+        expense and typically runs USD 50-80 a day per person in a shared group, which
+        is close to unavoidable since public transport barely reaches the sites that
+        justify the trip. Independent budget travel is realistic in Ulaanbaatar itself
+        but the Gobi Desert (Khongoryn Els sand dunes, the Flaming Cliffs), Lake
+        Khövsgöl in the north, and the nomadic homestay experience genuinely require a
+        driver-guide and 4x4 - hitchhiking and hostel-organised group tours (splitting
+        a jeep 3-4 ways) are how budget travellers make this affordable. Terelj National
+        Park, 1.5-2h from Ulaanbaatar, is the accessible taste of the steppe if time or
+        budget doesn't stretch to the Gobi. Ger camps range from tourist-facing (with
+        beds and stoves) to genuine nomadic family homestays, and the latter is what
+        people mean when they say Mongolia was the highlight of a wider Asia trip.
+        Cashmere is genuinely cheap and good quality in Ulaanbaatar's markets.
+        """,
+        "tips",
+        "mongolia",
+        region="east asia",
+        budget_shoestring_usd=30,
+    ),
+    _doc(
+        "tips-myanmar",
+        """
+        Myanmar backpacker notes, written alongside the safety context in the visa
+        document - check current government travel advisories before treating any of
+        this as current. Historically, daily budget: shoestring USD 20-30. The main
+        circuit, when accessible, is Yangon (Shwedagon Pagoda at sunset, colonial
+        downtown) - Bagan (thousands of temples across a plain, best seen by e-bike at
+        sunrise, hot-air balloon flights are a splurge worth considering) - Mandalay
+        (U Bein teak bridge at sunset, day trips to Amarapura and Sagaing) - Inle Lake
+        (stilt villages, floating gardens, leg-rowing fishermen, and Kalaw as the
+        trekking-in approach over 2-3 days instead of the bus). Domestic flights
+        between these towns are common even for backpackers because overland travel
+        between regions can be slow, restricted, or currently inadvisable depending on
+        the security situation - this is not the country to wing overland routes on a
+        whim the way you might in Thailand or Vietnam. Cash (crisp, unfolded USD plus
+        local kyat) has historically been essential outside Yangon due to unreliable
+        card and ATM infrastructure. This is a Buddhist-majority country where modest
+        dress at temples (covered shoulders and knees, shoes off) is expected everywhere.
+        """,
+        "tips",
+        "myanmar",
+        budget_shoestring_usd=25,
+    ),
+    _doc(
+        "tips-bhutan-overview",
+        """
+        Bhutan is deliberately not a shoestring-backpacker destination, and a traveller
+        asking about it should be told that plainly rather than given a daily budget
+        figure that doesn't apply. Independent budget travel is not possible: all
+        tourists (except Indian, Bangladeshi and Maldivian nationals, who face separate
+        rules) must book through a licensed Bhutanese tour operator and pay a
+        Sustainable Development Fee (SDF) of USD 100 per person per night as of the
+        post-2023 reduced rate (down from USD 200), on top of accommodation, food.
+        transport and a guide, which the operator arranges as a package - there is no
+        walk-in hostel scene or DIY overland route the way there is elsewhere on this
+        circuit. A visa is arranged by the operator as part of booking, not applied for
+        independently. The upside of the cost floor is a country that has deliberately
+        avoided mass tourism: the Tiger's Nest monastery hike near Paro and the
+        Punakha valley are the headline sights, and trekking (Druk Path, Jomolhari) is
+        exceptional and uncrowded. For a genuinely budget-constrained backpacker, this
+        is realistically a "save up for a short, focused trip" destination rather than
+        part of an open-ended regional loop.
+        """,
+        "tips",
+        "bhutan",
+        region="south asia",
+    ),
+    _doc(
+        "tips-connectivity-work-sea",
+        """
+        Connectivity and long-stay work notes across the Southeast/South Asia circuit.
+        Physical SIM cards (AIS/dtac in Thailand, Viettel in Vietnam, Smart/Globe in
+        the Philippines, Airtel/Jio in India) are cheap - typically USD 5-10 for a
+        tourist SIM with several GB - and sold at every airport arrivals hall, usually
+        faster than queueing for an eSIM provider's activation support. eSIMs (Airalo,
+        Holafly) trade a small price premium for not needing a physical shop, and are
+        the practical choice for a short multi-country hop where buying a new local SIM
+        every few days is wasted effort. Coworking-adjacent cafe culture is strongest in
+        Canggu and Ubud (Bali), Chiang Mai, and increasingly Da Nang and Ho Chi Minh
+        City - these four towns are where the actual "digital nomad" scene concentrates,
+        with reliable fibre wifi as a genuine selling point of specific hostels rather
+        than an assumption. Long-stay visa options exist in a few places: Thailand's
+        Destination Thailand Visa (DTV) and long-term resident routes, and Indonesia's
+        second-home and remote-worker visa categories for Bali, are the two most
+        commonly used by backpackers extending into semi-permanent stays - both need
+        planning well before the standard tourist entry expires, not a same-week
+        decision.
+        """,
+        "tips",
+        "southeast asia",
+    ),
+    _doc(
+        "tips-diving-scuba-sea",
+        """
+        Diving and scuba certification across the region, since this is one of the
+        cheapest places in the world to learn. Koh Tao (Thailand) is the single
+        cheapest and most popular Open Water certification spot on Earth, typically
+        USD 250-300 all in for a 3-4 day PADI course including basic accommodation -
+        the sheer volume of dive schools keeps prices competitive. The Gili Islands
+        (Indonesia, especially Gili Trawangan and Gili Air) are the main alternative,
+        slightly pricier but with less of a party-hostel atmosphere around the dive
+        schools. Amed and Tulamben (Bali) for the shore-accessible USAT Liberty wreck,
+        one of the best cheap wreck dives anywhere. El Nido and Coron (Philippines) for
+        wreck diving on the sunken WWII Japanese fleet at Coron specifically, world
+        class and comparatively uncrowded. Sipadan (Malaysian Borneo) is the outlier -
+        genuinely world-class wall diving with turtles and schooling barracuda, but
+        access is permit-limited (a strict daily diver cap) and priced well above
+        shoestring, worth knowing before planning a Borneo diving detour on a tight
+        budget. Certification lasts for life - get it early in a trip and use it
+        everywhere after.
+        """,
+        "tips",
+        "southeast asia",
+    ),
+    _doc(
+        "tips-solo-female-travel-sea",
+        """
+        Solo female travel notes across the region - genuinely one of the more solo
+        female-friendly parts of the world by backpacker consensus, with real
+        country-to-country and town-to-town variation worth knowing rather than a
+        single blanket verdict. The Southeast Asia hostel circuit (Chiang Mai, Pai,
+        Luang Prabang, Hoi An, Canggu, El Nido) is heavily solo-female travelled with
+        an established social infrastructure of female-friendly hostels and group tours
+        specifically because so many women already do this route solo. Dress modestly
+        at temples and in more conservative rural areas regardless of gender, but this
+        matters more visibly for women in India and Myanmar than on the beach-hostel
+        circuit. India warrants a specific, honest note: solo female travellers
+        consistently report more unwanted attention and a higher baseline vigilance
+        requirement than the Southeast Asia circuit, particularly around transport hubs
+        and after dark - booking women-only train compartments/berths where available,
+        sticking to well-reviewed guesthouses, and avoiding solo late-night arrivals
+        into unfamiliar towns are the standard, widely-repeated pieces of advice rather
+        than excessive caution. Facebook groups (Girls Love Travel and country-specific
+        ones) are where most real-time, current safety chatter actually happens, more
+        current than any static document like this one.
+        """,
+        "tips",
+        "southeast asia",
+    ),
+    _doc(
+        "tips-visa-runs-comparison-sea",
+        """
+        Comparing visa-run and long-stay options across the region for anyone trying to
+        stay longer than a single tourist entry allows. Thailand: the most run-heavy
+        country on the circuit historically, with land border runs to Laos, Cambodia or
+        Malaysia resetting a 60-day exemption, though immigration scrutiny of
+        back-to-back land entries has increased and the 60-day extension (one extra 30
+        days, in-country) is now the more reliable route to a longer single stay than
+        repeated runs. Indonesia: the 30-day visa on arrival extends once for 30 more
+        days; beyond that, leaving and re-entering restarts the clock but a social/
+        cultural visa or the newer long-stay options are the real route to months, not
+        a border run. Vietnam and the Philippines both tolerate in-country extensions
+        (Vietnam via agents, the Philippines via Bureau of Immigration) more readily
+        than repeated exits. Malaysia's 90-day allowance is generous enough that most
+        backpackers never need to think about this there at all, which is exactly why
+        it pairs so well as a "reset" stop for people juggling shorter allowances
+        elsewhere on the circuit (see tips-route-sea-overland).
+        """,
+        "tips",
+        "southeast asia",
+    ),
+    _doc(
+        "tips-street-food-safety-sea",
+        """
+        Street food across the region is generally safe and is a major reason budget
+        travel here works at all, but the practical rule that actually prevents
+        illness is simple and repeated by every experienced backpacker: eat where the
+        turnover is high and the queue is long, especially with local customers rather
+        than only tourists, because high turnover means food isn't sitting. Ice in
+        Thailand, Vietnam and Cambodia's cities is almost universally made in
+        factories from filtered water and is safe; ice in rural areas or at a stall
+        with no visible ice delivery is the actual risk, not ice as a category. Bottled
+        or filtered water is the safe default everywhere on this circuit outside major
+        Malaysian and Singaporean cities, where tap water is genuinely potable. Dishes
+        worth specifically seeking out: khao soi and som tam in northern Thailand, pho
+        and bun cha in Vietnam, amok in Cambodia, laap in Laos, nasi campur in
+        Indonesia, and thali in India (vegetarian thalis are the easiest safe,
+        filling, cheap meal across the whole subcontinent). A first bout of stomach
+        trouble in the first one to two weeks of a trip is close to universal rather
+        than a sign anything was done wrong - pack rehydration salts before you need
+        them, not after.
+        """,
+        "tips",
+        "southeast asia",
+    ),
+    _doc(
+        "tips-south-asia-overland",
+        """
+        Overland logistics for the South Asia leg (India, Nepal, Sri Lanka, Bhutan),
+        which behaves differently from the Southeast Asia mainland circuit. The
+        Kathmandu-India land border (Sunauli/Belahiya or Kakarbhitta) is open to
+        foreigners and cheap, but genuinely slow and chaotic by Southeast Asian
+        standards - budget a full day, expect crowding, and arrange the onward Indian
+        leg (a long sleeper train from the border town) rather than assuming a single
+        smooth bus. There is no land border between India/Nepal and Sri Lanka - Sri
+        Lanka is reached only by air, most cheaply via Chennai, Bengaluru or Chennai-
+        Colombo budget routes, or via Kuala Lumpur/Bangkok if arriving from Southeast
+        Asia. Bhutan has no independent overland entry either: the sole land crossing
+        (Phuentsholing, from West Bengal) is used by tour operators as part of a
+        pre-booked package, not something a backpacker walks across freely (see
+        tips-bhutan-overview). Within India, sleeper trains booked well ahead (or via
+        the Tatkal short-notice quota) are dramatically cheaper and more comfortable
+        than long-distance buses for any journey over about 8 hours.
+        """,
+        "tips",
+        "south asia",
+    ),
+    _doc(
+        "tips-himalaya-trekking-regionwide",
+        """
+        Comparing Himalayan trekking options across Nepal and India for anyone deciding
+        where to do a mountain trek rather than assuming Nepal is the only option.
+        Nepal remains the best-infrastructured choice: teahouse trekking (see
+        tips-nepal) means no tent or cooking gear, well-worn trails, and routes from
+        4-5 days (Poon Hill) to 12-14 days (Everest Base Camp). India's Himachal
+        Pradesh and Ladakh offer a genuinely different, less crowded style - the
+        Hampta Pass and Kheerganga treks near Kasol are 2-4 day options needing far
+        less commitment than Nepal's classics, while Ladakh's Markha Valley trek (June
+        to September only, since Ladakh is snowbound the rest of the year) is a true
+        high-altitude desert trek requiring more self-sufficiency and often a hired
+        guide, as teahouse infrastructure is thinner than Nepal's. Permits differ
+        sharply: Nepal's TIMS/conservation permits are bought in Kathmandu or Pokhara
+        in a day; India's Inner Line Permit for parts of Ladakh and other border-
+        adjacent areas can take longer and is worth checking well ahead. Altitude
+        sickness risk is identical regardless of country - ascend slowly above 3,000m
+        and know the symptoms, not just the itinerary.
+        """,
+        "tips",
+        "south asia",
+    ),
+    _doc(
+        "tips-lost-passport-emergency-sea",
+        """
+        Lost or stolen passport and general emergency procedure across the region,
+        worth knowing before it happens rather than after. First step everywhere:
+        file a police report immediately (a copy is required by every embassy to issue
+        an emergency travel document) - most tourist police stations in this region are
+        used to processing these and can move fast if you insist politely. Embassy/
+        consulate presence for Western nationalities is concentrated in Bangkok, Hanoi,
+        Ho Chi Minh City, Phnom Penh, Vientiane, Jakarta, Kuala Lumpur, Manila,
+        Kathmandu, Colombo and Delhi/Mumbai - a traveller in a smaller town needs to
+        budget a day or more of travel to reach one. An Emergency Travel Document
+        (ETD) typically takes 24-72 hours once the police report and passport photos
+        are in hand, and is valid only for direct return travel, not further onward
+        travel - plan to fly home or to a hub with a full consulate, not to continue
+        the trip on it. Keep a photographed copy of your passport's photo page (cloud-
+        stored, not just on the phone that might be what's stolen) and your travel
+        insurance policy number accessible from a second device or printed copy - this
+        single habit is what turns a lost-passport day into a lost-passport week.
+        """,
+        "tips",
+        "southeast asia",
+    ),
+    _doc(
+        "tips-ethical-wildlife-sea",
+        """
+        Ethical wildlife tourism across the region, expanding on the brief elephant note
+        in tips-thailand because the same pattern (an attraction that looks
+        animal-friendly but isn't) repeats region-wide. Elephant riding and shows are
+        now widely understood to involve harmful training methods and should be
+        avoided everywhere they're offered, not just in Thailand; observation-only
+        sanctuaries (feeding and bathing, no riding) are the standard ethical
+        alternative and cost more precisely because they're not subsidised by the
+        volume that riding operations rely on. Tiger selfie parks (still found in parts
+        of Thailand) are unambiguously to be avoided - the animals are typically
+        drugged or declawed. In Borneo (Malaysia and Indonesia), Sepilok's orangutan
+        rehabilitation centre and similar accredited sanctuaries are genuinely
+        conservation-focused and worth the visit; roadside "orangutan photo"
+        operations are not the same thing and fund a different, exploitative industry.
+        Whale shark "swim with" tours (Oslob, Philippines specifically) are
+        controversial among marine biologists for artificially feeding wild sharks to
+        guarantee sightings - Donsol, also in the Philippines, is the more responsible
+        alternative that does not feed the animals. When in doubt, the rule that holds
+        up region-wide: if an animal performs a trick, is ridden, or is guaranteed to
+        appear on demand, it usually isn't the ethical option.
+        """,
+        "tips",
+        "southeast asia",
+    ),
+    _doc(
+        "tips-nightlife-party-towns-sea",
+        """
+        Comparing the region's party-town scenes, since "best nightlife" means
+        different things in different places and a mismatch is a common source of
+        disappointment. Vang Vieng (Laos) has shifted hard away from its infamous
+        2000s-2010s tubing scene toward a calmer bar-and-adventure-sports crowd - do
+        not go expecting the old reputation. Koh Phangan's Full Moon Party (Thailand)
+        remains the single biggest one-night event on the circuit, monthly, and is
+        genuinely worth timing a trip around if that's what you want, but the rest of
+        the island outside party week is comparatively quiet. Gili Trawangan
+        (Indonesia) is the most consistently party-oriented of the three Gili islands
+        night after night, not just on a schedule, while Gili Air and Gili Meno next
+        door are deliberately the calmer alternatives a short boat ride away. Canggu
+        (Bali) is less a "party" scene than an all-day surf-cafe-sunset-bar culture
+        that runs later on weekends - closer to a long-stay social scene than a
+        short-term rager. Boracay (Philippines) rebuilt its nightlife after a 2018
+        environmental closure and rebuild, and is now more regulated (earlier noise
+        curfews, no more open bonfires on the main beach) than its pre-2018
+        reputation suggests.
+        """,
+        "tips",
+        "southeast asia",
+    ),
+    _doc(
+        "tips-money-transfer-banking-sea",
+        """
+        Money and banking notes across the region, beyond the basic ATM-fee warning in
+        tips-safety-sea-general. A Wise (or Revolut) multi-currency card is the
+        standard backpacker setup now: it gets the real interbank exchange rate on ATM
+        withdrawals and card payments, versus the 3-5% typically lost through a home
+        bank's card or through in-person currency exchange. Always choose to be
+        charged in the LOCAL currency when a card machine or ATM offers a choice
+        (dynamic currency conversion, DCC) - agreeing to be billed in your home
+        currency always uses a worse, inflated rate set by the merchant's bank, not
+        your own. Cash-heavy countries on this circuit: Laos, Cambodia and Myanmar,
+        where card acceptance outside city-centre hotels is genuinely limited and USD
+        cash (crisp, undamaged notes - torn or heavily marked bills are refused) is
+        often preferred to local currency for larger purchases. Card-friendly
+        countries: Malaysia, Thailand's cities, and India's cities, where a Wise card
+        covers most daily spending. Notify your bank of travel dates only if it still
+        uses old-style fraud flagging - most large banks no longer need this, but a
+        smaller local bank might still block a first foreign transaction without it.
+        """,
+        "tips",
+        "southeast asia",
+    ),
+    _doc(
+        "tips-onward-flights-budget-airlines-sea",
+        """
+        Budget airline strategy across the region, since flights are cheaper and more
+        useful here than the "always go overland" backpacker instinct assumes for the
+        longer legs (see tips-route-sea-overland). AirAsia, VietJet, Scoot and Cebu
+        Pacific between them cover almost every useful regional route, and their
+        headline fares are genuinely cheap - but budget for add-ons: checked baggage
+        is rarely included and costs more added at the airport than pre-booked online,
+        and seat selection, meals and priority boarding are all separate charges that
+        add up fast if not deliberately skipped. "Proof of onward travel" is
+        sporadically enforced at check-in, most strictly and consistently for the
+        Philippines and reasonably often for Thailand and Indonesia - budget airlines
+        themselves enforce this more than immigration does, since the airline is fined
+        for carrying someone who gets refused entry. The standard workaround for a
+        genuinely one-way, open-ended trip is a fully refundable dummy onward booking
+        (via a service like OnwardTicket) or booking the cheapest possible onward
+        flight and simply not using it, rather than lying about having a return date
+        booked at all. Domestic flight sales (especially AirAsia's periodic seat
+        sales) are worth signing up for even mid-trip if the route is flexible.
         """,
         "tips",
         "southeast asia",
