@@ -383,7 +383,15 @@ const DEPRECATED_ROWS = [
 
 <style scoped>
 .wrap { max-width: var(--container-wide); margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
-.top h1 { margin: 0 0 4px; font-size: 22px; }
+.top h1 {
+  margin: 0 0 4px;
+  font-size: 22px;
+  background: linear-gradient(90deg, var(--text), var(--sky-bright) 80%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  display: inline-block;
+}
 .intro { margin: 0; max-width: 640px; }
 
 .panel-head { margin-bottom: 14px; }
@@ -424,6 +432,8 @@ table.raw th {
   border-bottom: 1px solid var(--line); white-space: nowrap;
 }
 table.raw td { padding: 5px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.raw tbody tr { transition: background-color var(--dur-fast) ease; }
+table.raw tbody tr:hover { background-color: var(--panel-2); }
 table.raw .notes { max-width: 220px; word-break: break-word; }
 
 .chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }

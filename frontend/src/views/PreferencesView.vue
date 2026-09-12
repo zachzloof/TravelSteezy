@@ -276,7 +276,7 @@ async function redoOnboarding() {
     <div v-if="saved" class="notice">{{ saved }}</div>
 
     <!-- ================================================== 1. about you -->
-    <form class="panel" @submit.prevent="saveProfile">
+    <form class="panel hoverable" @submit.prevent="saveProfile">
       <div class="panel-head">
         <h2>About you</h2>
         <p class="muted small">Who you are and how you travel.</p>
@@ -362,7 +362,7 @@ async function redoOnboarding() {
 
     <div class="lists">
       <!-- ================================================ 2. history -->
-      <section class="panel">
+      <section class="panel hoverable">
         <div class="panel-head">
           <h2>Where you have been</h2>
           <p class="muted small">
@@ -378,7 +378,7 @@ async function redoOnboarding() {
           justify itself before it gets recommended to you.
         </p>
 
-        <ul v-if="route.length" class="stops">
+        <TransitionGroup v-if="route.length" tag="ul" name="fade-slide" class="stops">
           <li v-for="stop in route" :key="stop.location">
             <div class="stop-head">
               <span class="place">{{ stop.location }}</span>
@@ -399,7 +399,7 @@ async function redoOnboarding() {
             />
             <p v-if="stop.review_notes" class="muted small note">“{{ stop.review_notes }}”</p>
           </li>
-        </ul>
+        </TransitionGroup>
         <p v-else class="muted small">
           Nothing logged yet. Add a stop below, or just tell the chat where you have been.
         </p>
@@ -431,13 +431,13 @@ async function redoOnboarding() {
       </section>
 
       <!-- ================================================ 3. wishlist -->
-      <section class="panel">
+      <section class="panel hoverable">
         <div class="panel-head">
           <h2>Where you want to go</h2>
           <p class="muted small">Anything you are aiming for — including somewhere you would go back to.</p>
         </div>
 
-        <ul v-if="wishlist.length" class="wishes">
+        <TransitionGroup v-if="wishlist.length" tag="ul" name="fade-slide" class="wishes">
           <li v-for="item in wishlist" :key="item.location">
             <div class="wish-head">
               <span class="place">{{ item.location }}</span>
@@ -463,7 +463,7 @@ async function redoOnboarding() {
             </div>
             <p v-if="item.note" class="muted small note">{{ item.note }}</p>
           </li>
-        </ul>
+        </TransitionGroup>
         <p v-else class="muted small">
           Nothing on the wishlist. Anything here gets prioritised when you ask
           where to go next.
@@ -512,7 +512,15 @@ async function redoOnboarding() {
 .wrap { max-width: var(--container-wide); margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
 
 .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
-h1 { margin: 0 0 4px; font-size: 22px; }
+h1 {
+  margin: 0 0 4px;
+  font-size: 22px;
+  background: linear-gradient(90deg, var(--text), var(--accent-bright) 80%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  display: inline-block;
+}
 .intro { margin: 0; max-width: 620px; }
 .redo { color: var(--muted); text-decoration: none; flex: none; }
 
@@ -545,7 +553,9 @@ ul { margin: 0; padding: 0; list-style: none; }
   padding: 10px 12px;
   margin-bottom: 8px;
   background: var(--bg);
+  transition: border-color var(--dur) ease, transform var(--dur) ease;
 }
+.stops li:hover, .wishes li:hover { border-color: var(--stone-500); transform: translateX(2px); }
 .stop-head, .wish-head { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
 .place { font-size: 14px; text-transform: capitalize; }
 .stop-head .muted, .wish-head .muted { text-transform: capitalize; }

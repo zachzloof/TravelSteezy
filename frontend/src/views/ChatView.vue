@@ -212,7 +212,7 @@ async function scrollDown() {
   <div class="layout">
     <section class="chat panel">
       <div ref="scroller" class="stream">
-        <div v-if="!messages.length" class="empty">
+        <div v-if="!messages.length" class="empty fade-in-up">
           <h2>Where next?</h2>
           <p class="muted">
             I already know what is in your profile on the right — where you have been,
@@ -220,12 +220,19 @@ async function scrollDown() {
             I will weigh season, visas, routes and cost against all of it.
           </p>
           <div class="suggestions">
-            <button v-for="s in SUGGESTIONS" :key="s" class="ghost small" @click="send(s)">
+            <button
+              v-for="(s, i) in SUGGESTIONS"
+              :key="s"
+              class="ghost small suggestion"
+              :style="{ animationDelay: `${i * 70}ms` }"
+              @click="send(s)"
+            >
               {{ s }}
             </button>
           </div>
         </div>
 
+        <TransitionGroup name="fade-slide" tag="div" class="stream-inner">
         <div v-for="(m, i) in messages" :key="i" class="msg" :class="m.role">
           <div v-if="m.role === 'user'" class="bubble user">{{ m.text }}</div>
 
@@ -235,7 +242,13 @@ async function scrollDown() {
             <div class="bubble assistant"><Markdown :text="m.text" /></div>
 
             <div v-if="m.comparison.length" class="cards">
-              <DestinationCard v-for="c in m.comparison" :key="c.destination" :card="c" />
+              <DestinationCard
+                v-for="(c, ci) in m.comparison"
+                :key="c.destination"
+                :card="c"
+                :style="{ animationDelay: `${ci * 80}ms` }"
+                class="pop-in"
+              />
             </div>
 
             <button class="ghost small detail-toggle" @click="m.showDetail = !m.showDetail">
@@ -243,6 +256,7 @@ async function scrollDown() {
               ({{ m.agents.length }} steps, {{ m.sources.length }} passages)
             </button>
 
+            <Transition name="fade-slide">
             <div v-if="m.showDetail" class="detail">
               <h5>Agents and tools</h5>
               <ul>
@@ -265,14 +279,20 @@ async function scrollDown() {
 
               <p v-if="m.traceId" class="muted small mono trace">trace {{ m.traceId }}</p>
             </div>
+            </Transition>
           </div>
         </div>
+        </TransitionGroup>
 
-        <div v-if="busy" class="thinking muted small">
-          Running the specialists…
+        <Transition name="fade-slide">
+        <div v-if="busy" class="thinking">
+          <span class="typing"><i /><i /><i /></span>
+          <span class="muted small">Running the specialists…</span>
         </div>
+        </Transition>
       </div>
 
+      <Transition name="pop">
       <CatchUpCard
         v-if="catchup"
         class="review-slot"
@@ -282,7 +302,9 @@ async function scrollDown() {
         @update="updateCatchup"
         @dismiss="dismissCatchup"
       />
+      </Transition>
 
+      <Transition name="pop">
       <ReviewCard
         v-if="reviewPrompt"
         class="review-slot"
@@ -291,6 +313,7 @@ async function scrollDown() {
         @submit="submitReview"
         @dismiss="reviewPrompt = null"
       />
+      </Transition>
 
       <div v-if="error" class="error compose-error">{{ error }}</div>
 
@@ -334,19 +357,29 @@ async function scrollDown() {
 .chat { display: flex; flex-direction: column; height: calc(100vh - var(--header-h) - 2 * clamp(16px, 3vw, 32px)); padding: 0; }
 
 .stream { flex: 1; overflow-y: auto; padding: clamp(14px, 2vw, 24px); display: flex; flex-direction: column; gap: 16px; }
+.stream-inner { display: flex; flex-direction: column; gap: 16px; }
 
 .empty { margin: auto 0; text-align: center; padding: 20px; }
-.empty h2 { margin: 0 0 8px; font-size: 22px; }
+.empty h2 {
+  margin: 0 0 8px;
+  font-size: 22px;
+  background: linear-gradient(90deg, var(--text), var(--accent-bright) 70%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  display: inline-block;
+}
 .empty p { max-width: 480px; margin: 0 auto 18px; font-size: 14px; }
 .suggestions { display: flex; flex-direction: column; gap: 8px; align-items: center; }
-.suggestions button { max-width: 440px; }
+.suggestion { max-width: 440px; opacity: 0; animation: fadeInUp var(--dur-slow) var(--ease-out) both; }
+.suggestion:hover { border-color: var(--accent-dim); background: var(--accent-soft); color: var(--accent-bright); }
 
 .msg.user { display: flex; justify-content: flex-end; }
 
-.bubble { padding: 11px 15px; border-radius: var(--radius); max-width: min(88%, 70ch); }
+.bubble { padding: 11px 15px; border-radius: var(--radius); max-width: min(88%, 70ch); transition: box-shadow var(--dur) ease; }
 /* The user's own typed message stays literal plain text - pre-wrap so their own
    line breaks survive, and no markdown rendering (it is not the LLM's output). */
-.bubble.user { background: var(--moss-dim); color: var(--text); border-bottom-right-radius: 4px; white-space: pre-wrap; }
+.bubble.user { background: var(--moss-grad); color: var(--text); border-bottom-right-radius: 4px; white-space: pre-wrap; box-shadow: var(--glow-moss); }
 /* The assistant bubble renders real markdown (see components/Markdown.vue), so
    spacing comes from its own paragraph/list styles rather than pre-wrap. */
 .bubble.assistant { background: var(--panel-2); border: 1px solid var(--line); border-bottom-left-radius: 4px; }
@@ -375,7 +408,17 @@ async function scrollDown() {
 .summary { flex-basis: 100%; }
 .trace { margin: 12px 0 0; }
 
-.thinking { padding: 4px 2px; }
+.thinking { padding: 4px 2px; display: flex; align-items: center; gap: 10px; }
+.typing { display: inline-flex; gap: 3px; }
+.typing i {
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: bounce 1.1s ease-in-out infinite;
+}
+.typing i:nth-child(2) { animation-delay: .15s; }
+.typing i:nth-child(3) { animation-delay: .3s; }
 
 .review-slot { margin: 0 18px 14px; }
 .sidebar { min-width: 0; }

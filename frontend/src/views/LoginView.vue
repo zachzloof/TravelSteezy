@@ -53,7 +53,9 @@ async function submit() {
 
 <template>
   <div class="wrap">
-    <div class="panel card">
+    <div class="orb orb-a" aria-hidden="true" />
+    <div class="orb orb-b" aria-hidden="true" />
+    <div class="panel card fade-in-up">
       <h1>Travel Steezy</h1>
       <p class="muted small intro">
         A travel assistant for long-term backpackers. Tell it where you are, what
@@ -105,13 +107,52 @@ async function submit() {
 </template>
 
 <style scoped>
-.wrap { display: flex; justify-content: center; align-items: center; min-height: calc(100vh - var(--header-h) - 2 * clamp(16px, 3vw, 32px)); padding: 4vh 0; }
-.card { width: 100%; max-width: 440px; border-radius: var(--radius-lg); box-shadow: var(--shadow-md); }
-h1 { margin: 0 0 6px; font-size: 26px; }
+.wrap {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: calc(100vh - var(--header-h) - 2 * clamp(16px, 3vw, 32px));
+  padding: 4vh 0;
+  overflow: clip;
+}
+
+@keyframes floatOrb {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(3%, -4%) scale(1.06); }
+}
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  z-index: 0;
+  pointer-events: none;
+  animation: floatOrb 14s ease-in-out infinite;
+}
+.orb-a { width: 360px; height: 360px; left: -80px; top: -60px; background: radial-gradient(circle, var(--accent-soft), transparent 70%); }
+.orb-b { width: 320px; height: 320px; right: -70px; bottom: -60px; background: radial-gradient(circle, var(--moss-soft), transparent 70%); animation-delay: -7s; }
+
+.card {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 440px;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  border-color: color-mix(in srgb, var(--line) 70%, var(--accent-dim) 30%);
+}
+h1 {
+  margin: 0 0 6px;
+  font-size: 26px;
+  background: linear-gradient(90deg, var(--text), var(--accent-bright));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
 .intro { margin: 0 0 20px; }
 .tabs { display: flex; gap: 8px; margin-bottom: 18px; background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 4px; }
-.tabs button { flex: 1; border-color: transparent; background: transparent; }
-.tabs button.active { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-bright); }
+.tabs button { flex: 1; border-color: transparent; background: transparent; transition: all var(--dur) var(--ease-out); }
+.tabs button.active { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-bright); box-shadow: 0 2px 10px -4px rgba(226, 129, 47, .4); }
 .full { width: 100%; }
 .foot { margin: 14px 0 0; text-align: center; }
 </style>

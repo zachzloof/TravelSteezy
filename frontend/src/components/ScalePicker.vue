@@ -80,7 +80,8 @@ function pick(option) {
   border-color: var(--accent);
   color: var(--text);
   font-weight: 600;
+  box-shadow: 0 0 0 1px var(--accent-soft);
 }
 
-.note { margin: 7px 0 0; min-height: 18px; }
+.note { margin: 7px 0 0; min-height: 18px; transition: color var(--dur) ease; }
 </style>

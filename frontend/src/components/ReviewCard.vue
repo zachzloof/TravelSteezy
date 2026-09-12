@@ -64,7 +64,7 @@ function submit() {
 </template>
 
 <style scoped>
-.review { border-color: var(--accent-dim); }
+.review { border-color: var(--accent-dim); box-shadow: var(--glow-accent); }
 .head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
 h4 { margin: 0; font-size: 14px; text-transform: capitalize; }
 
@@ -76,9 +76,10 @@ h4 { margin: 0; font-size: 14px; text-transform: capitalize; }
   font-size: 22px;
   padding: 0 2px;
   line-height: 1;
+  transition: color var(--dur-fast) ease, transform var(--dur-fast) var(--ease-spring), filter var(--dur-fast) ease;
 }
-.star.on { color: var(--warn); }
-.star:hover { color: var(--warn); }
+.star.on { color: var(--warn); filter: drop-shadow(0 0 6px rgba(215, 162, 63, .5)); }
+.star:hover { color: var(--warn); transform: scale(1.2); }
 .stars .small { margin-left: 8px; }
 
 textarea { margin-bottom: 10px; }

@@ -50,12 +50,12 @@ const FIELDS = [
 
     <div v-if="writes.length" class="section">
       <h4>Just remembered</h4>
-      <ul class="writes">
-        <li v-for="(w, i) in writes" :key="i">
+      <TransitionGroup tag="ul" name="pop" class="writes">
+        <li v-for="(w, i) in writes" :key="w.operation + i">
           <span class="op mono">{{ w.operation }}</span>
           <span class="small">{{ Object.entries(w.payload).map(([k, v]) => `${k}=${v}`).join(', ') }}</span>
         </li>
-      </ul>
+      </TransitionGroup>
     </div>
 
     <!-- The trip panel (route, wishlist, interests) is slotted in here. -->
@@ -66,13 +66,13 @@ const FIELDS = [
 </template>
 
 <style scoped>
-aside { position: sticky; top: 20px; }
+aside { position: sticky; top: 20px; animation: fadeIn var(--dur-slow) var(--ease-out) both; }
 h3 { margin: 0 0 2px; font-size: 15px; }
 .sub { margin: 0 0 14px; }
 
 dl { display: grid; grid-template-columns: 88px 1fr; gap: 5px 10px; margin: 0; font-size: 13.5px; }
 dt { color: var(--muted); }
-dd { margin: 0; text-transform: capitalize; word-break: break-word; }
+dd { margin: 0; text-transform: capitalize; word-break: break-word; transition: color var(--dur) ease; }
 dd.unknown { color: var(--muted-2); font-style: italic; text-transform: none; }
 dd.deadline { color: var(--warn); text-transform: none; }
 
@@ -83,8 +83,23 @@ ul { margin: 0; padding: 0; list-style: none; }
 .visited li { font-size: 13.5px; margin-bottom: 4px; }
 .country { text-transform: capitalize; }
 
-.writes li { display: flex; flex-direction: column; gap: 1px; margin-bottom: 8px; }
-.op { font-size: 11px; color: var(--accent); }
+.writes li {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-bottom: 8px;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--moss-soft);
+}
+.op { font-size: 11px; color: var(--moss-bright); }
 
-.edit { display: inline-block; margin-top: 16px; color: var(--accent); text-decoration: none; }
+.edit {
+  display: inline-block;
+  margin-top: 16px;
+  color: var(--accent);
+  text-decoration: none;
+  transition: transform var(--dur-fast) ease, color var(--dur-fast) ease;
+}
+.edit:hover { color: var(--accent-bright); transform: translateX(2px); }
 </style>

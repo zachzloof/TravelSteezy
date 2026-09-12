@@ -38,7 +38,7 @@ const route = computed(() => [...props.history].reverse())
     <p v-else class="muted small">Nothing logged yet.</p>
 
     <h4>Want to go</h4>
-    <ul v-if="wishlist.length" class="wish">
+    <TransitionGroup v-if="wishlist.length" tag="ul" name="fade-slide" class="wish">
       <li v-for="item in wishlist" :key="item.location">
         <span class="place">{{ item.location }}</span>
         <span class="tag" :class="{ go: item.priority === 1 }">
@@ -50,7 +50,7 @@ const route = computed(() => [...props.history].reverse())
           @click="emit('drop-wishlist', item.location)"
         >×</button>
       </li>
-    </ul>
+    </TransitionGroup>
     <p v-else class="muted small">Nothing on the wishlist.</p>
 
     <template v-if="interests.length">
@@ -97,8 +97,9 @@ h4:not(:first-child) { margin-top: 16px; }
   margin-top: 4px;
   flex: none;
   z-index: 1;
+  transition: box-shadow var(--dur) ease;
 }
-.dot.rated { background: var(--accent); border-color: var(--accent); }
+.dot.rated { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 
 .body { min-width: 0; }
 .place { font-size: 13.5px; text-transform: capitalize; margin-right: 6px; }
@@ -117,5 +118,12 @@ h4:not(:first-child) { margin-top: 16px; }
 
 .chips { display: flex; flex-wrap: wrap; gap: 5px; }
 
-.manage { display: inline-block; margin-top: 14px; color: var(--accent); text-decoration: none; }
+.manage {
+  display: inline-block;
+  margin-top: 14px;
+  color: var(--accent);
+  text-decoration: none;
+  transition: transform var(--dur-fast) ease, color var(--dur-fast) ease;
+}
+.manage:hover { color: var(--accent-bright); transform: translateX(2px); }
 </style>

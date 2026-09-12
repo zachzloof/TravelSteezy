@@ -230,8 +230,9 @@ const FIELD_LABELS = {
       </div>
 
       <div class="cols">
+        <Transition name="fade-slide" mode="out-in">
         <!-- ---------------------------------------------- the question -->
-        <section v-if="question" class="panel ask">
+        <section v-if="question" :key="stepId" class="panel ask">
           <p class="step muted small">Question {{ position }} of {{ questions.length }}</p>
           <h2>{{ question.title }}</h2>
           <p class="prompt">{{ question.prompt }}</p>
@@ -266,7 +267,7 @@ const FIELD_LABELS = {
         </section>
 
         <!-- ---------------------------------------------- the review step -->
-        <section v-else class="panel ask done-panel">
+        <section v-else key="done" class="panel ask done-panel">
           <h2>That is your profile built</h2>
           <p class="muted">
             Everything below is stored against your account and read before every
@@ -282,11 +283,13 @@ const FIELD_LABELS = {
             Want to redo an answer? Click any completed step above.
           </p>
         </section>
+        </Transition>
 
         <!-- ---------------------------------------------- what was captured -->
         <aside class="panel captured">
           <h3>What I have so far</h3>
 
+          <Transition name="pop">
           <div v-if="justCaptured.length" class="just">
             <h4>From that answer</h4>
             <ul>
@@ -296,6 +299,7 @@ const FIELD_LABELS = {
               </li>
             </ul>
           </div>
+          </Transition>
 
           <p v-if="!hasCapture" class="muted small empty">
             Nothing yet. Answer the first question and it will start filling in here.
@@ -360,14 +364,29 @@ const FIELD_LABELS = {
 .welcome { max-width: var(--container); margin: 0 auto; }
 .loading { text-align: center; padding: 60px 20px; }
 
-.intro { text-align: center; margin-bottom: 22px; }
-.intro h1 { margin: 0 0 6px; font-size: 25px; }
+.intro { text-align: center; margin-bottom: 22px; animation: fadeInUp var(--dur-slow) var(--ease-out) both; }
+.intro h1 {
+  margin: 0 0 6px;
+  font-size: 25px;
+  background: linear-gradient(90deg, var(--text), var(--accent-bright));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  display: inline-block;
+}
 .intro p { margin: 0 auto; max-width: 560px; font-size: 14px; }
 
 /* ---------------------------------------------------------------- progress */
 .rail { margin-bottom: 18px; }
-.bar { height: 3px; background: var(--line); border-radius: 999px; overflow: hidden; }
-.fill { height: 100%; background: var(--accent); transition: width .3s ease; }
+.bar { height: 4px; background: var(--line); border-radius: 999px; overflow: hidden; }
+.fill {
+  height: 100%;
+  background: var(--accent-grad);
+  background-size: 200% 100%;
+  border-radius: 999px;
+  transition: width var(--dur-slow) var(--ease-out);
+  animation: shimmer 2.5s linear infinite;
+}
 
 .steps {
   display: flex;
@@ -377,12 +396,13 @@ const FIELD_LABELS = {
   margin: 12px 0 0;
   padding: 0;
 }
-.steps li { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--muted); min-width: 0; }
+.steps li { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--muted); min-width: 0; transition: color var(--dur) ease; }
 .steps li.clickable { cursor: pointer; }
-.steps li.done .pip { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.steps li.done .pip { background: var(--accent); border-color: var(--accent); color: var(--on-accent); animation: popIn var(--dur) var(--ease-spring) both; }
 .steps li.current { color: var(--text); }
-.steps li.current .pip { border-color: var(--accent); color: var(--accent); }
+.steps li.current .pip { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 .steps li.done:hover .name { color: var(--text); }
+.steps li.done:hover .pip, .steps li.current:hover .pip { transform: scale(1.1); }
 .pip {
   display: grid;
   place-items: center;
@@ -391,6 +411,7 @@ const FIELD_LABELS = {
   border: 1px solid var(--line);
   border-radius: 50%;
   font-size: 11px;
+  transition: transform var(--dur-fast) var(--ease-spring), box-shadow var(--dur) ease;
 }
 .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 760px) { .steps .name { display: none; } .steps { justify-content: center; gap: 10px; } }
@@ -452,6 +473,7 @@ h4 {
   border-radius: var(--radius-sm);
   padding: 11px 12px;
   margin-bottom: 16px;
+  box-shadow: var(--glow-moss);
 }
 .just ul { margin: 0; padding: 0; list-style: none; }
 .just li { display: flex; gap: 8px; font-size: 13px; margin-bottom: 4px; }

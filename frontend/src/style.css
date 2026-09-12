@@ -49,6 +49,19 @@
   --bad-dim: #5a2c22;
   --bad-soft: rgba(193, 87, 63, .16);
 
+  /* ------------------------------------------------------------------ sky
+     A cool third accent used sparingly for information/highlight states and
+     to give gradients somewhere to travel to, so they read as deliberate
+     rather than a single color faded to black. */
+  --sky: #5aa9c9;
+  --sky-bright: #7fc7e6;
+  --sky-soft: rgba(90, 169, 201, .14);
+
+  --accent-grad: linear-gradient(135deg, var(--accent) 0%, var(--accent-bright) 100%);
+  --moss-grad: linear-gradient(135deg, var(--moss-dim) 0%, var(--moss) 100%);
+  --glow-accent: 0 0 0 1px var(--accent-soft), 0 8px 24px -8px rgba(226, 129, 47, .45);
+  --glow-moss: 0 0 0 1px var(--moss-soft), 0 8px 24px -8px rgba(127, 154, 99, .4);
+
   --radius-sm: 8px;
   --radius: 12px;
   --radius-lg: 18px;
@@ -56,6 +69,12 @@
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, .35);
   --shadow-md: 0 10px 30px -10px rgba(0, 0, 0, .55);
   --shadow-lg: 0 24px 60px -20px rgba(0, 0, 0, .6);
+
+  --ease-out: cubic-bezier(.16, 1, .3, 1);
+  --ease-spring: cubic-bezier(.34, 1.56, .64, 1);
+  --dur-fast: .15s;
+  --dur: .25s;
+  --dur-slow: .45s;
 
   --header-h: 64px;
   --container-wide: min(1560px, 94vw);
@@ -71,16 +90,63 @@ html, body, #app { height: 100%; }
 
 html { scrollbar-color: var(--stone-600) transparent; }
 
+@keyframes drift {
+  0%, 100% { background-position: 8% -8%, 100% 0%, 0% 100%; }
+  50% { background-position: 14% 2%, 92% 10%, 8% 92%; }
+}
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes popIn {
+  from { opacity: 0; transform: scale(.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes shimmer {
+  from { background-position: -200% 0; }
+  to { background-position: 200% 0; }
+}
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 0 0 var(--accent-soft); }
+  50% { box-shadow: 0 0 0 6px transparent; }
+}
+@keyframes bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: .5; }
+  30% { transform: translateY(-5px); opacity: 1; }
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.fade-in-up { animation: fadeInUp var(--dur-slow) var(--ease-out) both; }
+.fade-in { animation: fadeIn var(--dur-slow) var(--ease-out) both; }
+.pop-in { animation: popIn var(--dur) var(--ease-spring) both; }
+
 body {
   margin: 0;
   color: var(--text);
   font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   background-color: var(--bg);
   background-image:
-    radial-gradient(1100px circle at 8% -8%, rgba(127, 154, 99, .07), transparent 55%),
-    radial-gradient(900px circle at 100% 0%, rgba(226, 129, 47, .05), transparent 50%);
+    radial-gradient(1100px circle at 8% -8%, rgba(127, 154, 99, .1), transparent 55%),
+    radial-gradient(900px circle at 100% 0%, rgba(226, 129, 47, .08), transparent 50%),
+    radial-gradient(800px circle at 0% 100%, rgba(90, 169, 201, .05), transparent 50%);
   background-attachment: fixed;
+  animation: drift 40s ease-in-out infinite;
   -webkit-font-smoothing: antialiased;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 ::selection { background: var(--accent-soft); color: var(--text); }
@@ -103,6 +169,7 @@ h1, h2, h3, h4, h5, h6 { font-weight: 700; letter-spacing: -.01em; }
   outline: 2px solid var(--accent);
   outline-offset: 2px;
   border-radius: var(--radius-sm);
+  transition: outline-offset .1s ease;
 }
 
 button {
@@ -113,27 +180,29 @@ button {
   color: var(--text);
   padding: 8px 15px;
   border-radius: var(--radius-sm);
-  transition: border-color .15s ease, background-color .15s ease, color .15s ease, transform .1s ease, box-shadow .15s ease;
+  transition: border-color var(--dur-fast) ease, background-color var(--dur-fast) ease,
+    color var(--dur-fast) ease, transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) ease;
 }
-button:hover:not(:disabled) { border-color: var(--stone-500); background: var(--stone-800); }
-button:active:not(:disabled) { transform: translateY(1px); }
+button:hover:not(:disabled) { border-color: var(--stone-500); background: var(--stone-800); transform: translateY(-1px); }
+button:active:not(:disabled) { transform: translateY(1px); transition-duration: .05s; }
 button:disabled { opacity: .5; cursor: not-allowed; }
 
 button.primary {
-  background: var(--accent);
+  background: var(--accent-grad);
   border-color: var(--accent);
   color: var(--on-accent);
   font-weight: 650;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--glow-accent);
 }
 button.primary:hover:not(:disabled) {
-  background: var(--accent-bright);
   border-color: var(--accent-bright);
-  box-shadow: 0 4px 16px -4px rgba(226, 129, 47, .5);
+  box-shadow: 0 0 0 1px var(--accent-bright), 0 10px 28px -6px rgba(226, 129, 47, .6);
+  transform: translateY(-1px) scale(1.015);
 }
+button.primary:active:not(:disabled) { transform: translateY(1px) scale(1); }
 
 button.danger { border-color: var(--bad-dim); color: #f0c1b8; }
-button.danger:hover:not(:disabled) { border-color: var(--bad); background: var(--bad-soft); }
+button.danger:hover:not(:disabled) { border-color: var(--bad); background: var(--bad-soft); box-shadow: 0 6px 18px -8px rgba(193, 87, 63, .5); }
 
 button.ghost { background: transparent; border-color: transparent; }
 button.ghost:hover:not(:disabled) { background: var(--panel-2); border-color: var(--line); }
@@ -146,12 +215,14 @@ input, select, textarea {
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   padding: 10px 12px;
-  transition: border-color .15s ease, box-shadow .15s ease;
+  transition: border-color var(--dur-fast) ease, box-shadow var(--dur) ease, background-color var(--dur-fast) ease;
 }
+input:hover:not(:focus), select:hover:not(:focus), textarea:hover:not(:focus) { border-color: var(--stone-500); }
 input:focus, select:focus, textarea:focus {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-soft);
+  background: color-mix(in srgb, var(--bg) 92%, var(--accent) 8%);
 }
 input::placeholder, textarea::placeholder { color: var(--muted-2); }
 
@@ -161,10 +232,18 @@ label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 5px
 
 .panel {
   background: var(--panel);
+  background-image: linear-gradient(165deg, color-mix(in srgb, var(--panel) 100%, white 2%) 0%, var(--panel) 60%);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: 20px;
   box-shadow: var(--shadow-sm);
+  transition: border-color var(--dur) ease, box-shadow var(--dur) ease, transform var(--dur) var(--ease-out);
+}
+
+.panel.hoverable:hover {
+  border-color: var(--stone-500);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
 }
 
 .muted { color: var(--muted); }
@@ -179,6 +258,7 @@ label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 5px
   border-radius: var(--radius-sm);
   font-size: 14px;
   margin-bottom: 14px;
+  animation: fadeInUp var(--dur) var(--ease-out) both;
 }
 .notice {
   background: var(--moss-soft);
@@ -188,6 +268,7 @@ label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 5px
   border-radius: var(--radius-sm);
   font-size: 14px;
   margin-bottom: 14px;
+  animation: fadeInUp var(--dur) var(--ease-out) both;
 }
 
 .tag {
@@ -199,10 +280,30 @@ label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 5px
   border-radius: 999px;
   border: 1px solid var(--line);
   color: var(--muted);
+  transition: box-shadow var(--dur) ease, transform var(--dur-fast) ease;
 }
-.tag.go { border-color: var(--moss-dim); color: var(--moss-bright); background: var(--moss-soft); }
+.tag.go { border-color: var(--moss-dim); color: var(--moss-bright); background: var(--moss-soft); box-shadow: 0 0 0 0 var(--moss-soft); }
 .tag.maybe { border-color: var(--warn-dim); color: var(--warn); background: var(--warn-soft); }
 .tag.avoid { border-color: var(--bad-dim); color: #eeb4b2; background: var(--bad-soft); }
+.tag.go:hover, .tag.maybe:hover, .tag.avoid:hover { transform: translateY(-1px); }
+
+/* --------------------------------------------------------------- transitions
+   Shared Vue <Transition>/<TransitionGroup> names used across views so
+   entrances feel like one system rather than each screen inventing its own. */
+.fade-slide-enter-active, .fade-slide-leave-active { transition: opacity var(--dur) var(--ease-out), transform var(--dur) var(--ease-out); }
+.fade-slide-enter-from { opacity: 0; transform: translateY(8px); }
+.fade-slide-leave-to { opacity: 0; transform: translateY(-8px); }
+.fade-slide-move { transition: transform var(--dur) var(--ease-out); }
+
+.pop-enter-active { transition: opacity var(--dur) var(--ease-spring), transform var(--dur) var(--ease-spring); }
+.pop-leave-active { transition: opacity var(--dur-fast) ease, transform var(--dur-fast) ease; }
+.pop-enter-from { opacity: 0; transform: scale(.94) translateY(6px); }
+.pop-leave-to { opacity: 0; transform: scale(.97); }
+.pop-move { transition: transform var(--dur) var(--ease-out); }
+
+.page-enter-active, .page-leave-active { transition: opacity var(--dur) ease, transform var(--dur) var(--ease-out); }
+.page-enter-from { opacity: 0; transform: translateY(6px); }
+.page-leave-to { opacity: 0; transform: translateY(-6px); }
 
 .row { display: flex; gap: 10px; align-items: center; }
 .grow { flex: 1; }

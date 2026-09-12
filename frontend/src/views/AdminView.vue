@@ -66,7 +66,7 @@ function logout() {
 
 <template>
   <div class="wrap">
-    <div v-if="!authed" class="panel card">
+    <div v-if="!authed" class="panel card fade-in-up">
       <h1>Admin</h1>
       <p class="muted small">Approve or reject new Travel Steezy accounts.</p>
       <div v-if="error" class="error">{{ error }}</div>
@@ -100,7 +100,7 @@ function logout() {
               <th>ID</th><th>Username</th><th>Status</th><th>Registered</th><th>Last seen</th><th></th>
             </tr>
           </thead>
-          <tbody>
+          <TransitionGroup tag="tbody" name="fade-slide">
             <tr v-for="u in users" :key="u.id">
               <td class="mono muted">{{ u.id }}</td>
               <td>{{ u.username }}</td>
@@ -112,7 +112,7 @@ function logout() {
                 <button v-if="u.status !== 'rejected'" class="small danger" :disabled="busy" @click="act(u, 'reject')">Reject</button>
               </td>
             </tr>
-          </tbody>
+          </TransitionGroup>
         </table>
         <p v-else class="muted small">No accounts registered yet.</p>
       </div>
@@ -142,5 +142,7 @@ th {
   border-bottom: 1px solid var(--line);
 }
 td { padding: 10px 8px 10px 0; border-bottom: 1px solid var(--line); }
+tbody tr { transition: background-color var(--dur-fast) ease; }
+tbody tr:hover { background-color: var(--panel-2); }
 .actions { display: flex; gap: 6px; justify-content: flex-end; }
 </style>

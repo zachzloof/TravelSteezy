@@ -54,7 +54,7 @@ function submit() {
 </template>
 
 <style scoped>
-.catchup { border-color: var(--accent-dim); }
+.catchup { border-color: var(--accent-dim); box-shadow: var(--glow-accent); }
 .head { margin-bottom: 8px; }
 h4 { margin: 0; font-size: 14px; }
 

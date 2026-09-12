@@ -49,10 +49,15 @@ defineProps({ card: { type: Object, required: true } })
   padding: 15px 17px;
   box-shadow: var(--shadow-sm);
   height: 100%;
+  transition: transform var(--dur) var(--ease-out), box-shadow var(--dur) ease, border-color var(--dur) ease;
 }
+.card:hover { transform: translateY(-3px); }
 .card.go { border-left-color: var(--moss); }
+.card.go:hover { box-shadow: var(--glow-moss); border-color: var(--moss-dim); }
 .card.maybe { border-left-color: var(--warn); }
+.card.maybe:hover { box-shadow: 0 0 0 1px var(--warn-soft), 0 8px 24px -8px rgba(215, 162, 63, .35); border-color: var(--warn-dim); }
 .card.avoid { border-left-color: var(--bad); }
+.card.avoid:hover { box-shadow: 0 0 0 1px var(--bad-soft), 0 8px 24px -8px rgba(193, 87, 63, .35); border-color: var(--bad-dim); }
 
 header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
 .rank { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }

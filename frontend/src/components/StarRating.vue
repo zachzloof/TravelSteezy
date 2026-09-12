@@ -51,10 +51,10 @@ function set(value) {
   font-size: 15px;
   line-height: 1;
   color: var(--stone-700);
-  transition: color .12s, transform .12s;
+  transition: color .12s, transform .12s ease, filter .12s ease;
 }
-.star:hover:not(:disabled) { transform: scale(1.15); }
-.star.on { color: var(--warn); }
+.star:hover:not(:disabled) { transform: scale(1.2); }
+.star.on { color: var(--warn); filter: drop-shadow(0 0 4px rgba(215, 162, 63, .45)); }
 .star:disabled { cursor: default; opacity: 1; }
 
 .unrated { margin-left: 6px; }
