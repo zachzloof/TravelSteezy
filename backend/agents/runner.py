@@ -21,11 +21,22 @@ from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 from google.genai import types
 
-from backend.agents import coverage, graph, tracking
+from backend.agents import catchup, coverage, graph, tracking
 from backend.agents.tools import ToolRecorder, reset_recorder, set_recorder
 from backend.config import settings
 from backend.memory import store, travel
 from backend.rag import store as rag_store
+from backend.schemas import (
+    AgentTrace,
+    ChatResponse,
+    DestinationVerdict,
+    MemoryWriteEntry,
+    OnboardingState,
+    TravelEntry,
+    TripProfile,
+    VisitedEntry,
+    WishlistEntry,
+)
 from backend.tracing.langfuse_setup import Trace
 
 logger = logging.getLogger(__name__)
@@ -151,7 +162,7 @@ def _fallback_parse(message: str, snapshot: dict[str, Any]) -> dict[str, Any]:
         "profile_updates": {},
         "departures": [],
         "candidate_destinations": destinations,
-        "travel_month": profile.get("trip_start_date") or date.today().isoformat(),
+        "travel_month": date.today().isoformat(),
         "question_focus": message[:80],
         "needs_weather": bool(destinations),
         "needs_logistics": bool(destinations),
@@ -211,6 +222,34 @@ def _coerce_cards(raw: Any) -> list[dict[str, Any]]:
 # --------------------------------------------------------------------------- #
 # main entry point
 # --------------------------------------------------------------------------- #
+def to_chat_response(result: dict[str, Any]) -> ChatResponse:
+    """Shape a run_turn() result dict into the API's ChatResponse model.
+
+    Shared rather than duplicated: /chat calls run_turn directly, and the
+    catch-up "what's changed" answer IS a run_turn call too - it is a genuine
+    chat turn, just triggered from a different card - so both routes build the
+    same response the same way.
+    """
+    profile = {k: v for k, v in (result.get("profile") or {}).items() if k != "user_id"}
+    return ChatResponse(
+        reply=result["reply"],
+        comparison=[DestinationVerdict(**c) for c in result.get("comparison", [])],
+        agents_fired=[AgentTrace(**a) for a in result.get("agents_fired", [])],
+        memory_writes=[MemoryWriteEntry(**w) for w in result.get("memory_writes", [])],
+        retrieved_sources=result.get("retrieved_sources", []),
+        trace_id=result.get("trace_id"),
+        profile=TripProfile(**profile) if profile else None,
+        visited_history=[VisitedEntry(**v) for v in result.get("visited_history", [])],
+        intent=result.get("intent"),
+        travel_history=[TravelEntry(**h) for h in result.get("travel_history", [])],
+        wishlist=[WishlistEntry(**w) for w in result.get("wishlist", [])],
+        review_prompt=result.get("review_prompt"),
+        onboarding=(
+            OnboardingState(**result["onboarding"]) if result.get("onboarding") else None
+        ),
+    )
+
+
 async def run_turn(user_id: int, message: str, username: str = "") -> dict[str, Any]:
     """Run one full conversational turn for one account."""
     trace = Trace(
@@ -223,6 +262,15 @@ async def run_turn(user_id: int, message: str, username: str = "") -> dict[str, 
     )
     recorder = ToolRecorder()
     token = set_recorder(recorder)
+
+    # A real turn happened today - regardless of what happens next, including
+    # the LLM being unavailable. This is the ONLY place that gets touched for
+    # it, so opening the chat page or checking catch-up status cannot silently
+    # clear tomorrow's catch-up prompt on its own. It has to sit before the
+    # llm_enabled check below, not after: an earlier version placed it after,
+    # so answering the catch-up card while the LLM was unavailable never
+    # cleared the prompt at all - caught by a smoke test, not by inspection.
+    catchup.touch_last_active(user_id)
 
     try:
         if not settings.llm_enabled:
@@ -294,7 +342,11 @@ async def run_turn(user_id: int, message: str, username: str = "") -> dict[str, 
             detected = rag_store.detect_destinations(message)
             if len(detected) >= 2:
                 candidates = detected
-        travel_month = parse.get("travel_month") or profile.get("trip_start_date") or ""
+        # trip_start_date was removed from the profile - it added little (a
+        # backpacker's "end date" is usually a soft guess, not a hard fact) and
+        # kept getting invented. today() is a better default anyway: it reflects
+        # when the question is actually being asked.
+        travel_month = parse.get("travel_month") or date.today().isoformat()
 
         state = {
             **base_state,

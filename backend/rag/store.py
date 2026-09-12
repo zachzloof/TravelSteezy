@@ -338,6 +338,39 @@ def search(
     return [h for h in hits if h.get("score", 0.0) >= min_score]
 
 
+def fetch_by_ids(ids: list[str], namespace: str = "experience") -> list[dict[str, Any]]:
+    """Look up specific documents by their exact id, no similarity search.
+
+    Used by the memory debug page to answer "what has THIS account actually
+    published to the shared store" - ids for experience documents are
+    deterministic (see backend/rag/experience.py), so the caller can compute
+    exactly which ids an account's own reviews would have produced and check
+    whether each one is really there, rather than guessing from what was
+    submitted. A review that was too short to index, or marked private, will
+    correctly not appear.
+    """
+    if not ids:
+        return []
+    try:
+        if settings.pinecone_enabled:
+            index = _pinecone_index()
+            result = index.fetch(ids=ids, namespace=namespace)
+            found = []
+            for vid, vec in (result.vectors or {}).items():
+                md = dict(vec.metadata or {})
+                found.append({"id": vid, "metadata": md, "text": md.get("text", "")})
+            return found
+        data = _load_local_index()
+        wanted = set(ids)
+        return [
+            {"id": d["id"], "metadata": d.get("metadata", {}), "text": d.get("text", "")}
+            for d in data.get("documents", [])
+            if d["id"] in wanted
+        ]
+    except Exception as exc:  # noqa: BLE001 - a debug view must never 500
+        return [{"id": "fetch-error", "metadata": {}, "text": "", "error": str(exc)}]
+
+
 def format_passages(hits: list[dict[str, Any]]) -> str:
     """Render hits as a numbered, citable block for an agent prompt."""
     if not hits:

@@ -182,9 +182,14 @@ Field rules:
   nationality, budget_band (shoestring|budget|mid|comfortable|luxury),
   travel_style (very_slow|slow|balanced|fast|very_fast),
   climate_preference (cold|cool|temperate|warm|hot),
-  current_location, trip_start_date (YYYY-MM-DD), trip_end_date (YYYY-MM-DD),
-  visa_deadline_date (YYYY-MM-DD), visa_deadline_note, interests.
+  current_location, visa_deadline_date (YYYY-MM-DD), visa_deadline_note, interests.
   Empty object if nothing new. Never repeat values already in the profile.
+  "nationality" is ONLY for an explicit statement of citizenship or passport
+  ("I'm British", "I hold an Australian passport"). NEVER infer it from a place
+  they started, are visiting, or are currently in - visiting or starting a trip
+  somewhere is not evidence of holding that country's passport. If in doubt,
+  leave it out.
+  There is no trip_start_date or trip_end_date field - do not invent one.
 - "visits": places they are AT or have ARRIVED in, as
   [{{"location": "Chiang Mai", "location_type": "city", "country": "Thailand",
      "arrival_date": "YYYY-MM-DD or null"}}].
@@ -211,7 +216,7 @@ Field rules:
   "discover".
 - "focus_location": for "local" intent, the single place the question is about.
 - "travel_month": the month the trip in question would happen, as a month name.
-  Infer from the message, else trip_start_date, else today.
+  Infer from the message, else today's month.
 - "needs_*": false only when that specialist is clearly irrelevant.
 """
 )

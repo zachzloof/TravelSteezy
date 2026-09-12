@@ -20,7 +20,7 @@
 // Save button, because that is the only panel where you are mid-thought.
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { api, tokens } from '../api'
+import { api, session, tokens } from '../api'
 import {
   BUDGET_BANDS,
   CLIMATE_PREFS,
@@ -46,8 +46,6 @@ const form = ref({
   travel_style: '',
   climate_preference: '',
   social_style: '',
-  trip_start_date: '',
-  trip_end_date: '',
   visa_deadline_date: '',
   visa_deadline_note: ''
 })
@@ -231,9 +229,29 @@ async function forgetAll() {
     applyProfile(await api.forgetMe())
     await loadTravel()
     saved.value = 'Memory cleared for this account.'
+    // A full forget resets onboarding too, so the router's onboarding gate must
+    // stop trusting its cached "already onboarded" answer.
+    session.reset()
   } catch (e) {
     error.value = e.message
   } finally {
+    busy.value = false
+  }
+}
+
+// This used to be a plain link straight to /welcome, which did nothing useful:
+// the welcome page computes its first question from the SAME answered list
+// that was already complete, so it landed straight back on the review screen
+// with nothing to redo. It has to actually reset progress first.
+async function redoOnboarding() {
+  busy.value = true
+  error.value = ''
+  try {
+    await api.resetOnboardingDebug()
+    session.reset()
+    router.push('/welcome')
+  } catch (e) {
+    error.value = e.message
     busy.value = false
   }
 }
@@ -249,7 +267,9 @@ async function forgetAll() {
           yourself. Change anything here and the next recommendation reflects it.
         </p>
       </div>
-      <RouterLink class="ghost small redo" to="/welcome">Redo the questions</RouterLink>
+      <button class="ghost small redo" type="button" :disabled="busy" @click="redoOnboarding">
+        Redo the questions
+      </button>
     </header>
 
     <div v-if="error" class="error">{{ error }}</div>
@@ -304,17 +324,7 @@ async function forgetAll() {
       </div>
 
       <div class="sub">
-        <h3>Timing</h3>
-        <div class="two">
-          <div class="field">
-            <label for="start">Trip start</label>
-            <input id="start" v-model="form.trip_start_date" type="date" />
-          </div>
-          <div class="field">
-            <label for="end">Trip end</label>
-            <input id="end" v-model="form.trip_end_date" type="date" />
-          </div>
-        </div>
+        <h3>Deadline</h3>
         <div class="two">
           <div class="field">
             <label for="vd">Visa / permit deadline</label>

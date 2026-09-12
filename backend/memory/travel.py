@@ -339,6 +339,42 @@ def get_interests(user_id: int) -> list[str]:
     return [r["interest"] for r in rows]
 
 
+def get_interests_with_weight(user_id: int) -> list[dict[str, Any]]:
+    """The raw rows, weight included - the memory debug page's own view."""
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT interest, weight, added_at FROM user_interests WHERE user_id = ? "
+            "ORDER BY weight DESC, interest ASC",
+            (user_id,),
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def remove_interest(user_id: int, interest: str, source: str = "user_edit") -> bool:
+    """Delete one interest without touching the rest of the list."""
+    interest = _key(interest)
+    if not interest:
+        return False
+    with get_conn() as conn:
+        removed = conn.execute(
+            "DELETE FROM user_interests WHERE user_id = ? AND interest = ?",
+            (user_id, interest),
+        ).rowcount
+        if removed:
+            _record_write(conn, user_id, "remove_interest", {"interest": interest}, source)
+    if removed:
+        # Keep the mirrored free-text column (read by every agent prompt) in
+        # sync, the same way set_interests does.
+        remaining = get_interests(user_id)
+        with get_conn() as conn:
+            conn.execute(
+                "UPDATE trip_profile SET interests = ?, updated_at = datetime('now') "
+                "WHERE user_id = ?",
+                (", ".join(remaining) if remaining else None, user_id),
+            )
+    return bool(removed)
+
+
 def set_social_style(user_id: int, style: str, source: str = "agent") -> str | None:
     style = _key(style)
     if style not in SOCIAL_STYLES:
@@ -557,6 +593,27 @@ def set_onboarding(
             conn.execute(
                 "UPDATE onboarding_state SET turns = turns + 1 WHERE user_id = ?", (user_id,)
             )
+    return get_onboarding(user_id)
+
+
+def reset_onboarding(user_id: int, source: str = "user_edit") -> dict[str, Any]:
+    """Send this account back through onboarding from question one.
+
+    Deliberately does NOT touch travel_history/wishlist/interests/passports -
+    this is "redo the questions", not "forget everything". A full wipe is
+    store.forget_account_memory; this exists for the debug page and for
+    "Redo the questions" in My Preferences, where the existing profile is
+    exactly what onboarding is meant to let someone correct.
+    """
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE onboarding_state SET status = 'not_started', step = 'route', "
+            "  turns = 0, answered = '[]', started_at = NULL, completed_at = NULL "
+            "WHERE user_id = ?",
+            (user_id,),
+        )
+        conn.execute("UPDATE trip_profile SET onboarded = 0 WHERE user_id = ?", (user_id,))
+        _record_write(conn, user_id, "reset_onboarding", {}, source)
     return get_onboarding(user_id)
 
 

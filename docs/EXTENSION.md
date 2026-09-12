@@ -368,6 +368,14 @@ All scoped to the authenticated account; `user_id` comes from the signed token.
 | `POST /travel/me/history/rating` | Star-rate a stop already on the route |
 | `DELETE /travel/me/history/{location}` | Remove a stop logged wrongly |
 | `GET /travel/me/pending-reviews` | Places due a review prompt |
+| `GET /travel/me/catchup` | Whether a "here's where we left off" prompt is due, and its summary |
+| `POST /travel/me/catchup/dismiss` | The quick "still here, nothing's changed" button - no model call |
+| `POST /travel/me/catchup/update` | Answer the catch-up card in free text - a genuine chat turn |
+| `GET /memory/me` | Every raw row this account has, plus the exact prompt text fed to agents |
+| `DELETE /memory/me/interests/{interest}` | Delete one interest |
+| `DELETE /memory/me/passports/{country}` | Delete one passport |
+| `DELETE /memory/me/profile-field/{field}` | Clear one raw trip_profile field |
+| `POST /memory/me/onboarding/reset` | Redo the welcome-page questions without touching the route/wishlist |
 
 ---
 
@@ -381,7 +389,7 @@ All scoped to the authenticated account; `user_id` comes from the signed token.
 
   | Panel | Holds |
   |---|---|
-  | About you | Passports (a list), currently in, and the three five-point scales, plus trip dates, deadline and interests |
+  | About you | Passports (a list), currently in, the three five-point scales, deadline and interests |
   | Where you have been | The route, each stop star-rated inline, removable |
   | Where you want to go | The wishlist, with priority, and a "going back" badge on a revisit |
 
@@ -398,6 +406,20 @@ All scoped to the authenticated account; `user_id` comes from the signed token.
   wishlist with priorities, and interests. Auto-logged stops are marked as such.
 - **Review card** appears above the composer when a review is due: a star rating,
   free text, and a share toggle.
+- **Catch-up card** appears above the composer once per calendar-day gap since
+  the account's last real chat turn: a short "here's where we left off" summary,
+  a free-text box (processed as an ordinary chat turn), and a one-tap "still
+  here" dismiss that makes no model call at all.
+- **Memory page** (`/memory`) is a debug view, not a marketing feature: the
+  exact `memory_block`/`travel_block` text fed into every agent prompt,
+  every raw row (interest weights, deprecated columns, the onboarding
+  answered-list included), per-row and per-field deletion, and which of an
+  account's reviews have actually reached the shared RAG experience store -
+  fetched by id, not trusted from what was submitted.
+- **Assistant replies render as markdown**, not literal asterisks and dashes -
+  a small `Markdown.vue` component (`marked` + DOMPurify) used for the chat
+  bubble and every LLM-authored field on a destination card. The traveller's
+  own typed messages are deliberately left as plain text.
 
 ## 10. Configuration
 

@@ -77,8 +77,6 @@ class TripProfile(BaseModel):
     travel_style: Optional[str] = None
     climate_preference: Optional[str] = None
     current_location: Optional[str] = None
-    trip_start_date: Optional[str] = None
-    trip_end_date: Optional[str] = None
     visa_deadline_date: Optional[str] = None
     visa_deadline_note: Optional[str] = None
     interests: Optional[str] = None
@@ -128,8 +126,6 @@ class ProfilePatch(BaseModel):
     # string, so a partial form can still never wipe a field it did not show.
     clear: list[str] = []
     current_location: Optional[str] = None
-    trip_start_date: Optional[str] = None
-    trip_end_date: Optional[str] = None
     visa_deadline_date: Optional[str] = None
     visa_deadline_note: Optional[str] = None
     interests: Optional[str] = None
@@ -320,6 +316,55 @@ class ReviewRequest(BaseModel):
     # False keeps the review private to this account rather than feeding the
     # shared RAG experience namespace.
     share: bool = True
+
+
+class CatchupStatus(BaseModel):
+    """"Here's where we left off - what's changed?" - whether it is due, and
+    the short human summary to show alongside it."""
+
+    due: bool = False
+    last_active_date: Optional[str] = None
+    days_since: Optional[int] = None
+    summary: str = ""
+
+
+class CatchupUpdateRequest(BaseModel):
+    message: str = Field(min_length=1, max_length=4000)
+
+
+# --------------------------------------------------------------------------- #
+# memory debug page
+#
+# Deliberately loose (dict[str, Any] rows rather than strict per-field models):
+# this page's whole purpose is showing precisely what is in the database,
+# including columns and shapes the ordinary UI never surfaces. Pinning every
+# field to a schema would fight that rather than serve it.
+# --------------------------------------------------------------------------- #
+class MemoryDebugResponse(BaseModel):
+    # The EXACT text injected into every agent prompt this turn - not a summary
+    # of it. If something is wrong with what the assistant "knows", this is the
+    # first place to look.
+    memory_block: str
+    travel_block: str
+
+    profile_row: dict[str, Any]
+    passports: list[str]
+    travel_history: list[dict[str, Any]]
+    wishlist: list[dict[str, Any]]
+    interests: list[dict[str, Any]]
+    onboarding_state: dict[str, Any]
+    recommendation_feedback: list[dict[str, Any]]
+    memory_writes: list[dict[str, Any]]
+
+    # Stored, but NOT fed into any agent prompt - this app does not replay chat
+    # history into the model. Shown so that fact is verifiable rather than
+    # merely claimed.
+    conversation_turns: list[dict[str, Any]]
+
+    # What this account has actually published to the shared RAG experience
+    # store, fetched by id rather than trusted from what was submitted - a
+    # review that was too short to index, or kept private, will not appear.
+    published_experience_documents: list[dict[str, Any]]
 
 
 # Resolve the forward references used by ChatResponse above.

@@ -1,0 +1,99 @@
+{
+  "run_id": "eval-20260912T112904Z-b9b755",
+  "label": "preference-case-rate",
+  "timestamp": "2026-09-12T11:30:56.348444+00:00",
+  "score": "1/1",
+  "passed": 1,
+  "total": 1,
+  "pass_rate": 1.0,
+  "repeats": 8,
+  "flaky": 0,
+  "total_attempts": 8,
+  "attempt_pass_rate": 1.0,
+  "config": {
+    "llm_model": "gpt-4o-mini",
+    "judge_model": "gpt-4o-mini",
+    "judge_enabled": true,
+    "rag_backend": "pinecone",
+    "embeddings": "openai",
+    "langfuse": true
+  },
+  "results": [
+    {
+      "id": "memory-respects-explicit-preference",
+      "name": "Respects an explicitly set preference over a generic pick",
+      "failure_mode": "failing to use the trip profile",
+      "message": "Thinking about November - Nepal or Indonesia?",
+      "passed": true,
+      "elapsed_ms": 12296,
+      "trace_id": "8cc64e14-9297-4fc5-97d5-5a8dee29de7f",
+      "checks": [
+        {
+          "type": "judge",
+          "passed": true,
+          "detail": "judge score 5/5 - The assistant explicitly used the cool-climate preference by recommending Nepal for its excellent trekking conditions and cool weather in November.",
+          "score": 5
+        }
+      ],
+      "reply": "I recommend Nepal for November, as it aligns perfectly with your interests in hiking and cool weather. The trekking conditions are excellent during this time, and you'll find stunning mountain views. Expect to spend around USD 20-25 per day in places like Kathmandu and Pokhara. A visa on arrival for UK passport holders costs USD 30 for 15 days. You're currently in Thailand with a shoestring budget and slow travel pace, which fits well given that flights from Bangkok to Kathmandu take about 3 hours and 30 minutes, ranging from USD 180-300.",
+      "cards": [
+        {
+          "destination": "Nepal",
+          "rank": 1,
+          "verdict": "go",
+          "season_flag": null,
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Realistic daily budget: USD 20-25 in Kathmandu and Pokhara.",
+            "Annapurna Base Camp Trek: This 7-12 day trek offers stunning views of the Himalayan mountains.",
+            "To reach the trekking areas from Kathmandu, take a tourist bus which costs around USD 10-15 and takes 6-8 hours.",
+            "Be cautious about altitude sickness, especially when trekking above 3,000m."
+          ],
+          "source_ids": [
+            "tips-nepal"
+          ]
+        },
+        {
+          "destination": "Indonesia",
+          "rank": 2,
+          "verdict": "maybe",
+          "season_flag": "mixed; start of the wet season with possible heavy rains.",
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Realistic daily budget: USD 22-30 a day on Bali.",
+            "Mount Bromo and Ijen Crater: A two-night trek starting from Yogyakarta for breathtaking views.",
+            "Getting around Bali usually involves renting a scooter for around USD 5 a day.",
+            "Be very careful when renting scooters; not having an international driving permit can lead to fines."
+          ],
+          "source_ids": [
+            "tips-indonesia"
+          ]
+        }
+      ],
+      "tool_calls": [
+        "search_backpacker_tips",
+        "search_backpacker_tips",
+        "search_visa_rules",
+        "search_visa_rules",
+        "check_route",
+        "check_route",
+        "check_seasonal_conditions",
+        "check_seasonal_conditions",
+        "search_seasonal_notes",
+        "search_seasonal_notes"
+      ],
+      "retrieved": [
+        "tips-nepal",
+        "tips-indonesia",
+        "visa-nepal-western",
+        "visa-indonesia-western",
+        "seasonal-nepal",
+        "seasonal-indonesia"
+      ],
+      "runs": 8,
+      "passes": 8,
+      "pass_rate": 1.0,
+      "flaky": false
+    }
+  ]
+}

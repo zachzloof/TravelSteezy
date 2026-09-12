@@ -27,6 +27,7 @@ function logout() {
       <nav v-if="loggedIn">
         <RouterLink to="/chat">Chat</RouterLink>
         <RouterLink to="/preferences">My Preferences</RouterLink>
+        <RouterLink to="/memory">Memory</RouterLink>
         <span class="who hide-narrow">{{ username }}</span>
         <button class="ghost small" @click="logout">Log out</button>
       </nav>
@@ -49,6 +50,11 @@ header {
   padding: 12px 20px;
   border-bottom: 1px solid var(--line);
   background: var(--panel);
+  /* Always reachable: a page like Preferences that scrolls its own content
+     used to let the only way back to Chat scroll off the top with it. */
+  position: sticky;
+  top: 0;
+  z-index: 20;
 }
 
 .brand { display: flex; align-items: baseline; gap: 9px; font-weight: 650; font-size: 17px; }

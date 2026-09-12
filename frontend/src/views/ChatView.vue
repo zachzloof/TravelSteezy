@@ -6,6 +6,8 @@ import DestinationCard from '../components/DestinationCard.vue'
 import MemorySidebar from '../components/MemorySidebar.vue'
 import TripPanel from '../components/TripPanel.vue'
 import ReviewCard from '../components/ReviewCard.vue'
+import CatchUpCard from '../components/CatchUpCard.vue'
+import Markdown from '../components/Markdown.vue'
 
 const router = useRouter()
 
@@ -24,6 +26,9 @@ const interests = ref([])
 const reviewPrompt = ref(null)
 const reviewBusy = ref(false)
 
+const catchup = ref(null)
+const catchupBusy = ref(false)
+
 // Onboarding is no longer part of this screen. A brand-new account is routed to
 // /welcome before it ever gets here, so the chat is only ever a chat.
 const SUGGESTIONS = [
@@ -34,8 +39,68 @@ const SUGGESTIONS = [
 ]
 
 onMounted(async () => {
-  await Promise.all([loadProfile(), loadTravel()])
+  await Promise.all([loadProfile(), loadTravel(), loadCatchup()])
 })
+
+async function loadCatchup() {
+  try {
+    const res = await api.getCatchup()
+    if (res.due) catchup.value = res
+  } catch {
+    // A failed check must never block the chat itself from loading.
+  }
+}
+
+async function dismissCatchup() {
+  catchupBusy.value = true
+  try {
+    await api.dismissCatchup()
+    catchup.value = null
+  } catch (e) {
+    error.value = e.message
+  } finally {
+    catchupBusy.value = false
+  }
+}
+
+async function updateCatchup(message) {
+  // This is a genuine chat turn (it runs through the same /chat pipeline via
+  // POST /travel/me/catchup/update), so it is shown in the transcript exactly
+  // like any other exchange rather than disappearing silently.
+  catchupBusy.value = true
+  error.value = ''
+  messages.value.push({ role: 'user', text: message })
+  await scrollDown()
+  try {
+    const res = await api.updateCatchup(message)
+    messages.value.push({
+      role: 'assistant',
+      text: res.reply,
+      comparison: res.comparison || [],
+      agents: res.agents_fired || [],
+      sources: res.retrieved_sources || [],
+      traceId: res.trace_id,
+      showDetail: false
+    })
+    if (res.profile) profile.value = res.profile
+    if (res.visited_history) visited.value = res.visited_history
+    lastWrites.value = res.memory_writes || []
+    applyTravel(res)
+    if (res.review_prompt) reviewPrompt.value = res.review_prompt
+    catchup.value = null
+  } catch (e) {
+    if (e.status === 401 || e.status === 403) {
+      tokens.clearUser()
+      router.push('/login')
+      return
+    }
+    error.value = e.message
+    messages.value.push({ role: 'error', text: e.message })
+  } finally {
+    catchupBusy.value = false
+    await scrollDown()
+  }
+}
 
 async function loadTravel() {
   try {
@@ -167,7 +232,7 @@ async function scrollDown() {
           <div v-else-if="m.role === 'error'" class="error">{{ m.text }}</div>
 
           <div v-else class="assistant-block">
-            <div class="bubble assistant">{{ m.text }}</div>
+            <div class="bubble assistant"><Markdown :text="m.text" /></div>
 
             <div v-if="m.comparison.length" class="cards">
               <DestinationCard v-for="c in m.comparison" :key="c.destination" :card="c" />
@@ -207,6 +272,16 @@ async function scrollDown() {
           Running the specialists…
         </div>
       </div>
+
+      <CatchUpCard
+        v-if="catchup"
+        class="review-slot"
+        :summary="catchup.summary"
+        :days-since="catchup.days_since"
+        :busy="catchupBusy"
+        @update="updateCatchup"
+        @dismiss="dismissCatchup"
+      />
 
       <ReviewCard
         v-if="reviewPrompt"
@@ -268,8 +343,12 @@ async function scrollDown() {
 
 .msg.user { display: flex; justify-content: flex-end; }
 
-.bubble { padding: 11px 14px; border-radius: 12px; max-width: 88%; white-space: pre-wrap; }
-.bubble.user { background: var(--accent-dim); color: #e9fff4; border-bottom-right-radius: 4px; }
+.bubble { padding: 11px 14px; border-radius: 12px; max-width: 88%; }
+/* The user's own typed message stays literal plain text - pre-wrap so their own
+   line breaks survive, and no markdown rendering (it is not the LLM's output). */
+.bubble.user { background: var(--accent-dim); color: #e9fff4; border-bottom-right-radius: 4px; white-space: pre-wrap; }
+/* The assistant bubble renders real markdown (see components/Markdown.vue), so
+   spacing comes from its own paragraph/list styles rather than pre-wrap. */
 .bubble.assistant { background: var(--panel-2); border: 1px solid var(--line); border-bottom-left-radius: 4px; }
 
 .assistant-block { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; width: 100%; }

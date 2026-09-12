@@ -14,8 +14,6 @@ const FIELDS = [
   ['budget_band', 'Budget'],
   ['travel_style', 'Pace'],
   ['climate_preference', 'Climate'],
-  ['trip_start_date', 'Trip start'],
-  ['trip_end_date', 'Trip end'],
   ['interests', 'Interests']
 ]
 </script>

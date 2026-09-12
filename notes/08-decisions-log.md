@@ -242,6 +242,151 @@ and flagged as `revisit`, so the UI shows a "going back" badge and the agents ca
 still tell the two apart. The test that asserted the refusal was inverted rather
 than deleted, so the new rule is pinned as deliberately as the old one was.
 
+---
+
+# Phase 4 — bug reports from actually using the app, plus two new features
+
+Six numbered issues reported directly from use: markdown rendering literally,
+a hallucinated passport, trip dates nobody wanted, an unreachable nav on
+Preferences, and a wrong place inserted mid-route. Each was reproduced against
+the real model or over real HTTP before being called fixed - repro scripts are
+referenced inline below rather than kept in the repo.
+
+## 30. A phantom "Thailand" entry landing mid-route was an order_index collision, not a fluke
+
+Reported: answering the route question with "Melbourne, Sydney, Cairns, Bali,
+Chiang Mai" produced a stored route of "Melbourne, Thailand, Sydney, Cairns,
+Bali, Chiang Mai" - a country-level entry appearing at position 2, matching
+nothing the traveller actually typed.
+
+**Reproduction, not guessing.** The route question alone, repeated 12 times
+(two phrasings x 6), never reproduced it. The real trigger was the "timing"
+question ("when did this trip start/end, is anything expiring?"): a natural
+answer to it restates the current location ("nothing expiring, I'm in Chiang
+Mai") and, 6/6 in testing, the extractor captured THAT as a fresh
+`travel_history` entry too - a question with no business writing to that field
+at all.
+
+**Why it landed in the MIDDLE, not just as a duplicate.** `apply_capture`
+computed `order_index` per extractor call, either from the model's own
+`"order"` field or from the entry's position within that one call's array -
+never from what was already stored. The route question's own call had already
+written Melbourne at `order_index=1`. The timing question's call, being a
+single-entry array, also produced `order_index=1`. Sorting is
+`ORDER BY order_index ASC, id ASC`: Melbourne (lower id) sorts first, the
+phantom entry (higher id, tied order) sorts second - directly producing
+"Melbourne, Thailand, Sydney...".
+
+**The fix is two-layered, on purpose:**
+
+1. **A hard code-level scope gate.** `apply_capture` now takes a `step_id` and
+   discards `travel_history` entirely unless `step_id == "route"` (and
+   similarly gates `wishlist` to `{route, wishlist}` and `passports` to
+   `passports` only - see #31). This is enforced in Python regardless of what
+   the model returns, which is the stronger of the two fixes: a prompt
+   instruction reduces a bad extraction, a code gate makes the class of bug
+   impossible.
+2. **`order_index` is rebased on the current stored max**, not restarted at 1
+   per call. Even a future extractor bug that DID leak an entry through would
+   now append it at the END of the route, not splice it into the middle - a
+   far smaller, more visible mistake.
+
+The schema's own JSON example was also de-leaked: it used real values
+(`"Koh Tao"`, `"Thailand"`, `order: 2`) which a small model can partially copy
+verbatim rather than treating as shape-only. It now uses "Example City" /
+"Example Country". Whether that specific mechanism ever fired could not be
+confirmed either way, but there was no reason to leave a plausible-looking real
+answer sitting in the prompt once the risk was named.
+
+See `test_only_the_route_question_may_write_travel_history` and
+`test_new_history_entries_always_continue_the_stored_route` in
+`tests/test_travel_and_places.py`.
+
+## 31. A passport hallucinated from "I started my trip in Australia"
+
+Reproduced directly: answering the PASSPORTS question with "I started my trip
+in Australia, then went to Bali, and now I'm in Chiang Mai" produced
+`passports: ["Australia"]` 2/6 times - the model treating a stated starting
+point as a citizenship claim. Two layers again:
+
+- The extractor prompt now says explicitly not to infer a passport from
+  anywhere the traveller started, is visiting, or is currently in.
+- `apply_capture`'s code-level gate (above) restricts passport writes to the
+  `passports` step only, so even a full prompt regression could not resurrect
+  this on the route, timing, wishlist or style questions.
+
+6/6 clean after the fix (`test_only_the_passports_question_may_write_passports`).
+
+## 32. `trip_start_date` / `trip_end_date` removed from the app entirely
+
+Requested directly: they added little (an end date is usually a soft
+flight-out guess, not a hard fact) and the base-app turn parser kept inventing
+them mid-conversation. Removed from `PROFILE_FIELDS`, the onboarding schema,
+both agent prompts, both frontend forms, and the seeded demo profile. The
+columns stay in SQLite (dropping a column is a bigger migration than this
+warrants) but nothing reads or writes them; `get_profile()` no longer surfaces
+them at all. The `travel_month` fallback that used to read `trip_start_date`
+now falls back straight to `date.today()`, which is arguably a better default
+regardless.
+
+## 33. "Forget everything" only wiped the base-app tables
+
+Found while building the memory debug page, not reported directly:
+`forget_account_memory` deleted `conversation_turns`, `visited_history`,
+`trip_profile` and `passports`, but never touched `travel_history`, `wishlist`,
+`user_interests`, `recommendation_feedback` or `onboarding_state` - the entire
+extension. A user who read "erase everything Travel Steezy remembers about
+your trip" and clicked it would have kept their whole route, wishlist,
+ratings and interests, and would not even have been sent back through
+onboarding. Fixed by adding those tables (plus `memory_writes` itself - the
+audit log is account data too, so a genuine forget clears it, leaving only the
+one entry recording that the forget happened).
+
+## 34. The chat bubble rendered markdown literally
+
+The assistant's replies are prompted for and genuinely contain markdown -
+bold, bullet lists - which showed as literal asterisks and dashes. Fixed with
+a small `Markdown.vue` component (`marked` + DOMPurify, since this is
+ultimately LLM-sourced `v-html`), applied to the chat bubble and to every
+LLM-authored field on the destination cards (rationale, pros/cons, backpacker
+notes, cost note). The user's own typed messages are deliberately NOT run
+through it - they stay literal plain text.
+
+## 35. The top nav scrolled away on any page taller than one screen
+
+Preferences (now three panels, one of them a raw table on the memory page) is
+often taller than the viewport, and the header was a normal in-flow element -
+on a window-level scroll it went with the rest of the page, leaving no way
+back to Chat without scrolling up first. Fixed with `position: sticky; top: 0`
+on the header. Also added a `Memory` link, since a third real page existed
+with no way to reach it.
+
+## 36. Two new pages: Memory (debug) and the catch-up card
+
+**Memory** (`/memory`, `GET /memory/me`) shows exactly what gets fed into the
+next agent prompt - `memory_block` and `travel_block`, rendered live by the
+same two functions a real turn calls, not a paraphrase - plus every raw row
+(including deprecated columns, interest weights, the onboarding answered-list)
+and per-row/per-field deletion. It also fetches, by deterministic id, which of
+an account's reviews have actually reached the shared RAG experience store,
+rather than trusting what was submitted.
+
+**Catch-up** ("here's where we left off - what's changed?") fires once per
+calendar-day gap since the account's last real chat turn, tracked by a plain
+date column (`trip_profile.last_active_date`) touched inside `run_turn`. It is
+deliberately NOT a repeat of the first onboarding design's mistake: one fixed
+card, cleared either by free text (which runs through the ordinary `run_turn`
+pipeline - it IS a normal turn, so visits/wishlist/reviews are picked up for
+free) or a one-tap "still here" button with no model call at all.
+
+**A bug found by the smoke test, not by inspection**: `touch_last_active` was
+originally placed AFTER `run_turn`'s `if not settings.llm_enabled: return
+_llm_disabled_response(...)` early exit, so answering the catch-up card while
+the LLM was unavailable never actually cleared the prompt - a real gap between
+"the user came back and told us something" and "the app noticed." Moved before
+the check; a turn counts as activity regardless of whether the LLM path
+succeeds.
+
 ## Open items at the time of writing
 
 - Railway deployment, the demo-safety account decision (seeded demo account

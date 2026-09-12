@@ -1,0 +1,173 @@
+{
+  "run_id": "eval-20260912T113612Z-f326ab",
+  "label": "date-fixes-recheck",
+  "timestamp": "2026-09-12T11:38:02.843246+00:00",
+  "score": "1/2",
+  "passed": 1,
+  "total": 2,
+  "pass_rate": 0.5,
+  "repeats": 4,
+  "flaky": 1,
+  "total_attempts": 8,
+  "attempt_pass_rate": 0.875,
+  "config": {
+    "llm_model": "gpt-4o-mini",
+    "judge_model": "gpt-4o-mini",
+    "judge_enabled": true,
+    "rag_backend": "pinecone",
+    "embeddings": "openai",
+    "langfuse": true
+  },
+  "results": [
+    {
+      "id": "memory-no-repeat-budget",
+      "name": "Does not ask for a budget it already stores",
+      "failure_mode": "failing to use the trip profile",
+      "message": "Right, where next - Thailand or Vietnam?",
+      "passed": false,
+      "elapsed_ms": 11095,
+      "trace_id": "9a9dfda4-d7a9-4537-b430-367937707a8b",
+      "checks": [
+        {
+          "type": "reply_lacks_regex",
+          "passed": true,
+          "detail": "clean"
+        },
+        {
+          "type": "judge",
+          "passed": true,
+          "detail": "judge score 5/5 - The assistant effectively uses the stored context about the traveller's budget, location, and travel preferences without asking for any repeated information.",
+          "score": 5
+        }
+      ],
+      "reply": "I recommend you head to Thailand next due to the challenging weather conditions in both countries this September. Thailand's overland route from Laos allows for visa-free entry for **60 days**, making it easy for you as a UK passport holder. On a shoestring budget, expect to spend around **700-1,000 THB** (approximately $20-30) per day, covering dorms, street food, and transport. Given that you're currently in Laos and prefer a slow travel pace, moving to Thailand aligns well with your plans.",
+      "cards": [
+        {
+          "destination": "Thailand",
+          "rank": 1,
+          "verdict": "go",
+          "season_flag": "September is a rainy season, especially on the Andaman coast.",
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Dorm prices range from **200-400 THB** in Chiang Mai.",
+            "Krabi is known for its stunning limestone cliffs and numerous caves.",
+            "Taking a sleeper train from Laos to Bangkok costs around **USD 30-45**.",
+            "Be aware of the 'Grand Palace is closed today' tuk-tuk scam."
+          ],
+          "source_ids": [
+            "tips-thailand"
+          ]
+        },
+        {
+          "destination": "Vietnam",
+          "rank": 2,
+          "verdict": "avoid",
+          "season_flag": "September is entering typhoon and flood season.",
+          "visa_flag": "E-visa required, with lead time of 3-5 days.",
+          "backpacker_notes": [],
+          "source_ids": []
+        }
+      ],
+      "tool_calls": [
+        "search_backpacker_tips",
+        "search_backpacker_tips",
+        "check_seasonal_conditions",
+        "check_seasonal_conditions",
+        "search_seasonal_notes",
+        "search_seasonal_notes",
+        "search_visa_rules",
+        "search_visa_rules",
+        "check_route",
+        "check_route"
+      ],
+      "retrieved": [
+        "tips-thailand",
+        "tips-vietnam",
+        "seasonal-thailand",
+        "seasonal-vietnam",
+        "visa-thailand-western",
+        "visa-vietnam-western"
+      ],
+      "runs": 4,
+      "passes": 3,
+      "pass_rate": 0.75,
+      "flaky": true
+    },
+    {
+      "id": "memory-respects-explicit-preference",
+      "name": "Respects an explicitly set preference over a generic pick",
+      "failure_mode": "failing to use the trip profile",
+      "message": "Thinking about November - Nepal or Indonesia?",
+      "passed": true,
+      "elapsed_ms": 11757,
+      "trace_id": "9b590a64-6e16-46c2-b118-c049585a1554",
+      "checks": [
+        {
+          "type": "judge",
+          "passed": true,
+          "detail": "judge score 5/5 - The assistant explicitly used the cool-climate preference to recommend Nepal and explained how it aligns with the traveler's interests.",
+          "score": 5
+        }
+      ],
+      "reply": "I recommend Nepal for November due to the cooler climate suitable for hiking, which matches your interest. A daily budget in Nepal is around **USD 20-25** in Kathmandu and Pokhara, increasing during treks. The visa costs **USD 30** for 15 days on arrival, allowing easy entry. If you choose to trek, be aware that permits can cost between **USD 50-70**. With your budget band set for shoestring travel, and your current slow pace in Thailand, Nepal offers the right environment for hiking and mountains without the wet season's disruptions that Indonesia faces in November.",
+      "cards": [
+        {
+          "destination": "Nepal",
+          "rank": 1,
+          "verdict": "go",
+          "season_flag": null,
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Daily budget around USD 20-25 in Kathmandu and Pokhara, increasing to USD 30-40 during treks.",
+            "Consider the Annapurna Base Camp Trek (7-12 days) for stunning views of the Himalayas.",
+            "Local buses to Pokhara cost around USD 5-10 and take about 6-8 hours.",
+            "Be cautious about altitude sickness; ascend slowly above 3,000m."
+          ],
+          "source_ids": [
+            "tips-nepal"
+          ]
+        },
+        {
+          "destination": "Indonesia",
+          "rank": 2,
+          "verdict": "maybe",
+          "season_flag": "Due to the beginning of the wet season, travel might be less enjoyable.",
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Average daily budget around USD 22-30, with dorm prices ranging from USD 7-12.",
+            "Visit Mount Bromo and Ijen Crater for spectacular views.",
+            "Renting a scooter costs around USD 5 a day for getting around.",
+            "Be cautious of police stops if riding a scooter without an international driving permit."
+          ],
+          "source_ids": [
+            "tips-indonesia"
+          ]
+        }
+      ],
+      "tool_calls": [
+        "search_backpacker_tips",
+        "search_backpacker_tips",
+        "search_visa_rules",
+        "search_visa_rules",
+        "check_route",
+        "check_route",
+        "check_seasonal_conditions",
+        "check_seasonal_conditions",
+        "search_seasonal_notes",
+        "search_seasonal_notes"
+      ],
+      "retrieved": [
+        "tips-nepal",
+        "tips-indonesia",
+        "visa-nepal-western",
+        "visa-indonesia-western",
+        "seasonal-nepal",
+        "seasonal-indonesia"
+      ],
+      "runs": 4,
+      "passes": 4,
+      "pass_rate": 1.0,
+      "flaky": false
+    }
+  ]
+}

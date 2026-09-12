@@ -33,8 +33,8 @@ CREATE TABLE IF NOT EXISTS trip_profile (
     travel_style        TEXT,      -- slow | balanced | fast
     climate_preference  TEXT,      -- cool | temperate | hot | no_preference
     current_location    TEXT,
-    trip_start_date     TEXT,      -- ISO yyyy-mm-dd
-    trip_end_date       TEXT,
+    trip_start_date     TEXT,      -- DEPRECATED: kept only so an old row does not
+    trip_end_date       TEXT,      -- error; nothing reads or writes these any more
     visa_deadline_date  TEXT,      -- next hard visa/permit expiry
     visa_deadline_note  TEXT,
     interests           TEXT,      -- free text, comma separated
@@ -228,6 +228,11 @@ LATE_COLUMNS: tuple[tuple[str, str, str], ...] = (
     # Progress used to be a single "step" cursor, which could not express "they
     # skipped question 2 and answered 3", and so could not resume correctly.
     ("onboarding_state", "answered", "TEXT"),
+    # The calendar date (YYYY-MM-DD, not a timestamp) of this account's most
+    # recent REAL chat turn - never touched by onboarding or by the catch-up
+    # prompt's own gate check. Comparing it to today's date is how the "you're
+    # back after a gap" catch-up session decides whether one is due.
+    ("trip_profile", "last_active_date", "TEXT"),
 )
 
 

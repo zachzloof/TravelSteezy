@@ -1,4 +1,6 @@
 <script setup>
+import Markdown from './Markdown.vue'
+
 defineProps({ card: { type: Object, required: true } })
 </script>
 
@@ -10,7 +12,7 @@ defineProps({ card: { type: Object, required: true } })
       <span class="tag" :class="card.verdict">{{ card.verdict }}</span>
     </header>
 
-    <p v-if="card.rationale" class="rationale">{{ card.rationale }}</p>
+    <p v-if="card.rationale" class="rationale"><Markdown :text="card.rationale" inline /></p>
 
     <div v-if="card.season_flag" class="flag season">Season: {{ card.season_flag }}</div>
     <div v-if="card.visa_flag" class="flag visa">Visa: {{ card.visa_flag }}</div>
@@ -18,23 +20,23 @@ defineProps({ card: { type: Object, required: true } })
     <div class="cols">
       <div v-if="card.pros.length">
         <h5>Pros</h5>
-        <ul><li v-for="(p, i) in card.pros" :key="i">{{ p }}</li></ul>
+        <ul><li v-for="(p, i) in card.pros" :key="i"><Markdown :text="p" inline /></li></ul>
       </div>
       <div v-if="card.cons.length">
         <h5>Cons</h5>
-        <ul><li v-for="(c, i) in card.cons" :key="i">{{ c }}</li></ul>
+        <ul><li v-for="(c, i) in card.cons" :key="i"><Markdown :text="c" inline /></li></ul>
       </div>
     </div>
 
     <div v-if="card.backpacker_notes && card.backpacker_notes.length" class="notes">
       <h5>Backpacker notes</h5>
-      <ul><li v-for="(n, i) in card.backpacker_notes" :key="i">{{ n }}</li></ul>
+      <ul><li v-for="(n, i) in card.backpacker_notes" :key="i"><Markdown :text="n" inline /></li></ul>
       <p v-if="card.source_ids && card.source_ids.length" class="sources mono">
         sources: {{ card.source_ids.join(', ') }}
       </p>
     </div>
 
-    <p v-if="card.est_cost_note" class="cost">{{ card.est_cost_note }}</p>
+    <p v-if="card.est_cost_note" class="cost"><Markdown :text="card.est_cost_note" inline /></p>
   </article>
 </template>
 

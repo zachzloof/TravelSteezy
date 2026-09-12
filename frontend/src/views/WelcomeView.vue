@@ -191,8 +191,6 @@ const FIELD_LABELS = {
   travel_style: 'Pace',
   climate_preference: 'Climate',
   current_location: 'Currently in',
-  trip_start_date: 'Trip start',
-  trip_end_date: 'Trip end',
   visa_deadline_date: 'Deadline',
   visa_deadline_note: 'What expires'
 }
@@ -341,7 +339,6 @@ const FIELD_LABELS = {
                 <template v-if="profile.climate_preference"><dt>Climate</dt><dd>{{ labelFor(profile.climate_preference) }}</dd></template>
                 <template v-if="profile.social_style"><dt>Company</dt><dd>{{ labelFor(profile.social_style) }}</dd></template>
                 <template v-if="profile.current_location"><dt>Currently in</dt><dd>{{ profile.current_location }}</dd></template>
-                <template v-if="profile.trip_end_date"><dt>Trip ends</dt><dd>{{ profile.trip_end_date }}</dd></template>
                 <template v-if="profile.visa_deadline_date"><dt>Deadline</dt><dd class="deadline">{{ profile.visa_deadline_date }}</dd></template>
               </dl>
             </div>

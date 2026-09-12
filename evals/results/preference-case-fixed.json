@@ -1,0 +1,99 @@
+{
+  "run_id": "eval-20260912T112245Z-d0945b",
+  "label": "preference-case-fixed",
+  "timestamp": "2026-09-12T11:24:08.454745+00:00",
+  "score": "1/1",
+  "passed": 1,
+  "total": 1,
+  "pass_rate": 1.0,
+  "repeats": 6,
+  "flaky": 0,
+  "total_attempts": 6,
+  "attempt_pass_rate": 1.0,
+  "config": {
+    "llm_model": "gpt-4o-mini",
+    "judge_model": "gpt-4o-mini",
+    "judge_enabled": true,
+    "rag_backend": "pinecone",
+    "embeddings": "openai",
+    "langfuse": true
+  },
+  "results": [
+    {
+      "id": "memory-respects-explicit-preference",
+      "name": "Respects an explicitly set preference over a generic pick",
+      "failure_mode": "failing to use the trip profile",
+      "message": "Thinking about November - Nepal or Indonesia?",
+      "passed": true,
+      "elapsed_ms": 11409,
+      "trace_id": "5166ad72-68f6-4aaa-a277-493626a37a84",
+      "checks": [
+        {
+          "type": "judge",
+          "passed": true,
+          "detail": "judge score 5/5 - The assistant explicitly used the cool-climate preference by recommending Nepal for its good weather and ideal hiking conditions in November.",
+          "score": 5
+        }
+      ],
+      "reply": "I recommend considering Nepal for November, primarily because the weather is rated as **good** during this time, ideal for hiking in the mountains with stable temperatures and clear views. The daily budget in Nepal is about $20-25 per day in cities like Kathmandu and Pokhara, and you can obtain a visa on arrival for USD 30 for 15 days. Since you're currently in Thailand with a shoestring budget and a slow travel pace, this option aligns well with your interests in hiking and cool weather.",
+      "cards": [
+        {
+          "destination": "Nepal",
+          "rank": 1,
+          "verdict": "go",
+          "season_flag": null,
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Daily budget in Kathmandu and Pokhara is about $20-25.",
+            "You can trek to Annapurna Base Camp (7-12 days) for stunning views.",
+            "Buses from Kathmandu to Pokhara take about 6-8 hours and cost $5-10.",
+            "Be cautious about altitude sickness when trekking above 3,000m."
+          ],
+          "source_ids": [
+            "tips-nepal"
+          ]
+        },
+        {
+          "destination": "Indonesia",
+          "rank": 2,
+          "verdict": "maybe",
+          "season_flag": "mixed season with potential heavy rains",
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Daily budget in Indonesia is $22-30, with dorms in Bali costing $7-12.",
+            "Consider visiting Mount Bromo & Ijen Crater for spectacular sunrises.",
+            "Renting a scooter in Bali costs around $5 per day for easy transport.",
+            "Beware of police stops; an international driving permit is needed to avoid fines."
+          ],
+          "source_ids": [
+            "tips-indonesia"
+          ]
+        }
+      ],
+      "tool_calls": [
+        "search_backpacker_tips",
+        "search_backpacker_tips",
+        "search_visa_rules",
+        "search_visa_rules",
+        "check_route",
+        "check_route",
+        "check_seasonal_conditions",
+        "check_seasonal_conditions",
+        "search_seasonal_notes",
+        "search_seasonal_notes"
+      ],
+      "retrieved": [
+        "tips-nepal",
+        "tips-indonesia",
+        "visa-nepal-western",
+        "visa-indonesia-western",
+        "seasonal-nepal",
+        "seasonal-indonesia"
+      ],
+      "runs": 6,
+      "passes": 6,
+      "pass_rate": 1.0,
+      "flaky": false
+    }
+  ]
+}

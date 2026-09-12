@@ -889,3 +889,448 @@ def test_style_and_interests_save_for_an_account_with_no_profile_row_yet(app_env
     profile = store.get_profile(user_id)
     assert profile["social_style"] == "solo"
     assert "diving" in (profile["interests"] or "")
+
+
+# --------------------------------------------------------------------------- #
+# regressions from real usage: markdown/nav bugs are frontend-only, but these
+# four are backend and each was reproduced against the real model before being
+# fixed - see notes/08-decisions-log.md for the write-up.
+# --------------------------------------------------------------------------- #
+def test_trip_start_and_end_dates_are_gone_from_the_profile(app_env):
+    """Removed on request: they added little and the parser kept inventing them.
+
+    The columns still exist in SQLite (dropping a column is a bigger migration
+    than this warrants) but nothing in the app may read or write them any more.
+    """
+    store, db = app_env["store"], app_env["db"]
+    user_id = make_user(db, "nodates")
+
+    assert "trip_start_date" not in store.PROFILE_FIELDS
+    assert "trip_end_date" not in store.PROFILE_FIELDS
+
+    store.update_profile(user_id, {
+        "trip_start_date": "2026-01-01", "trip_end_date": "2026-02-01",
+        "nationality": "Spain",
+    })
+    profile = store.get_profile(user_id)
+    assert "trip_start_date" not in profile
+    assert "trip_end_date" not in profile
+    assert profile["nationality"] == "Spain"
+
+
+def test_forget_everything_actually_wipes_the_extension_tables(app_env):
+    """Regression: forget_account_memory only wiped the base-app tables.
+
+    A user who read "erase everything Travel Steezy remembers about your trip"
+    and clicked it would have found their entire route, wishlist, ratings,
+    interests and onboarding status completely untouched.
+    """
+    travel, store, db = app_env["travel"], app_env["store"], app_env["db"]
+    user_id = make_user(db, "forgetter")
+
+    travel.add_travel_history(user_id, "Hanoi", source="onboarding")
+    travel.save_review(user_id, "Hanoi", rating=2, review_notes="too loud")
+    travel.add_wishlist(user_id, "Pai", priority=1)
+    travel.set_interests(user_id, ["diving"])
+    travel.set_onboarding(user_id, status="complete", step="done")
+    store.set_passports(user_id, ["United Kingdom"])
+
+    store.forget_account_memory(user_id)
+
+    assert travel.get_travel_history(user_id) == []
+    assert travel.get_wishlist(user_id) == []
+    assert travel.get_interests(user_id) == []
+    assert store.get_passports(user_id) == []
+    # A full wipe sends them back through onboarding - that is the point of a
+    # full wipe, and it is exactly what the router's onboarding gate checks for.
+    assert travel.get_onboarding(user_id)["status"] == "not_started"
+    # The audit log is itself account data and is wiped too - except the one
+    # entry that records the wipe happened at all.
+    writes = store.get_write_log(user_id, limit=50)
+    assert len(writes) == 1
+    assert writes[0]["operation"] == "forget_account_memory"
+
+
+# --------------------------------------------------------------------------- #
+# onboarding step-scoping: the code-level gate behind the route-order bug fix
+# --------------------------------------------------------------------------- #
+def test_only_the_route_question_may_write_travel_history(app_env):
+    """A hard code-level gate, not just a prompt instruction.
+
+    Reproduced against the real model: the "timing" question ("is anything
+    about to expire?") produced a phantom travel_history entry 6/6 times
+    whenever the answer restated the traveller's current location in passing -
+    which real answers to that question naturally do. Because
+    add_travel_history's order_index was assigned per extractor call, that
+    phantom entry collided with the route question's own numbering and was
+    inserted in the MIDDLE of the route, not the end: "Melbourne, Thailand,
+    Sydney, Cairns..." instead of the traveller's actual order.
+    """
+    import backend.agents.onboarding as onboarding
+    importlib.reload(onboarding)
+    travel, db = app_env["travel"], app_env["db"]
+    user_id = make_user(db, "scoped_history")
+
+    captured = {"travel_history": [{"location": "Phantom City", "order": 1}]}
+    onboarding.apply_capture(user_id, captured, step_id="timing")
+    onboarding.apply_capture(user_id, captured, step_id="style")
+    onboarding.apply_capture(user_id, captured, step_id="passports")
+    onboarding.apply_capture(user_id, captured, step_id="wishlist")
+    assert travel.get_travel_history(user_id) == []
+
+    onboarding.apply_capture(user_id, captured, step_id="route")
+    assert [h["location"] for h in travel.get_travel_history(user_id)] == ["Phantom City"]
+
+
+def test_only_route_or_wishlist_questions_may_write_the_wishlist(app_env):
+    import backend.agents.onboarding as onboarding
+    importlib.reload(onboarding)
+    travel, db = app_env["travel"], app_env["db"]
+    user_id = make_user(db, "scoped_wishlist")
+
+    captured = {"wishlist": [{"location": "Pai", "priority": 1}]}
+    onboarding.apply_capture(user_id, captured, step_id="timing")
+    onboarding.apply_capture(user_id, captured, step_id="style")
+    assert travel.get_wishlist(user_id) == []
+
+    onboarding.apply_capture(user_id, captured, step_id="route")
+    onboarding.apply_capture(user_id, {"wishlist": [{"location": "Laos", "priority": 2}]},
+                              step_id="wishlist")
+    assert sorted(w["location"] for w in travel.get_wishlist(user_id)) == ["Laos", "Pai"]
+
+
+def test_only_the_passports_question_may_write_passports(app_env):
+    """The direct fix for hallucinating a passport from a place merely visited.
+
+    Reproduced against the real model: answering "I started my trip in
+    Australia, then went to Bali, and now I'm in Chiang Mai" on the PASSPORTS
+    question produced passports=["Australia"] 2/6 times, purely from the
+    starting point of the route - not a citizenship statement. Gating passport
+    writes to the one question that actually asks about citizenship removes the
+    class of bug regardless of what the extractor returns.
+    """
+    import backend.agents.onboarding as onboarding
+    importlib.reload(onboarding)
+    store, db = app_env["store"], app_env["db"]
+    user_id = make_user(db, "scoped_passports")
+
+    captured = {"passports": ["Australia"]}
+    onboarding.apply_capture(user_id, captured, step_id="route")
+    onboarding.apply_capture(user_id, captured, step_id="timing")
+    onboarding.apply_capture(user_id, captured, step_id="style")
+    onboarding.apply_capture(user_id, captured, step_id="wishlist")
+    assert store.get_passports(user_id) == []
+
+    onboarding.apply_capture(user_id, captured, step_id="passports")
+    assert store.get_passports(user_id) == ["Australia"]
+
+
+def test_gating_is_skipped_when_no_step_id_is_given(app_env):
+    """Direct callers (tests, a future admin tool) can still write everything at
+    once - the gate only applies when a step_id is actually supplied, which is
+    what the real onboarding flow always does."""
+    import backend.agents.onboarding as onboarding
+    importlib.reload(onboarding)
+    travel, store, db = app_env["travel"], app_env["store"], app_env["db"]
+    user_id = make_user(db, "ungated")
+
+    onboarding.apply_capture(user_id, {
+        "travel_history": [{"location": "Pai", "order": 1}],
+        "wishlist": [{"location": "Laos", "priority": 1}],
+        "passports": ["Ireland"],
+    })
+    assert [h["location"] for h in travel.get_travel_history(user_id)] == ["Pai"]
+    assert [w["location"] for w in travel.get_wishlist(user_id)] == ["Laos"]
+    assert store.get_passports(user_id) == ["Ireland"]
+
+
+def test_new_history_entries_always_continue_the_stored_route(app_env):
+    """order_index is rebased on the CURRENT stored max, not restarted at 1.
+
+    Trusting a purely local index (or the model's own "order" field) per
+    extractor call is what let an unrelated call's entry collide with the route
+    question's own numbering. Two separate apply_capture calls for the route
+    question - which is the only realistic way this table grows during
+    onboarding - must never produce two rows with the same order_index.
+    """
+    import backend.agents.onboarding as onboarding
+    importlib.reload(onboarding)
+    travel, db = app_env["travel"], app_env["db"]
+    user_id = make_user(db, "continues_route")
+
+    onboarding.apply_capture(
+        user_id,
+        {"travel_history": [{"location": "Melbourne", "order": 1}, {"location": "Sydney", "order": 2}]},
+        step_id="route",
+    )
+    # A second, later call (e.g. the traveller went back and added to their
+    # answer) must append after Sydney, not restart at order 1 and collide.
+    onboarding.apply_capture(
+        user_id,
+        {"travel_history": [{"location": "Cairns", "order": 1}]},
+        step_id="route",
+    )
+    history = travel.get_travel_history(user_id)
+    assert [h["location"] for h in history] == ["Melbourne", "Sydney", "Cairns"]
+    assert [h["order_index"] for h in history] == sorted(h["order_index"] for h in history)
+    assert len({h["order_index"] for h in history}) == 3
+
+
+# --------------------------------------------------------------------------- #
+# the memory debug page's backend primitives
+# --------------------------------------------------------------------------- #
+def test_remove_interest_deletes_one_and_leaves_the_rest(app_env):
+    travel, store, db = app_env["travel"], app_env["store"], app_env["db"]
+    user_id = make_user(db, "trims_interests")
+
+    travel.set_interests(user_id, ["diving", "hiking", "food"])
+    assert travel.remove_interest(user_id, "hiking") is True
+
+    remaining = travel.get_interests(user_id)
+    assert sorted(remaining) == ["diving", "food"]
+    # The free-text mirror agents read from the trip profile must stay in sync.
+    assert "hiking" not in (store.get_profile(user_id)["interests"] or "")
+    assert travel.remove_interest(user_id, "hiking") is False
+
+
+def test_get_interests_with_weight_exposes_the_raw_rows(app_env):
+    travel, db = app_env["travel"], app_env["db"]
+    user_id = make_user(db, "weighted_interests")
+
+    travel.set_interests(user_id, ["diving"])
+    travel.set_interests(user_id, ["diving"])  # mentioned twice, weight increments
+
+    rows = travel.get_interests_with_weight(user_id)
+    assert rows[0]["interest"] == "diving"
+    assert rows[0]["weight"] >= 2
+
+
+def test_remove_passport_promotes_the_next_one_to_primary(app_env):
+    store, db = app_env["store"], app_env["db"]
+    user_id = make_user(db, "trims_passports")
+
+    store.set_passports(user_id, ["United Kingdom", "Ireland"])
+    remaining = store.remove_passport(user_id, "united kingdom")
+
+    assert remaining == ["Ireland"]
+    assert store.get_profile(user_id)["nationality"] == "Ireland"
+    # Removing something not on file is a harmless no-op, not an error.
+    assert store.remove_passport(user_id, "France") == ["Ireland"]
+
+
+def test_reset_onboarding_clears_progress_but_not_the_profile(app_env):
+    """"Redo the questions" must actually let someone redo them.
+
+    Before this existed, clicking it just reopened the welcome page, which
+    computed next_step from the SAME answered list and landed straight back on
+    the review screen - nothing was actually reset.
+    """
+    import backend.agents.onboarding as onboarding
+    importlib.reload(onboarding)
+    travel, db = app_env["travel"], app_env["db"]
+    user_id = make_user(db, "redo_onboarding")
+
+    travel.add_travel_history(user_id, "Pai", source="onboarding")
+    travel.mark_step_answered(user_id, "route")
+    travel.mark_step_answered(user_id, "timing")
+    travel.set_onboarding(user_id, status="complete", step="done")
+
+    travel.reset_onboarding(user_id)
+
+    state = travel.get_onboarding(user_id)
+    assert state["status"] == "not_started"
+    assert state["answered"] == []
+    assert onboarding.next_step(state["answered"]) == "route"
+    # The existing route is untouched - this is "redo the interview", not
+    # "forget everything" (that is store.forget_account_memory).
+    assert [h["location"] for h in travel.get_travel_history(user_id)] == ["Pai"]
+
+
+def test_raw_profile_row_exposes_deprecated_columns_for_debugging(app_env):
+    store, db = app_env["store"], app_env["db"]
+    user_id = make_user(db, "raw_row")
+
+    with db.get_conn() as conn:
+        conn.execute(
+            "UPDATE trip_profile SET trip_start_date = ? WHERE user_id = ?",
+            ("2020-01-01", user_id),
+        )
+
+    row = store.get_raw_profile_row(user_id)
+    # get_profile() must NOT surface it - nothing in the app reads it any more.
+    assert "trip_start_date" not in store.get_profile(user_id)
+    # but the raw debug view sees the actual column, so a developer can confirm
+    # an old value is really inert rather than assuming it.
+    assert row["trip_start_date"] == "2020-01-01"
+
+
+def test_list_own_documents_computes_ids_and_checks_rather_than_trusts(app_env, monkeypatch):
+    """Reports what was actually fetched from the store, not what was submitted.
+
+    fetch_by_ids is monkeypatched rather than hitting a real index - this file's
+    own contract is "no API keys and no network" - but the point under test is
+    real: list_own_documents must derive the exact ids a review/outcome would
+    have produced and ask the store for THOSE, not assume publication happened
+    just because a review was saved locally.
+    """
+    from backend.rag import experience
+
+    travel, db = app_env["travel"], app_env["db"]
+    user_id = make_user(db, "published_docs")
+
+    travel.add_travel_history(user_id, "Pai", source="onboarding")
+    travel.save_review(user_id, "Pai", rating=5, review_notes="canyon at sunset, unreal")
+
+    seen_ids = []
+
+    def fake_fetch(ids, namespace="experience"):
+        seen_ids.extend(ids)
+        # Simulate the store genuinely holding only ONE of the candidate ids -
+        # proving the function reports what came BACK, not what was asked for.
+        return [{"id": ids[0], "metadata": {"text": "stub"}, "text": "stub"}] if ids else []
+
+    monkeypatch.setattr(experience.rag_store, "fetch_by_ids", fake_fetch)
+
+    docs = experience.list_own_documents(user_id)
+    assert seen_ids == [f"experience-review-u{user_id}-pai"]
+    assert [d["id"] for d in docs] == seen_ids
+
+
+def test_list_own_documents_is_empty_with_nothing_to_report(app_env, monkeypatch):
+    from backend.rag import experience
+
+    db = app_env["db"]
+    user_id = make_user(db, "nothing_published")
+
+    def fail_if_called(*_args, **_kwargs):
+        raise AssertionError("fetch_by_ids should not be called with no candidates")
+
+    monkeypatch.setattr(experience.rag_store, "fetch_by_ids", fail_if_called)
+    assert experience.list_own_documents(user_id) == []
+
+
+# --------------------------------------------------------------------------- #
+# catch-up: "here's where we left off - what's changed?"
+# --------------------------------------------------------------------------- #
+def test_a_brand_new_account_has_no_catchup_due(app_env):
+    """Nothing to catch up on until there has been a real turn to catch up from."""
+    from backend.agents import catchup
+    db = app_env["db"]
+    user_id = make_user(db, "catchup_fresh")
+
+    result = catchup.status(user_id)
+    assert result["due"] is False
+    assert result["last_active_date"] is None
+    assert result["summary"] == ""
+
+
+def test_catchup_is_due_after_a_calendar_day_gap(app_env):
+    from datetime import date, timedelta
+    from backend.agents import catchup
+    db = app_env["db"]
+    user_id = make_user(db, "catchup_gap")
+
+    yesterday = (date.today() - timedelta(days=3)).isoformat()
+    with db.get_conn() as conn:
+        conn.execute(
+            "UPDATE trip_profile SET last_active_date = ? WHERE user_id = ?",
+            (yesterday, user_id),
+        )
+
+    result = catchup.status(user_id)
+    assert result["due"] is True
+    assert result["days_since"] == 3
+    assert "3 days ago" in result["summary"]
+
+
+def test_catchup_is_not_due_the_same_day(app_env):
+    from backend.agents import catchup
+    db = app_env["db"]
+    user_id = make_user(db, "catchup_sameday")
+
+    catchup.touch_last_active(user_id)
+    assert catchup.status(user_id)["due"] is False
+
+
+def test_dismiss_clears_catchup_without_any_model_call(app_env):
+    """The quick "still here" button - pure Python, no LLM involved."""
+    from datetime import date, timedelta
+    from backend.agents import catchup
+    db = app_env["db"]
+    user_id = make_user(db, "catchup_dismiss")
+
+    with db.get_conn() as conn:
+        conn.execute(
+            "UPDATE trip_profile SET last_active_date = ? WHERE user_id = ?",
+            ((date.today() - timedelta(days=2)).isoformat(), user_id),
+        )
+    assert catchup.status(user_id)["due"] is True
+
+    catchup.dismiss(user_id)
+    assert catchup.status(user_id)["due"] is False
+    assert catchup.get_last_active_date(user_id) == date.today().isoformat()
+
+
+def test_catchup_summary_mentions_location_and_wishlist(app_env):
+    from datetime import date, timedelta
+    from backend.agents import catchup
+    store, travel, db = app_env["store"], app_env["travel"], app_env["db"]
+    user_id = make_user(db, "catchup_summary")
+
+    store.update_profile(user_id, {"current_location": "Chiang Mai"})
+    travel.add_wishlist(user_id, "Pai", priority=1)
+    with db.get_conn() as conn:
+        conn.execute(
+            "UPDATE trip_profile SET last_active_date = ? WHERE user_id = ?",
+            ((date.today() - timedelta(days=1)).isoformat(), user_id),
+        )
+
+    summary = catchup.status(user_id)["summary"]
+    assert "yesterday" in summary
+    assert "Chiang Mai" in summary
+    assert "Pai" in summary
+
+
+def test_real_chat_turns_update_last_active_but_onboarding_does_not(app_env, monkeypatch):
+    """run_turn touches last_active_date; the onboarding endpoints never call it -
+    a brand-new account finishing onboarding without ever sending a real message
+    correctly has nothing to catch up on yet."""
+    from backend.agents import catchup
+    travel, db = app_env["travel"], app_env["db"]
+    user_id = make_user(db, "catchup_onboarding_only")
+    travel.set_onboarding(user_id, status="complete", step="done")
+
+    assert catchup.get_last_active_date(user_id) is None
+    assert catchup.status(user_id)["due"] is False
+
+
+def test_touching_last_active_survives_the_llm_disabled_path(app_env, monkeypatch):
+    """Regression: an earlier version touched last_active_date AFTER the
+    llm_enabled check, so answering the catch-up card while the LLM was
+    unavailable never actually cleared tomorrow's prompt. Caught by an HTTP
+    smoke test, not by inspection - this pins it as a real unit test too."""
+    import asyncio
+    from datetime import date, timedelta
+    import backend.agents.runner as runner_mod
+    from backend.agents import catchup
+
+    db = app_env["db"]
+    user_id = make_user(db, "llm_disabled_touch")
+    # llm_enabled is a read-only property computed from the key; unset the key
+    # on the actual Settings instance runner.py holds (it binds `settings` by
+    # value at import time, so patching a freshly-reloaded config module's
+    # instance would silently miss it).
+    monkeypatch.setattr(runner_mod.settings, "openai_api_key", None)
+    run_turn = runner_mod.run_turn
+
+    with db.get_conn() as conn:
+        conn.execute(
+            "UPDATE trip_profile SET last_active_date = ? WHERE user_id = ?",
+            ((date.today() - timedelta(days=2)).isoformat(), user_id),
+        )
+    assert catchup.status(user_id)["due"] is True
+
+    asyncio.run(run_turn(user_id, "Left Chiang Mai, now in Pai."))
+
+    assert catchup.get_last_active_date(user_id) == date.today().isoformat()
+    assert catchup.status(user_id)["due"] is False

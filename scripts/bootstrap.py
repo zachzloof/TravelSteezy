@@ -97,8 +97,6 @@ def ensure_demo_account() -> None:
                 "travel_style": "slow",
                 "climate_preference": "temperate",
                 "current_location": "Thailand",
-                "trip_start_date": "2026-09-01",
-                "trip_end_date": "2026-12-15",
                 "interests": "diving, hiking, street food, temples",
             },
             source="seed",

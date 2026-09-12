@@ -10,19 +10,8 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from backend.agents.runner import run_turn
-from backend.schemas import (
-    AgentTrace,
-    ChatRequest,
-    ChatResponse,
-    DestinationVerdict,
-    MemoryWriteEntry,
-    OnboardingState,
-    TravelEntry,
-    TripProfile,
-    VisitedEntry,
-    WishlistEntry,
-)
+from backend.agents.runner import run_turn, to_chat_response
+from backend.schemas import ChatRequest, ChatResponse
 from backend.security import current_user
 
 logger = logging.getLogger(__name__)
@@ -41,21 +30,4 @@ async def chat(payload: ChatRequest, user: dict = Depends(current_user)) -> Chat
             status_code=502, detail=f"The agent graph failed on this turn: {exc}"
         ) from exc
 
-    profile = {k: v for k, v in (result.get("profile") or {}).items() if k != "user_id"}
-    return ChatResponse(
-        reply=result["reply"],
-        comparison=[DestinationVerdict(**c) for c in result.get("comparison", [])],
-        agents_fired=[AgentTrace(**a) for a in result.get("agents_fired", [])],
-        memory_writes=[MemoryWriteEntry(**w) for w in result.get("memory_writes", [])],
-        retrieved_sources=result.get("retrieved_sources", []),
-        trace_id=result.get("trace_id"),
-        profile=TripProfile(**profile) if profile else None,
-        visited_history=[VisitedEntry(**v) for v in result.get("visited_history", [])],
-        intent=result.get("intent"),
-        travel_history=[TravelEntry(**h) for h in result.get("travel_history", [])],
-        wishlist=[WishlistEntry(**w) for w in result.get("wishlist", [])],
-        review_prompt=result.get("review_prompt"),
-        onboarding=(
-            OnboardingState(**result["onboarding"]) if result.get("onboarding") else None
-        ),
-    )
+    return to_chat_response(result)

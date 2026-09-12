@@ -138,6 +138,43 @@ def ingest_outcome(
     )
 
 
+def list_own_documents(user_id: int) -> list[dict[str, Any]]:
+    """What THIS account has actually published to the shared experience store.
+
+    Document ids are deterministic (see review_document/outcome_document above),
+    so rather than trusting "I asked for it to be shared" as a proxy for "it is
+    out there", this recomputes the ids a full set of reviews/outcomes for this
+    account WOULD have produced and checks which of them genuinely exist in the
+    index. A review that was too short to index, or explicitly kept private
+    (share=False), correctly does not appear - this reports what is real, not
+    what was requested.
+    """
+    from backend.db import get_conn
+
+    with get_conn() as conn:
+        reviews = conn.execute(
+            "SELECT location FROM travel_history "
+            "WHERE user_id = ? AND review_notes IS NOT NULL AND TRIM(review_notes) != ''",
+            (user_id,),
+        ).fetchall()
+        outcomes = conn.execute(
+            "SELECT location, verdict FROM recommendation_feedback WHERE user_id = ?",
+            (user_id,),
+        ).fetchall()
+
+    candidate_ids = [
+        f"experience-review-u{user_id}-{row['location'].lower().replace(' ', '-')}"
+        for row in reviews
+    ]
+    candidate_ids += [
+        f"experience-outcome-u{user_id}-{row['location'].lower().replace(' ', '-')}-{row['verdict']}"
+        for row in outcomes
+    ]
+    if not candidate_ids:
+        return []
+    return [d for d in rag_store.fetch_by_ids(candidate_ids) if d.get("id") != "fetch-error"]
+
+
 def search_experience(
     query: str, destinations: list[str] | None = None, top_k: int = 3
 ) -> list[dict[str, Any]]:

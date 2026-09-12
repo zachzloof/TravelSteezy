@@ -133,5 +133,21 @@ export const api = {
       body: { step, text, skipped }
     }),
   completeOnboarding: () => request('/travel/me/onboarding/complete', { method: 'POST' }),
-  skipOnboarding: () => request('/travel/me/onboarding/skip', { method: 'POST' })
+  skipOnboarding: () => request('/travel/me/onboarding/skip', { method: 'POST' }),
+
+  // memory debug page: read everything, delete anything
+  getMemoryDebug: () => request('/memory/me'),
+  deleteMemoryInterest: (interest) =>
+    request(`/memory/me/interests/${encodeURIComponent(interest)}`, { method: 'DELETE' }),
+  deleteMemoryPassport: (country) =>
+    request(`/memory/me/passports/${encodeURIComponent(country)}`, { method: 'DELETE' }),
+  clearMemoryProfileField: (field) =>
+    request(`/memory/me/profile-field/${encodeURIComponent(field)}`, { method: 'DELETE' }),
+  resetOnboardingDebug: () => request('/memory/me/onboarding/reset', { method: 'POST' }),
+
+  // catch-up: "here's where we left off - what's changed?"
+  getCatchup: () => request('/travel/me/catchup'),
+  dismissCatchup: () => request('/travel/me/catchup/dismiss', { method: 'POST' }),
+  updateCatchup: (message) =>
+    request('/travel/me/catchup/update', { method: 'POST', body: { message } })
 }

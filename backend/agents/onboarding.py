@@ -75,18 +75,33 @@ QUESTIONS: list[dict[str, Any]] = [
     },
     {
         "id": "timing",
-        "title": "How long have you got?",
-        "prompt": "When did this trip start, when does it end, and is anything about to expire?",
+        "title": "Is anything about to expire?",
+        "prompt": "Any visa, permit or booking with a hard deadline coming up?",
         "hint": (
             "A visa or permit deadline matters more than almost anything else here - it "
-            "can rule a whole country out on lead time alone."
+            "can rule a whole country out on lead time alone. No fixed trip end date? "
+            "That's normal - only the deadline actually matters."
         ),
-        "placeholder": (
-            "Left home in early January, flying out of Singapore on 14 June. My Thai visa "
-            "exemption runs out on the 3rd of next month."
-        ),
-        "captures": ["trip_start_date", "trip_end_date", "visa_deadline"],
+        "placeholder": "My Thai visa exemption runs out on the 3rd of next month.",
+        "captures": ["visa_deadline"],
         "optional": True,
+        # This question is not about where they have been or who they are - but a
+        # real answer here almost always restates their current location ("I'm in
+        # Chiang Mai, nothing expiring soon"), and a generic extractor reliably
+        # (6/6 in testing) turned that restatement into a phantom travel_history
+        # entry. Because add_travel_history's order_index is assigned per
+        # extractor call, that phantom entry collided with the route question's
+        # own numbering and was inserted in the MIDDLE of the route rather than
+        # the end - "Melbourne, Thailand, Sydney, Cairns..." instead of the
+        # traveller's actual order. Restricting scope here is the real fix;
+        # apply_capture (below) also enforces this as a hard code-level gate so a
+        # prompt regression cannot bring the bug back.
+        "rules": (
+            "This question is ONLY about deadlines. Leave \"travel_history\", "
+            "\"wishlist\" and \"passports\" empty even if a place name or "
+            "nationality is mentioned in passing - that is not what this "
+            "question is for, and it has already been asked elsewhere."
+        ),
     },
     {
         "id": "passports",
@@ -165,12 +180,20 @@ def next_step(answered: list[str]) -> str | None:
 # --------------------------------------------------------------------------- #
 # extraction prompt
 # --------------------------------------------------------------------------- #
+# The example below is deliberately abstract (Example City / Example Country,
+# not a real place) rather than a real, plausible-sounding entry. An earlier
+# version used "Koh Tao" / "Thailand" / order 2 as the example, and gpt-4o-mini
+# would sometimes copy that literal content into its output on an UNRELATED
+# question - a "Thailand" entry with no basis in what the traveller actually
+# wrote, at exactly order 2, matching the example verbatim. Small models lean on
+# few-shot examples more than they should; giving it nothing real to copy closes
+# that off entirely rather than relying on an instruction not to.
 EXTRACTION_SCHEMA = """{{
   "travel_history": [
-    {{"location": "Koh Tao", "country": "Thailand", "order": 2,
-     "rating": 5, "review_notes": "did my Open Water here, loved it"}}
+    {{"location": "Example City", "country": "Example Country", "order": 1,
+     "rating": null, "review_notes": null}}
   ],
-  "wishlist": [{{"location": "Pai", "country": "Thailand", "priority": 1}}],
+  "wishlist": [{{"location": "Example City", "country": "Example Country", "priority": 2}}],
   "interests": [],
   "passports": [],
   "budget_band": null,
@@ -178,8 +201,6 @@ EXTRACTION_SCHEMA = """{{
   "climate_preference": null,
   "social_style": null,
   "current_location": null,
-  "trip_start_date": null,
-  "trip_end_date": null,
   "visa_deadline_date": null,
   "visa_deadline_note": null,
   "nothing_to_extract": false
@@ -206,9 +227,14 @@ RULES
 
 Scope
 - Extract only what THIS answer states or clearly implies. Use null or [] for
-  anything it does not mention. Never carry anything over from the example above.
+  anything it does not mention.
+- The example above shows SHAPE only. "Example City" and "Example Country" are
+  placeholders, not real places - never let them, or any other detail of the
+  example, appear anywhere in your actual output.
 - The question tells you which fields matter most, but if they volunteer
-  something else, capture that too. People answer more than they were asked.
+  something else, capture that too. People answer more than they were asked -
+  UNLESS this question's own rules below say otherwise, in which case those
+  rules win.
 - Set "nothing_to_extract" to true only if the answer holds no usable fact at all
   (for example "skip", "not sure", "n/a").
 
@@ -247,17 +273,28 @@ Preference fields
 - If they explicitly say they have no preference, use the words "no preference".
 
 Other fields
-- "passports" is every nationality they say they hold, most-used first. Write the
-  country, not the adjective: "British" becomes "United Kingdom", "Irish"
-  becomes "Ireland", "Aussie" becomes "Australia".
+- "passports" is every nationality they EXPLICITLY say they hold or were born
+  as - a direct statement of citizenship, nationality, or the word "passport"
+  ("I'm British", "I hold an Australian passport", "my nationality is Irish").
+  Write the country, not the adjective: "British" becomes "United Kingdom",
+  "Irish" becomes "Ireland", "Aussie" becomes "Australia".
+- NEVER put a place in "passports" just because it was mentioned as somewhere
+  they started, are visiting, live in, or are currently in. "I started my trip
+  in Australia" or "I'm currently in Melbourne" says NOTHING about nationality -
+  backpackers from anywhere visit Australia. If the only country-shaped thing in
+  the answer is a place they travelled to or through, "passports" stays [].
+  When genuinely unsure whether something is a citizenship statement or a travel
+  statement, leave it out - this question is asked on its own elsewhere, so
+  nothing is lost by waiting for a clearer answer.
 - "interests" are lowercase single words where possible: nature, food, nightlife,
   trekking, diving, history, beaches, surfing, culture, photography, wildlife,
   markets, climbing, yoga, festivals.
-- Dates are ISO yyyy-mm-dd, resolved against today's date. If they give a month
-  with no year, choose the nearest future occurrence. If you cannot work a date
-  out confidently, use null rather than guessing.
 - "visa_deadline_date" is the next hard expiry - a visa, a permit, a flight they
-  must be on. "visa_deadline_note" says what expires, in a few words.
+  must be on. ISO yyyy-mm-dd, resolved against today's date; if they give a
+  month with no year, use the nearest future occurrence; if you cannot work it
+  out confidently, use null rather than guessing. "visa_deadline_note" says what
+  expires, in a few words. There is no trip start or end date field - do not
+  invent one even if they mention dates.
 
 THE TRAVELLER'S ANSWER IS THE MESSAGE YOU HAVE BEEN GIVEN."""
 
@@ -372,7 +409,8 @@ def clamp_rating(value: Any) -> int | None:
 # applying a capture
 # --------------------------------------------------------------------------- #
 def apply_capture(
-    user_id: int, captured: dict[str, Any], source: str = "onboarding"
+    user_id: int, captured: dict[str, Any], source: str = "onboarding",
+    step_id: str | None = None,
 ) -> list[dict[str, Any]]:
     """Write what one answer yielded. Explicit calls, one per field.
 
@@ -381,22 +419,45 @@ def apply_capture(
     in the whole flow. If extraction misreads something, they see it immediately
     on the next screen and can fix it there, rather than discovering months later
     that the assistant thinks they hated Hanoi.
+
+    ``step_id`` is a hard, code-level scope gate on top of whatever the extractor
+    returned - not just what the prompt asked it to look for. This exists because
+    of a real, reproduced bug: the "timing" question ("is anything about to
+    expire?") reliably produced a phantom travel_history entry (6/6 in testing)
+    whenever the answer restated the traveller's current location in passing, as
+    real answers to that question naturally do ("nothing expiring soon, I'm in
+    Chiang Mai"). A prompt instruction reduces that; only a code-level gate
+    removes the class of bug entirely, which matters because a model regression
+    or a future question wording change could otherwise silently reopen it.
     """
     writes: list[dict[str, Any]] = []
     if not isinstance(captured, dict) or not captured:
         return writes
 
+    if step_id is not None and step_id not in ("route",):
+        captured = {**captured, "travel_history": []}
+    if step_id is not None and step_id not in ("route", "wishlist"):
+        captured = {**captured, "wishlist": []}
+    if step_id is not None and step_id != "passports":
+        captured = {**captured, "passports": []}
+
+    # New entries always continue the STORED route rather than restarting the
+    # count from 1. Trusting a purely local index (or the model's own "order"
+    # field) per extractor call is what let a phantom entry from an unrelated
+    # question collide with the route question's numbering and land in the
+    # MIDDLE of the route instead of the end - see the docstring above.
+    history_entries = [e for e in (captured.get("travel_history") or []) if isinstance(e, dict)]
+    base_order = 0
+    if history_entries:
+        existing_orders = [h["order_index"] for h in travel.get_travel_history(user_id)]
+        base_order = max(existing_orders, default=0)
+
     # ---- route ------------------------------------------------------------
-    for index, entry in enumerate(captured.get("travel_history") or [], start=1):
-        if not isinstance(entry, dict):
-            continue
+    for position, entry in enumerate(history_entries, start=1):
         location, location_type, country = normalise_place(entry.get("location"))
         if not location:
             continue
-        try:
-            order = int(entry["order"]) if entry.get("order") is not None else index
-        except (TypeError, ValueError):
-            order = index
+        order = base_order + position
         result = travel.add_travel_history(
             user_id,
             location=location,
@@ -504,10 +565,7 @@ def apply_capture(
             banded = store.normalise_band(key, captured[key])
             if banded:
                 profile_updates[key] = banded
-    for key in (
-        "current_location", "trip_start_date", "trip_end_date",
-        "visa_deadline_date", "visa_deadline_note",
-    ):
+    for key in ("current_location", "visa_deadline_date", "visa_deadline_note"):
         if captured.get(key):
             profile_updates[key] = str(captured[key]).strip()
     if profile_updates.get("current_location"):
@@ -577,7 +635,7 @@ async def answer_step(user_id: int, step_id: str, text: str) -> dict[str, Any]:
     else:
         error = "the assistant is not configured, so nothing could be read from that"
 
-    writes = apply_capture(user_id, captured)
+    writes = apply_capture(user_id, captured, step_id=step_id)
     return {
         "captured": captured,
         "writes": writes,

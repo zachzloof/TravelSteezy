@@ -26,14 +26,20 @@ from backend.db import get_conn
 
 # Columns a caller may write to trip_profile. Anything else is ignored, so an LLM
 # tool call cannot invent columns or smuggle SQL in through a field name.
+#
+# trip_start_date/trip_end_date were removed from this list deliberately: they
+# added little (a backpacker's "end date" is usually a soft flight-out guess, not
+# a hard fact) and the turn parser kept inventing values for them from vague
+# mentions of duration. The visa/permit deadline - a genuinely hard date - is
+# unaffected and still tracked via visa_deadline_date/visa_deadline_note. The
+# columns still exist in the database for any account that has old data in them,
+# but nothing in the app reads, writes, or displays them any more.
 PROFILE_FIELDS: tuple[str, ...] = (
     "nationality",
     "budget_band",
     "travel_style",
     "climate_preference",
     "current_location",
-    "trip_start_date",
-    "trip_end_date",
     "visa_deadline_date",
     "visa_deadline_note",
     "interests",
@@ -236,6 +242,21 @@ def ensure_profile(user_id: int) -> None:
         conn.execute("INSERT OR IGNORE INTO trip_profile (user_id) VALUES (?)", (user_id,))
 
 
+def get_raw_profile_row(user_id: int) -> dict[str, Any]:
+    """Every column in trip_profile, unfiltered - including deprecated ones.
+
+    get_profile() only returns PROFILE_FIELDS, which is deliberately curated for
+    what agents and the ordinary UI should see. The memory debug page's whole
+    purpose is different: showing precisely what is in the database, including
+    columns nothing else reads any more (trip_start_date/trip_end_date) so a
+    developer can confirm an old value really is inert rather than assuming it.
+    """
+    ensure_profile(user_id)
+    with get_conn() as conn:
+        row = conn.execute("SELECT * FROM trip_profile WHERE user_id = ?", (user_id,)).fetchone()
+    return dict(row) if row else {}
+
+
 def get_profile(user_id: int) -> dict[str, Any]:
     """Return the account's active trip profile. Never raises for a missing row."""
     ensure_profile(user_id)
@@ -375,6 +396,16 @@ def add_passport(user_id: int, country: str, source: str = "user_edit") -> list[
     if country.lower() in {c.lower() for c in existing}:
         return existing
     return set_passports(user_id, existing + [country], source=source)
+
+
+def remove_passport(user_id: int, country: str, source: str = "user_edit") -> list[str]:
+    """Drop one passport. If the primary is removed, the next one takes over."""
+    country = (country or "").strip().lower()
+    existing = get_passports(user_id)
+    remaining = [c for c in existing if c.lower() != country]
+    if remaining == existing:
+        return existing
+    return set_passports(user_id, remaining, source=source)
 
 
 def sync_passports_from_nationality(user_id: int) -> list[str]:
@@ -520,6 +551,24 @@ def get_recent_turns(user_id: int, limit: int | None = None) -> list[dict[str, A
     return [dict(r) for r in reversed(rows)]
 
 
+# Every table that holds this-account-only memory. Kept as one list so
+# forget_account_memory cannot silently miss one when a new table is added -
+# this is precisely the bug being fixed here: the function wiped the base-app
+# tables only, so "Forget everything" in My Preferences left the entire route,
+# wishlist, ratings, interests and onboarding status fully intact. A user who
+# read "erase everything Travel Steezy remembers about your trip" and clicked
+# it would have found almost all of it still there.
+_EXTENSION_TABLES: tuple[str, ...] = (
+    "travel_history", "wishlist", "user_interests",
+    "recommendation_feedback", "onboarding_state",
+    # The audit trail is itself account data (locations, ratings, nationality
+    # mentions), so a genuine "forget everything" clears it too. It is wiped
+    # BEFORE _record_write below adds the one entry that should survive: the
+    # record that a forget happened at all.
+    "memory_writes",
+)
+
+
 def forget_account_memory(user_id: int) -> None:
     """Hard reset, used by the eval harness and by an explicit user request.
 
@@ -531,6 +580,8 @@ def forget_account_memory(user_id: int) -> None:
         conn.execute("DELETE FROM visited_history WHERE user_id = ?", (user_id,))
         conn.execute("DELETE FROM trip_profile WHERE user_id = ?", (user_id,))
         conn.execute("DELETE FROM passports WHERE user_id = ?", (user_id,))
+        for table in _EXTENSION_TABLES:
+            conn.execute(f"DELETE FROM {table} WHERE user_id = ?", (user_id,))
         _record_write(conn, user_id, "forget_account_memory", {}, "user_edit")
 
 
@@ -570,8 +621,6 @@ def format_profile_for_prompt(snapshot: dict[str, Any]) -> str:
         line("travel_style", "Travel pace"),
         line("climate_preference", "Climate preference"),
         line("social_style", "Travelling"),
-        line("trip_start_date", "Trip start"),
-        line("trip_end_date", "Trip end"),
         line("interests", "Interests"),
     ]
     if profile.get("visa_deadline_date"):

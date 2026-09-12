@@ -1,0 +1,99 @@
+{
+  "run_id": "eval-20260912T111947Z-08bf53",
+  "label": "preference-case-recheck",
+  "timestamp": "2026-09-12T11:21:14.767749+00:00",
+  "score": "0/1",
+  "passed": 0,
+  "total": 1,
+  "pass_rate": 0.0,
+  "repeats": 6,
+  "flaky": 1,
+  "total_attempts": 6,
+  "attempt_pass_rate": 0.167,
+  "config": {
+    "llm_model": "gpt-4o-mini",
+    "judge_model": "gpt-4o-mini",
+    "judge_enabled": true,
+    "rag_backend": "pinecone",
+    "embeddings": "openai",
+    "langfuse": true
+  },
+  "results": [
+    {
+      "id": "memory-respects-explicit-preference",
+      "name": "Respects an explicitly set preference over a generic pick",
+      "failure_mode": "failing to use the trip profile",
+      "message": "Where next - Nepal or Indonesia?",
+      "passed": false,
+      "elapsed_ms": 11885,
+      "trace_id": "ef9c8d4e-641c-4844-ad6b-d934384532df",
+      "checks": [
+        {
+          "type": "judge",
+          "passed": false,
+          "detail": "judge score 1/5 - The assistant completely ignores the traveller's preference for cool climates and does not weigh it in the decision-making process.",
+          "score": 1
+        }
+      ],
+      "reply": "I recommend heading to Indonesia as your next destination, primarily because it offers better weather conditions in September for outdoor activities. The daily budget in Indonesia is about $22-30 per day, and the flight from Bangkok to Bali costs between USD 120-220. In contrast, Nepal has a mixed season with potential trekking challenges. Your current profile indicates you're a United Kingdom passport holder traveling in Thailand on a shoestring budget and a slow pace.",
+      "cards": [
+        {
+          "destination": "Indonesia",
+          "rank": 1,
+          "verdict": "go",
+          "season_flag": null,
+          "visa_flag": null,
+          "backpacker_notes": [
+            "You can live on about $22-30 per day in Bali, with dorm prices ranging from $7-12.",
+            "Explore Mount Bromo and Ijen Crater for incredible sunrise views and blue flames, typically done as a two-night tour from Yogyakarta.",
+            "Renting a scooter is common at around $5 per day, but ensure you have an international driving permit to avoid complications.",
+            "Not having an international driving permit while riding a scooter in Bali can void your travel insurance and lead to serious accidents."
+          ],
+          "source_ids": [
+            "tips-indonesia"
+          ]
+        },
+        {
+          "destination": "Nepal",
+          "rank": 2,
+          "verdict": "maybe",
+          "season_flag": "The monsoon is ending, making trekking difficult.",
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Expect to spend around $20-25 per day in Kathmandu and Pokhara, with trekking budgets rising to $30-40.",
+            "Consider the Annapurna Base Camp Trek, which lasts 7-12 days for stunning views and local village exploration.",
+            "Many backpackers use buses or shared jeep rides, which take about 6-8 hours between Kathmandu and Pokhara.",
+            "Be cautious of altitude sickness if trekking above 3,000m; Diamox is widely available in pharmacies in Thamel."
+          ],
+          "source_ids": [
+            "tips-nepal"
+          ]
+        }
+      ],
+      "tool_calls": [
+        "search_backpacker_tips",
+        "search_backpacker_tips",
+        "search_visa_rules",
+        "search_visa_rules",
+        "check_route",
+        "check_route",
+        "check_seasonal_conditions",
+        "check_seasonal_conditions",
+        "search_seasonal_notes",
+        "search_seasonal_notes"
+      ],
+      "retrieved": [
+        "tips-nepal",
+        "tips-indonesia",
+        "visa-nepal-western",
+        "visa-indonesia-western",
+        "seasonal-nepal",
+        "seasonal-indonesia"
+      ],
+      "runs": 6,
+      "passes": 1,
+      "pass_rate": 0.167,
+      "flaky": true
+    }
+  ]
+}

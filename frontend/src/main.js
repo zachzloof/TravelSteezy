@@ -7,6 +7,7 @@ import LoginView from './views/LoginView.vue'
 import WelcomeView from './views/WelcomeView.vue'
 import ChatView from './views/ChatView.vue'
 import PreferencesView from './views/PreferencesView.vue'
+import MemoryView from './views/MemoryView.vue'
 import AdminView from './views/AdminView.vue'
 import { api, session, tokens } from './api'
 
@@ -19,6 +20,10 @@ const routes = [
   { path: '/welcome', component: WelcomeView, meta: { skipGate: true } },
   { path: '/chat', component: ChatView },
   { path: '/preferences', component: PreferencesView },
+  // A debug tool, so it stays reachable even mid-onboarding - the whole point
+  // of it is to inspect memory when something (possibly onboarding itself) is
+  // not behaving as expected.
+  { path: '/memory', component: MemoryView, meta: { skipGate: true } },
   // Admin is its own route with its own token; a regular user's token cannot
   // satisfy the backend's admin dependency, so this is invisible to them.
   { path: '/admin', component: AdminView, meta: { public: true, admin: true } }

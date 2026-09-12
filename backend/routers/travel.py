@@ -11,11 +11,15 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 
+from backend.agents import catchup as catchup_flow
 from backend.agents import onboarding as onboarding_flow
 from backend.memory import store as profile_store
 from backend.memory import travel as travel_store
 from backend.rag import experience as experience_store
 from backend.schemas import (
+    CatchupStatus,
+    CatchupUpdateRequest,
+    ChatResponse,
     MemoryWriteEntry,
     OnboardingAnswerRequest,
     OnboardingAnswerResponse,
@@ -259,3 +263,41 @@ def remove_stop(location: str, user: dict = Depends(current_user)) -> TravelSnap
 def pending_reviews(user: dict = Depends(current_user)) -> list[dict[str, Any]]:
     """Places due a review prompt, for the frontend's review card."""
     return travel_store.get_pending_reviews(user["id"])
+
+
+# --------------------------------------------------------------------------- #
+# catch-up: "here's where we left off - what's changed?"
+#
+# Fires once per calendar-day gap since the account's last real chat turn.
+# Deliberately not a conversational hijack of /chat the way the first version
+# of onboarding was: it is one fixed card, shown by the frontend, cleared
+# either by a free-text answer (which runs through the ordinary chat pipeline -
+# it IS a normal turn, so visits/departures/wishlist/reviews are picked up for
+# free) or by a one-tap "still here" button that makes no model call at all.
+# --------------------------------------------------------------------------- #
+@router.get("/me/catchup", response_model=CatchupStatus)
+def get_catchup(user: dict = Depends(current_user)) -> CatchupStatus:
+    return CatchupStatus(**catchup_flow.status(user["id"]))
+
+
+@router.post("/me/catchup/dismiss", response_model=CatchupStatus)
+def dismiss_catchup(user: dict = Depends(current_user)) -> CatchupStatus:
+    """The quick "still here, nothing's changed" button. No model call."""
+    catchup_flow.dismiss(user["id"])
+    return CatchupStatus(**catchup_flow.status(user["id"]))
+
+
+@router.post("/me/catchup/update", response_model=ChatResponse)
+async def update_catchup(
+    payload: CatchupUpdateRequest, user: dict = Depends(current_user)
+) -> ChatResponse:
+    """Answering the catch-up card is just a chat turn with a specific prompt.
+
+    Reuses run_turn - and therefore the whole tracking pipeline - rather than a
+    second, parallel extraction path for "what changed". run_turn itself
+    touches last_active_date, which is what stops catch-up firing again today.
+    """
+    from backend.agents.runner import run_turn, to_chat_response
+
+    result = await run_turn(user_id=user["id"], message=payload.message, username=user["username"])
+    return to_chat_response(result)
