@@ -87,4 +87,4 @@ Still open from the original build: Railway deploy with a /data volume, the
 demo-safety decision (seeded demo account vs ADMIN_AUTO_APPROVE), and the
 backup screen recording.
 
-Final eval figure: see `evals/results/extension-repeat3.md` (each case run 3x).
+Final eval figure: see `evals/results/5-extension-repeat3.md` (each case run 3x).

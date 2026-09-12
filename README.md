@@ -364,9 +364,9 @@ memory surviving a fresh session.
 
 | Run | Score | RAG / tracing | Artifact |
 |---|---|---|---|
-| Baseline | **14/19** | local index, no tracing | `evals/results/baseline-before-fix.json` / `.md` |
-| After fixes | **19/19** | local index, no tracing | `evals/results/after-fix.json` / `.md` |
-| After fixes, live services | **19/19** | **Pinecone + Langfuse** | `evals/results/after-fix-pinecone-langfuse.json` / `.md` |
+| Baseline | **14/19** | local index, no tracing | `evals/results/1-baseline-before-fix.json` / `.md` |
+| After fixes | **19/19** | local index, no tracing | `evals/results/2-after-fix.json` / `.md` |
+| After fixes, live services | **19/19** | **Pinecone + Langfuse** | `evals/results/3-after-fix-pinecone-langfuse.json` / `.md` |
 
 The third run re-ran the same suite against the real managed services after the
 keys were supplied, confirming the fixes hold on Pinecone retrieval rather than
@@ -562,12 +562,12 @@ Full extension design (and every bug found building it) is in
 | Problem / product | Section 1 |
 | Architecture: agents, memory, tools, APIs | Section 2, extended by [docs/EXTENSION.md](docs/EXTENSION.md) |
 | Stack | Section 5 — all of it live, including Pinecone, Langfuse and Places |
-| Evals: what TRACE proved + a shipped fix | Base app: Section 7, 14/19 → 19/19, four fixes. Extension: 16 more cases — six fixes, including a bug in the eval harness itself (two runs corrupting each other's data). The onboarding rework added 8 more cases which caught two real bugs on their first run, `evals/results/onboarding-v2.md`. All in [notes/06-eval-methodology.md](notes/06-eval-methodology.md) and [notes/08-decisions-log.md](notes/08-decisions-log.md) |
+| Evals: what TRACE proved + a shipped fix | Base app: Section 7, 14/19 → 19/19, four fixes. Extension: 16 more cases — six fixes, including a bug in the eval harness itself (two runs corrupting each other's data). The onboarding rework added 8 more cases which caught two real bugs on their first run, `evals/results/11-onboarding-v2.md`. All in [notes/06-eval-methodology.md](notes/06-eval-methodology.md) and [notes/08-decisions-log.md](notes/08-decisions-log.md) |
 | Memory: keep / write / lives / retrieve / forget | Section 3 — five separately implemented answers, extended with structured route/wishlist/review tables, a passport list, and five-point preference scales |
 | URL loads for a stranger in incognito | Needs the Railway deploy; no hostname is baked into the frontend build |
 | Core task works end to end | Verified locally against the live OpenAI API, including the full onboarding → discover → track → review loop |
 | Memory persists across a fresh session | **Verified** against a real process restart, plus tests and an eval case |
-| Eval suite passes / latest score shown | **34/35** on the full suite after the onboarding rework (`evals/results/full-after-onboarding-rework.md`). The onboarding cases specifically: **9/9 passing all 3 runs, 27/27 attempts** (`evals/results/onboarding-v2.md`). The one failure is the judge case `rag-backpacker-not-tourist`, which an A/B isolation run showed is flaky independently of this work (3/6 without the change, 7/11 with it) — the investigation is written up in [notes/06-eval-methodology.md](notes/06-eval-methodology.md) |
+| Eval suite passes / latest score shown | **34/35** on the full suite after the onboarding rework (`evals/results/12-full-after-onboarding-rework.md`). The onboarding cases specifically: **9/9 passing all 3 runs, 27/27 attempts** (`evals/results/11-onboarding-v2.md`). The one failure is the judge case `rag-backpacker-not-tourist`, which an A/B isolation run showed is flaky independently of this work (3/6 without the change, 7/11 with it) — the investigation is written up in [notes/06-eval-methodology.md](notes/06-eval-methodology.md) |
 | At least one fix from TRACE shipped | Twelve across three phases — four base-app (Section 7), six extension, and two from the onboarding rework's first eval run: a `set_social_style` write that silently no-opped for every brand-new account, and a dropped revisit ([notes/08-decisions-log.md](notes/08-decisions-log.md)) |
 | README covers problem/architecture/stack/demo | This file, plus [docs/EXTENSION.md](docs/EXTENSION.md) and [notes/](notes/00-index.md) for depth |
 | Backup recording exported | **Outstanding** — record once deployed |

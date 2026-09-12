@@ -60,7 +60,7 @@ class ConcurrentRunError(RuntimeError):
     a case for "Iceland" answering about Chiang Mai, and a departure case
     returning a reply with no departure logic at all) and were kept on disk,
     clearly annotated, rather than deleted - see
-    evals/results/extension-repeat3.md and extension-final.md, and
+    evals/results/5-extension-repeat3.md and 9-extension-final.md, and
     notes/06-eval-methodology.md.
 
     This lock makes that class of collision impossible to *miss*: a second run

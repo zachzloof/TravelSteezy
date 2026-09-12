@@ -137,7 +137,7 @@ should make the case deterministic (pass on every run) rather than merely
 surface — a code fix that converts a flaky case into a reliably-passing one,
 versus a case that just needs a softer regex.
 
-**Confirmed.** The eventual clean, lock-protected re-run (`extension-final.md`,
+**Confirmed.** The eventual clean, lock-protected re-run (`9-extension-final.md`,
 after both this fix and the concurrency fix below) scored **27/27, 81/81
 individual attempts passing** — the previously-flaky case included, no longer
 flaky at all. That is the strongest evidence available that the fix addressed
@@ -169,8 +169,8 @@ profile changing under it between the setup step and the message step.
 **This is a more fundamental problem than eval flakiness** — it doesn't
 degrade gracefully, it produces confidently wrong answers to the wrong
 question with no error and no obvious tell in the output itself. Both
-corrupted runs' results were kept, not deleted (`extension-repeat3-run2-COLLISION-CONTAMINATED.md`
-and `extension-final-run3-COLLISION-CONTAMINATED.json`/`.md`), clearly labelled
+corrupted runs' results were kept, not deleted (`7-extension-repeat3-run2-COLLISION-CONTAMINATED.md`
+and `8-extension-final-run3-COLLISION-CONTAMINATED.json`/`.md`), clearly labelled
 as invalid, because they're the actual evidence for this finding and because
 eval results are treated as append-only artifacts in this project — see the
 decisions log for the moment that policy got tested for real when files were
@@ -204,7 +204,7 @@ percentage.
 
 The number that actually landed, after both fixes documented above:
 **27/27 cases (100%), passing every one of 3 runs — 81/81 individual attempts
-passing, zero flaky cases.** Stored in `evals/results/extension-final.md` /
+passing, zero flaky cases.** Stored in `evals/results/9-extension-final.md` /
 `.json`. See note 08's decision log for the full timeline of getting a
 genuinely clean run recorded, including the two contaminated attempts kept on
 disk alongside it as evidence rather than discarded.
@@ -213,7 +213,7 @@ disk alongside it as evidence rather than discarded.
 
 During the onboarding rework, the full 35-case suite came back **34/35**, with
 `rag-backpacker-not-tourist` — a judge-scored case — failing. It had passed
-**3/3 in both** prior repeat-3 runs (`extension-repeat3`, `extension-final`), so
+**3/3 in both** prior repeat-3 runs (`5-extension-repeat3`, `9-extension-final`), so
 "it used to pass and now it doesn't" looked like a clean regression signal.
 
 It was not one, and the way that was established is the point of this note.

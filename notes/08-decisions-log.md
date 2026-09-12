@@ -122,24 +122,24 @@ part.
     start time of the run already in progress) rather than silently starting.
     Six tests in `test_eval_lock.py` cover it directly. Both corrupted
     results were kept on disk under clearly-labelled filenames
-    (`extension-repeat3-run2-COLLISION-CONTAMINATED.md`,
-    `extension-final-run3-COLLISION-CONTAMINATED.json`/`.md`) rather than
+    (`7-extension-repeat3-run2-COLLISION-CONTAMINATED.md`,
+    `8-extension-final-run3-COLLISION-CONTAMINATED.json`/`.md`) rather than
     deleted, per the project's own policy that eval results are append-only
     evidence.
 23. **That policy got tested for real, immediately.** In the course of
     "cleaning up" before re-running the suite, two already-committed result
-    files (`extension-v1.json`/`.md`, `extension-repeat3.json`/`.md`) were
+    files (`6-extension-v1.json`/`.md`, `5-extension-repeat3.json`/`.md`) were
     deleted from disk without first checking whether they were the pristine
     version or had already been superseded. They were restored from git
     history (`git checkout HEAD -- <path>`) since they'd been committed by an
     earlier session. One further mistake compounded this: the pristine
-    `extension-repeat3.json` was restored via `git checkout` *before* a copy
+    `5-extension-repeat3.json` was restored via `git checkout` *before* a copy
     was saved of the contaminated version then sitting on disk in its place,
     overwriting it with no way to get the contaminated raw JSON back through
     git (it had never been committed). The contaminated `.md` for that run was
     reconstructed by hand from its content, which had already been printed in
     full during the session; the raw `.json` for that specific run is
-    genuinely gone. The `extension-final` contaminated pair, caught before the
+    genuinely gone. The `8-extension-final-run3-COLLISION-CONTAMINATED` pair, caught before the
     same mistake could repeat, was copied to a new filename first and both the
     `.json` and `.md` survive intact. The lesson, stated plainly for next
     time: **copy before you restore, every time, no exceptions** — checking
@@ -148,7 +148,7 @@ part.
 
 ## The final number
 
-`extension-final.json`/`.md`, run after both the `resolve_country` fix (#18)
+`9-extension-final.json`/`.md`, run after both the `resolve_country` fix (#18)
 and the `EvalLock` fix (#22), lock-protected and confirmed uncontaminated
 (the two cases that had shown contamination signatures — the Reykjavik/Chiang
 Mai mix-up and the departure case with no departure logic — both pass cleanly
@@ -162,11 +162,11 @@ just this final number:
 
 | File | Score | Status |
 |---|---|---|
-| `extension-v1.md` | 23/27 | single run, before repeat-mode existed |
-| `extension-repeat3.md` | 26/27 | clean; its one flaky case led to fix #18 |
-| `extension-repeat3-run2-COLLISION-CONTAMINATED.md` | 20/27 | invalid — decision #22 |
-| `extension-final-run3-COLLISION-CONTAMINATED.json`/`.md` | 19/27 | invalid — decision #22 |
-| `extension-final.json`/`.md` | **27/27** | **clean, lock-protected — cite this one** |
+| `6-extension-v1.md` | 23/27 | single run, before repeat-mode existed |
+| `5-extension-repeat3.md` | 26/27 | clean; its one flaky case led to fix #18 |
+| `7-extension-repeat3-run2-COLLISION-CONTAMINATED.md` | 20/27 | invalid — decision #22 |
+| `8-extension-final-run3-COLLISION-CONTAMINATED.json`/`.md` | 19/27 | invalid — decision #22 |
+| `9-extension-final.json`/`.md` | **27/27** | **clean, lock-protected — cite this one** |
 
 ---
 

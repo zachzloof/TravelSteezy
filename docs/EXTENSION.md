@@ -489,7 +489,7 @@ First run: **7/9**. Both failures were real.
    rules described in section 2.
 
 After both fixes: **9/9, passing all 3 repeat runs, 27/27 individual attempts**
-(`evals/results/onboarding-v2.md`).
+(`evals/results/11-onboarding-v2.md`).
 
 A third bug was caught by a unit test rather than an eval, and is worth noting
 because it was invisible by inspection: the band synonym table flattens hyphens
