@@ -554,8 +554,15 @@ uvicorn backend.main:app --reload --port 8000
 Open http://localhost:8000. For frontend hot-reload use `npm run dev` in
 `frontend/` (port 5173, proxied to the backend).
 
-> **Python version.** Pinned to `litellm==1.72.0` because 1.78+ requires Python
-> 3.11 (`typing.NotRequired`). Developed and tested on Python 3.10.
+> **Python version.** Runs on Python 3.13 (see `runtime.txt`/`nixpacks.toml`).
+> This was a deliberate move, not the default: `litellm` was pinned at 1.72.0
+> for a real reason (`>=1.78` needs Python 3.11's `typing.NotRequired`,
+> reverified against the current release before this move), so getting
+> `litellm` current meant moving the runtime, not just editing a version
+> number. Verified with the full test suite, live calls through every
+> schema-typed and prompted-JSON agent, and a full eval run
+> (`evals/results/python313-litellm-current.md`) before being adopted — see
+> [notes/09-observability-and-tracing.md](notes/09-observability-and-tracing.md).
 
 ---
 

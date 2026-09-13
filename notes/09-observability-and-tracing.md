@@ -98,14 +98,60 @@ assumed:
 | Package | Was | Now | How it was verified |
 |---|---|---|---|
 | `google-adk` | 1.20.0 | 2.9.0 | Read every real `BREAKING CHANGES` entry in the upstream changelog between the two versions (none touch `LlmAgent`/`Runner`/`LiteLlm`/tool-calling); ran a real tool-calling `LlmAgent` call through `LiteLlm` + this version. The full eval suite is where a *different*, real regression was actually caught - not from this bump itself, but from adopting `output_schema` afterward on `decision_weigher` (see the dependency-modernization code-update section below and notes/01) - fixed and reverified at 33/35, `evals/results/modernization-v3-final.md`. |
-| `openai` | 2.54.0 | 3.13.0 | `litellm==1.72.0` declares `openai>=1.68.2` with no upper bound; ran a real end-to-end call through litellm+ADK+this version before touching the real venv. |
+| `openai` | 2.54.0 | 3.13.0, later resettled at 2.54.0 | First bumped to 3.13.0 (`litellm==1.72.0` declares `openai>=1.68.2` with no upper bound), verified with a real end-to-end call through litellm+ADK. Landed back on 2.54.0 - its latest 2.x release, not a deliberate downgrade - once `litellm` itself moved to 1.100.1, which caps `openai<3.0.0`; see the Python move below. |
 | `pinecone` | 5.4.2 | 10.0.0 | Read the real release notes for every major version 6 through 10; v10's own notes state plainly that `upsert`/`query`/`fetch`/`create_index` "does not change what your code means" for this exact usage. |
 | `langfuse` | 2.60.10 | 4.15.2 | See above - the whole point of this note. |
 | `fastapi` | 0.115.14 | 0.141.1 | Scanned every release's `Breaking Changes` section; none touch this app's usage (no `ORJSONResponse`/`UJSONResponse`, no `pydantic.v1`). |
 | `uvicorn` | 0.34.3 | 0.52.4 | Pulled in transitively by the above with no conflict. |
 | `bcrypt` | 4.0.1 | 5.0.0 | Only reachable by removing `passlib` - see below. |
 | `passlib` | 1.7.4 | **removed** | Last released 2020-10-08 (dead upstream) - its `bcrypt<4.1` pin (reads `bcrypt.__about__`, removed in bcrypt 4.1) was therefore permanent, not fixable by waiting. Its entire usage in this app was `CryptContext(schemes=["bcrypt"])` with no other scheme ever configured - i.e. no real abstraction being used. Replaced with direct `bcrypt.hashpw`/`checkpw` in `backend/security.py`. Verified before touching any code: passlib's bcrypt handler emits a standard `$2b$...` hash with no passlib-specific wrapper, so a hash produced by the old code verified correctly with a bare `bcrypt.checkpw()` call - no data migration needed, checked against this project's own real stored hashes. |
-| `litellm` | 1.72.0 | **unchanged, re-verified** | The existing pin comment claimed `>=1.78` needs Python 3.11 (`typing.NotRequired`). Reverified empirically against the *current* release (1.100.1, ~20 versions past 1.78): still hard-fails the same import on Python 3.10. Only Python 3.10 is installed on this machine (`py -0`), so this genuinely requires installing a newer Python locally before it can move - a separate, bigger decision than a `requirements.txt` edit, deliberately not taken in this pass. |
+| `litellm` | 1.72.0 | 1.100.1 | First re-verified (not just re-read) that the current release still hard-fails on Python 3.10 - `>=1.78` needs `typing.NotRequired`. Only Python 3.10 was installed on this machine at the time, so this was left alone in that pass as a deliberately separate, bigger decision than a `requirements.txt` edit. Revisited the same session: the runtime itself moved to Python 3.13 (below), which unblocked this. |
+
+### The Python move itself (3.10 → 3.13)
+
+Done as its own deliberate step once the user weighed the trade-off (a whole
+additional round of the same verify-live-then-eval cycle, for a library -
+`litellm` - whose current pin had no actual functional cost to this app) and
+asked for it anyway: "the earlier we do it the better we can refine."
+
+**Installing Python 3.13 was not straightforward on this machine.** Both the
+winget-driven install and a direct download of the official
+`python-3.13.15-amd64.exe` installer hung identically and indefinitely in
+`/quiet` mode - no `msiexec` process ever spawned, no install log was ever
+written, across three separate attempts (winget, direct EXE, direct EXE with
+explicit `/log`). This looked like a UAC/elevation stall at first, but
+`InstallAllUsers=0` (a genuinely elevation-free per-user install) hung the
+same way, which ruled that out - something about this machine or session
+blocks the installer's bootstrap stage outright, not just its elevation
+prompt. Diagnosed by checking the full process list each time (`tasklist`
+with no filter), not just grepping for "python", specifically to catch a
+child process running under a different name - none ever appeared.
+
+Worked around by using Python's **embeddable ZIP distribution** instead
+(`python-3.13.15-embed-amd64.zip`), which needs no installer at all:
+extracted, edited `python313._pth` to enable `import site` and
+`Lib\site-packages`, bootstrapped `pip` via `get-pip.py`. The embeddable
+distribution deliberately ships without the stdlib `venv` module (confirmed:
+`ModuleNotFoundError: No module named 'venv'`), so the third-party
+`virtualenv` package - which doesn't depend on stdlib `venv` - was used to
+build the project's actual `.venv` instead of `python -m venv`.
+
+Verified before adopting, in this order: `pip check` for a clean dependency
+graph (`openai` correctly resolved down to 2.54.0 to satisfy litellm's own
+`<3.0.0` cap - no conflict, no manual pinning fight); `litellm` and every
+other core library importing cleanly (confirming the original `NotRequired`
+failure was actually gone, not just theoretically fixed); the full unit test
+suite (103/103); live calls through the schema-typed agents, the
+prompted-JSON `decision_weigher` including its live-source disclosure
+backstop, the onboarding extractor, Pinecone, and embeddings; and a full eval
+run, `evals/results/python313-litellm-current.md`, scoring **33/35** -
+matching the pre-move score, with `honesty-unknown-destination` (the guard
+this session spent the most effort on) passing, and the two misses being
+different cases than the previous run, consistent with the already-documented
+specialist-dispatch variance rather than anything the Python move caused.
+`nixpacks.toml` and `runtime.txt` updated to `python313`/`3.13.15` for the
+Railway deploy target; `python313` confirmed as a real, current nixpkgs
+attribute (not assumed) before relying on it.
 
 `opentelemetry-api`/`-sdk`/`-exporter-otlp-proto-http` are pinned to exactly
 `1.42.1`: `google-adk` caps them at `<=1.42.1` while `langfuse` alone would

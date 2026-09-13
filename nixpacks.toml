@@ -1,7 +1,7 @@
 # Railway build: the frontend is compiled to static files and served by FastAPI,
 # so the whole app is one service on one origin with no CORS for a visitor to hit.
 [phases.setup]
-nixPkgs = ["python310", "nodejs_20"]
+nixPkgs = ["python313", "nodejs_20"]
 
 [phases.install]
 cmds = [

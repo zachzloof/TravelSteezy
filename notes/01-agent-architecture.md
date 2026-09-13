@@ -19,9 +19,18 @@ pointed at `openai/gpt-4o-mini`. The user's `.env` has an unrelated
 `GOOGLE_API_KEY` (looks like an OAuth token, not an API key) that nothing in
 this app reads.
 
-**Pin note:** `litellm==1.72.0` specifically, because 1.78+ requires Python 3.11
-(`typing.NotRequired`), and this was developed against Python 3.10.1. If the
-deploy environment moves to 3.11+, the pin can be relaxed.
+**Pin note (resolved 2026-09):** this was pinned at `litellm==1.72.0` because
+1.78+ requires Python 3.11 (`typing.NotRequired`), and the project was
+developed against Python 3.10.1. Relaxed by moving the runtime itself to
+Python 3.13 rather than leaving the pin in place - see the dependency
+modernization in [notes/09](09-observability-and-tracing.md) for how the
+move was carried out (Python installed per-user via the embeddable
+distribution + `virtualenv`, since the standard installer hung
+non-interactively on this machine) and verified (full test suite, live
+calls through every agent, a full eval run at 33/35 matching the pre-move
+score - `evals/results/python313-litellm-current.md`) before being adopted.
+`litellm==1.100.1` and `openai==2.54.0` now, the latter capped by litellm's
+own `openai<3.0.0` requirement rather than a deliberate downgrade.
 
 ## `output_schema` — fixed upstream, since re-adopted (2026-09)
 
