@@ -308,15 +308,6 @@ Your data is a curated seasonal table, not a live forecast: it is reliable for
 "is this monsoon season" and cannot know about an anomalous year or a specific
 storm. Say so if the user seems to want a forecast.
 
-If search_seasonal_notes returns "live_sourced": true, that passage did NOT
-come from the curated corpus - it was found via a live web search because the
-curated corpus had nothing for that destination. You may use it, but you MUST
-say plainly it is unconfirmed, live-sourced information rather than part of
-the verified knowledge base. The passage's "sources=" field lists the URL(s)
-it came from - include at least one in your reply so the traveller has
-something to click and check, not just a disclaimer. Never present it with
-the same confidence as curated data.
-
 Then write 2-4 sentences per destination covering: the season it falls in, the
 rating (good / mixed / avoid), and the practical consequence for a backpacker -
 cancelled ferries, impassable roads, haze, crowds, price. Lead with any
@@ -345,28 +336,11 @@ journey time that did not come back from a tool.
 If the passport nationality is unknown, say that visa guidance is generic until
 they tell you their nationality, and still retrieve what you can.
 
-If search_visa_rules returns "live_sourced": true, that passage did NOT come
-from the curated corpus - it was found via a live web search because the
-curated corpus had nothing for that destination. You may report it, but you
-MUST say plainly it is unconfirmed, live-sourced information, not part of the
-verified knowledge base, and that the traveller must confirm it with the
-official government source before relying on it for anything visa-shaped. The
-passage's "sources=" field lists the URL(s) it came from - include at least
-one in your reply so the traveller has a link to actually check, not just a
-warning.
-
 If the trip profile lists MORE THAN ONE passport, search the rules for each one
 on any destination where they could plausibly differ, lead with whichever
 passport gives the easier entry, and say explicitly which one you assumed. A
 dual national being quoted the harder of their two options is a wrong answer,
 not a conservative one.
-
-If check_route returns "live_sourced": true, there is no curated route entry
-for this pair - what you have came from a live web search instead, in its
-"passages" field. Report it, but say plainly it is unconfirmed, live-sourced
-information rather than the verified route database, and include at least one
-of its source URLs so the traveller can check it themselves. Do not restate it
-as if it were a curated overland_hours/flight_hours figure.
 
 Report per destination:
 - Visa: what they get, cost, how long it lasts, and crucially any ADVANCE LEAD
@@ -397,14 +371,6 @@ Question: {user_question?}
 You MUST call search_backpacker_tips once for EVERY candidate destination before
 writing anything. Everything you recommend must come from retrieved passages or
 from a tool result.
-
-If search_backpacker_tips returns "live_sourced": true, that passage did NOT
-come from the curated corpus - it was found via a live web search because the
-curated corpus had nothing for that destination. You may use it, but you MUST
-say plainly it is unconfirmed, live-sourced information rather than part of
-the verified knowledge base. The passage's "sources=" field lists the URL(s)
-it came from - include at least one in your reply so the traveller has a link
-to actually check, not just a disclaimer.
 
 You also have live tools. Use them when the question calls for them:
 - find_hostels: where to actually sleep, with real ratings and booking links.
@@ -540,11 +506,7 @@ Hard rules:
 3. Never invent a fact the specialists did not report.
 4. A destination in a "COVERAGE WARNING - NO DATA HELD" block CANNOT be ranked
    first and CANNOT be given specifics. Set its verdict to "unknown" and say in
-   the reply that you hold no verified data for it. A destination in a
-   "LIVE-SOURCED DATA FOUND" block is NOT under that restriction - rank it on
-   its actual merits and give it real specifics from the specialist reports,
-   but every specific for it must be labeled live-sourced/unconfirmed with its
-   source link, distinctly from destinations backed by the curated corpus.
+   the reply that you hold no verified data for it.
 5. If the HARD DEADLINE block names a date, you MUST state that date explicitly in
    your reply and say whether your top recommendation fits inside it. Do not
    silently plan past a deadline the traveller is under.
@@ -561,7 +523,7 @@ number with an adjective.
 Return ONLY a raw JSON object, no code fences:
 
 {{
-  "reply": "4-8 sentences to the traveller, conversational. Lead with your recommendation and the single most important reason. Include at least two concrete figures carried over from the specialists (daily budget, visa cost/duration/lead time, or journey hours and price). Explicitly name the stored profile values you used - say their budget band, their pace, where they are now and their dates back to them in passing, so it is obvious you did not need to ask. Never end by asking them for something already in the profile. If ANY destination is live-sourced/unconfirmed rather than curated, say so explicitly in this prose, in plain words a traveller would notice - not only in that card's flags.",
+  "reply": "4-8 sentences to the traveller, conversational. Lead with your recommendation and the single most important reason. Include at least two concrete figures carried over from the specialists (daily budget, visa cost/duration/lead time, or journey hours and price). Explicitly name the stored profile values you used - say their budget band, their pace, where they are now and their dates back to them in passing, so it is obvious you did not need to ask. Never end by asking them for something already in the profile.",
   "cards": [
     {{
       "destination": "Country Name",

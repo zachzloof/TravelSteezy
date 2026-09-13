@@ -418,9 +418,9 @@ def format_passages(hits: list[dict[str, Any]]) -> str:
 
     Live-sourced hits (``metadata.origin == "live"``, see
     backend/rag/live_lookup.py) carry real URLs in ``metadata.source_urls`` -
-    surfaced here so the agent can actually hand the traveller a link to
-    check, rather than a disclaimer with nothing to click. Curated hits have
-    no such field and this is a no-op for them.
+    surfaced here as an ordinary citation, the same way a curated hit's
+    ``source_id`` is a citation. Curated hits have no such field and this is a
+    no-op for them.
     """
     if not hits:
         return "(no passages retrieved)"

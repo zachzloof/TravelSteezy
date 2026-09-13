@@ -311,13 +311,15 @@ when a scoped search of the curated corpus (`visa`/`seasonal`/`tips`/`routes`)
 comes back empty. Real web search, an LLM synthesis pass grounded strictly in
 the search results, a second LLM pass that verifies the draft against those
 same results, then ingested - so the same gap is never searched and
-re-verified twice. Dormant unless `TAVILY_API_KEY` is set; always presented to
-the traveller as unconfirmed, and never treated as "covered" by the
-`coverage` guard. It is NOT a separate namespace: the document is ingested
-into whichever curated namespace matches its kind (a live visa answer joins
-`visa`), tagged `metadata.origin = "live"` so it stays distinguishable from
-hand-curated content without needing its own namespace to do that job - an
-earlier, namespace-per-trust-tier design let a visa question and a tips
+re-verified twice. Dormant unless `TAVILY_API_KEY` is set. A document that
+passes this pipeline is treated as real information, the same as curated
+content - no disclaimer in its text, no hedging in the reply - and IS treated
+as "covered" by the `coverage` guard once found (the guard only restricts a
+destination that found nothing at all, curated or live, this turn). It is NOT
+a separate namespace: the document is ingested into whichever curated
+namespace matches its kind (a live visa answer joins `visa`), tagged
+`metadata.origin = "live"` purely as an internal provenance/debugging marker -
+an earlier, namespace-per-trust-tier design let a visa question and a tips
 question about the same country collide on the same cached answer. See
 [notes/03-rag-and-retrieval.md](../notes/03-rag-and-retrieval.md).
 

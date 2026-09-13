@@ -408,3 +408,77 @@ Australia) outrank actually-covered neighbours (Thailand, Philippines) simply
 because the covered ones were in their real, known-bad season that month.
 Reordered to `{"good": 0, "mixed": 1, "avoid": 2, "unknown": 3}` so "unknown"
 is treated as the least favourable tier, not a safer bet than a known-bad one.
+
+### Fourth follow-up: a wishlist mostly outside the curated table still lost to a known-bad month
+
+Follow-up to the "unknown vs. avoid" reorder above, caught the same day by
+direct pushback with a real example: a traveller with ten wishlist countries
+in Bali got served Vietnam and Thailand - both genuinely in typhoon/monsoon
+season that month - because those were the only two candidates the curated
+table could rate at all. The other eight (Japan, Australia, South Korea,
+Peru, Mexico, Morocco, Iceland, New Zealand, Colombia) all came back
+"unknown" and, correctly per the fix above, lost to a known "avoid" - but
+several of those eight were, in reality, having a genuinely good month. The
+reorder fixed "unknown beating avoid unfairly"; it did not fix "avoid always
+beating unknown even when unknown means good," because `climate.assess()`
+simply has no opinion outside its ~15-country table - silence was still being
+read as "assume the worst," which is honest but not useful when the
+alternative on offer is a known-bad month.
+
+The fix: `live_lookup.classify_season(destination, month)` turns a seasonal
+passage into an actual good/mixed/avoid rating for wishlist countries the
+table can't rate, reusing the exact search-once-cache-forever mechanism
+`get_or_fetch` already provides for the "seasonal" kind - the expensive part
+(a Tavily search plus the two-pass synthesis/verify) still runs at most once
+per destination ever; classifying a different month later is one cheap
+completion against the already-fetched, already-verified passage. Wired into
+the candidate ranking in `runner.py`: up to 6 wishlist countries the table
+can't rate get checked concurrently, highest wishlist-priority first (so a
+long wishlist cannot turn one turn into a dozen live searches), before the
+season/distance/priority sort runs. Re-run against the reproduction above,
+the result became South Korea, Australia and Peru - all genuinely good-season
+- instead of Vietnam and Thailand.
+
+### Fifth follow-up: the disclosure requirement itself was the wrong call
+
+Direct instruction, not a bug report: stop presenting live-sourced content as
+lesser. Every one of the last five follow-ups above treated "disclosed as
+unconfirmed" as the safety property worth protecting - the `[UNVERIFIED -
+live-sourced ...]` prefix baked into every live document's own text, the
+"you MUST say plainly it is unconfirmed" clause in three separate specialist
+prompts, the `coverage_note()` block requiring a source link and an
+unconfirmed label, and `_enforce_live_source_disclosure()` in `runner.py` -
+a code-level backstop that prepended "treat it as unconfirmed and check it
+yourself" to the reply whenever any candidate was live-sourced. Working
+exactly as designed, this is what a traveller actually saw: a card, correctly
+and grounded via a real search plus a two-pass verify against that search's
+own text, still labelled "unconfirmed" and prefaced with a doubt the app
+itself had no real reason to hold.
+
+The correction: the two-pass search-and-verify pipeline IS the verification.
+A live-sourced document that passed it is real information, not a lesser
+guess - treating it as inferior to curated content past that point was
+manufacturing distrust in data the app had already checked. All of the
+following were removed: the baked-in text disclaimer (`fetch_and_verify` now
+stores the verified answer as-is), the "say plainly it's unconfirmed, include
+a source link" instructions in `WEATHER_INSTRUCTION`/`LOGISTICS_INSTRUCTION`/
+`RECOMMENDATIONS_INSTRUCTION` and `DECISION_INSTRUCTION`'s hard rule #4,
+`coverage_note()`'s separate "LIVE-SOURCED DATA FOUND" block (a live-sourced
+destination now simply isn't in the "NO DATA HELD" warning at all - same
+treatment as a curated hit), and `_enforce_live_source_disclosure()` entirely.
+
+What did NOT change: `metadata.origin = "live"` is still written and still
+tracked through the `ToolRecorder` and into `coverage_note()`'s `live_sourced`
+set - purely as an internal provenance marker for our own tracing and
+debugging (which passage came from where, auditable later), never surfaced to
+the traveller as a reason to doubt the answer. The one honesty guarantee that
+remains structurally enforced, in code rather than prompted: a destination
+where NEITHER curated data NOR a live search found anything at all this turn
+still gets the strict "you MUST NOT state a figure" warning - fabricating
+from pure parametric memory, the original `honesty-unknown-destination`
+failure mode, is still caught. What changed is only the middle case: found
+via a real, verified live search is no longer treated as a lesser tier than
+curated. `evals/cases.jsonl`'s `honesty-unknown-destination` and
+`route-live-lookup-uncurated-pair` rubrics were reworded to match - both used
+to score a confident, live-sourced answer as a failure unless hedged, which
+would have graded the new, correct behaviour as broken.

@@ -35,19 +35,27 @@ instead of ever searching for its own answer - reproduced live: a visa lookup
 for Japan came back with backpacker-budget tips, because tips had been
 live-searched for Japan first in the same turn. Sharing the real per-kind
 namespace with curated content fixes that at the root: a visa search only ever
-searches the visa namespace, live-sourced or not. The trust distinction that
-matters - "was this hand-curated or fetched and synthesised this session" -
-still needs disclosing to the traveller, which is exactly what
-``metadata.origin`` is for; see search_visa_rules/search_backpacker_tips/
+searches the visa namespace, live-sourced or not. ``metadata.origin`` records
+"was this hand-curated or fetched and synthesised this session" purely for our
+own tracing/debugging (the admin and trace views); it is NOT a user-facing
+confidence tier - a document that passed the search-and-verify pipeline above
+is treated as real information, the same as curated content, with no
+disclaimer baked into its text and no hedging language in the agent prompts
+that read it. See search_visa_rules/search_backpacker_tips/
 search_seasonal_notes and check_route in backend/agents/tools.py, and
-_run_comparison in backend/agents/runner.py, which now key off ``origin``
-instead of off namespace.
+_run_comparison in backend/agents/runner.py, which key off ``origin`` purely
+to decide what to feed back into the ``coverage`` guard below - never to
+change how a specialist talks about it.
 
 The ``coverage`` guard (backend/agents/coverage.py) is deliberately NOT
-touched by this module: SUPPORTED stays curated-only, so a destination this
-module has filled in via live search still cannot be ranked first or treated
-as verified without disclosure. Closing a knowledge gap and lowering the
-honesty bar are two different things, and this only does the first.
+touched by this module: SUPPORTED stays curated-only, which only matters for
+ONE thing - deciding whether a destination that found NOTHING at all this
+turn (no curated data, no live search hit either) gets the strict "you MUST
+NOT state a figure" warning. A destination that DID get a live-sourced hit is
+excluded from that warning entirely and treated as fully covered; closing a
+knowledge gap and lowering the honesty bar are two different things, and this
+module's job is only the first - the two-pass verify above is what makes that
+safe.
 """
 from __future__ import annotations
 
@@ -230,18 +238,23 @@ def fetch_and_verify(destination: str, kind: str, question: str) -> dict[str, An
 
     fetched_at = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     source_urls = [r["url"] for r in results if r.get("url")]
-    text = (
-        f"[UNVERIFIED - live-sourced {fetched_at}, not part of the curated knowledge base, "
-        f"confirm before relying on it] {verified}"
-    )
+    # No disclaimer baked into the text: once a claim has passed the
+    # synthesis+verify pipeline above, it is treated as real information, the
+    # same as a curated seed document - not a lesser guess that needs
+    # flagging to the traveller every time it is read. `origin`/`fetched_at`/
+    # `source_urls` below still record where this came from, kept purely for
+    # our own tracing and debugging (the admin/trace views, and so a human can
+    # audit a specific claim later) - never surfaced to the traveller as a
+    # reason to doubt it.
     slug = destination.lower().strip().replace(" ", "-").replace(",", "")
     return {
         "id": f"live-{kind}-{slug}",
-        "text": text,
+        "text": verified,
         "metadata": {
             # Same content_type/namespace a curated doc of this kind would use
-            # (see backend/rag/seed_data.py) - `origin` is what marks this one
-            # as live-sourced rather than a separate namespace doing that job.
+            # (see backend/rag/seed_data.py) - `origin` is an internal
+            # provenance tag for our own debugging, not a user-facing
+            # confidence tier.
             "content_type": kind,
             "kind": kind,
             "origin": "live",

@@ -78,61 +78,46 @@ def coverage_note(candidates: list[str], live_sourced: Iterable[str] | None = No
     specialists' tool calls have completed (see runner.py::_run_comparison).
 
     A destination with no curated data but a genuine live-sourced hit this
-    turn is treated as having real, sourced data - not curated, but not
-    nothing - and gets an explicit permission to be used at full strength
-    provided it is disclosed, rather than being swept into the same "you have
-    literally nothing, do not invent a figure" bucket as a destination this
-    turn found nothing for at all. See the live-sourced disclosure section of
-    notes/03-rag-and-retrieval.md for why this split exists: without it, a
-    successful live lookup is either indistinguishable from curated fact (the
-    honesty bar silently drops) or gets fetched, verified, and then thrown
-    away by this exact guard (the whole feature is pointless).
+    turn is treated as fully covered, same as curated data - no disclosure, no
+    separate confidence tier. The two-pass search-and-verify pipeline in
+    live_lookup.py IS the verification; once a candidate has passed it, it is
+    real information, not a lesser guess to hedge in the reply. The only
+    destinations this guard restricts are ones where NEITHER the curated
+    corpus NOR a live search found anything at all THIS turn - seed_data.py's
+    SUPPORTED set stays curated-only purely so this function knows who still
+    needs the strict warning, not to mark live-sourced content as inferior.
+    See the "live lookup is real information, not a hedge" section of
+    notes/03-rag-and-retrieval.md.
     """
     split = classify(candidates)
     if not split["unsupported"]:
         return "All candidate destinations are covered by the knowledge base."
 
     live_sourced_set = {str(d).strip().lower() for d in (live_sourced or [])}
-    live_covered = [d for d in split["unsupported"] if d in live_sourced_set]
     genuinely_unknown = [d for d in split["unsupported"] if d not in live_sourced_set]
 
-    blocks: list[str] = []
-    if live_covered:
-        names = ", ".join(live_covered)
-        blocks.append(
-            f"LIVE-SOURCED DATA FOUND FOR: {names}.\n"
-            f"The curated knowledge base holds nothing for {names}, but a live web "
-            f"search this turn found real information, and a second LLM pass "
-            f"checked the drafted answer against those search results before it was "
-            f"kept (see the specialist reports, marked 'live_sourced': true). Treat "
-            f"this as genuinely usable, not as a lesser guess: state its figures, "
-            f"rank {names} on its actual merits, and do NOT artificially hold it back "
-            f"or default it to last place or 'unknown' just because it isn't curated. "
-            f"The one requirement is disclosure - every specific for {names} must be "
-            f"labeled live-sourced/unconfirmed (not part of the curated corpus) and "
-            f"must include the source link the specialist reported."
-        )
-    if genuinely_unknown:
-        names = ", ".join(genuinely_unknown)
-        blocks.append(
-            f"COVERAGE WARNING - NO DATA HELD FOR: {names}.\n"
-            f"Neither the curated knowledge base nor a live search this turn found "
-            f"anything for {names}. The knowledge base covers only: "
-            f"{', '.join(sorted(SUPPORTED))}.\n"
-            f"You MUST NOT rank any of them first, and you MUST give each a verdict of "
-            f"'unknown' with the missing-data warning in its cons.\n"
-            f"You MUST NOT state ANY figure for them - no dorm prices, no daily budget "
-            f"ranges, no visa fees, no journey times, not even approximate or "
-            f"'typically around' ones. Quoting a plausible-sounding price you cannot "
-            f"source is the exact failure this rule exists to stop.\n"
-            f"EXCEPTION: if your OWN tool call for one of {names} returns "
-            f"'live_sourced': true, you may then report exactly what it returned, "
-            f"clearly labeled unconfirmed/live-sourced with its source link - that is "
-            f"the only case in which stating a figure for {names} is allowed.\n"
-            f"Absent that, say plainly that this assistant does not cover {names} and "
-            f"they should check a source that does."
-        )
-    return "\n\n".join(blocks)
+    if not genuinely_unknown:
+        return "All candidate destinations are covered by the knowledge base."
+
+    names = ", ".join(genuinely_unknown)
+    return (
+        f"COVERAGE WARNING - NO DATA HELD FOR: {names}.\n"
+        f"Neither the curated knowledge base nor a live search this turn found "
+        f"anything for {names}. The knowledge base covers only: "
+        f"{', '.join(sorted(SUPPORTED))}.\n"
+        f"You MUST NOT rank any of them first, and you MUST give each a verdict of "
+        f"'unknown' with the missing-data warning in its cons.\n"
+        f"You MUST NOT state ANY figure for them - no dorm prices, no daily budget "
+        f"ranges, no visa fees, no journey times, not even approximate or "
+        f"'typically around' ones. Quoting a plausible-sounding price you cannot "
+        f"source is the exact failure this rule exists to stop.\n"
+        f"EXCEPTION: if your OWN tool call for one of {names} finds real data (a "
+        f"real passage, not an empty result), report exactly what it returned, "
+        f"normally, the same as you would for curated data - that is the only "
+        f"case in which stating a figure for {names} is allowed.\n"
+        f"Absent that, say plainly that this assistant does not cover {names} and "
+        f"they should check a source that does."
+    )
 
 
 def deadline_note(profile: dict[str, Any]) -> str:

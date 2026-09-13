@@ -231,71 +231,6 @@ def _coerce_cards(raw: Any) -> list[dict[str, Any]]:
     return cards
 
 
-_DISCLOSURE_MARKERS = ("unconfirmed", "unverified", "live-sourced", "live sourced")
-
-
-def _enforce_live_source_disclosure(
-    reply: str, cards: list[dict[str, Any]], live_sourced: set[str]
-) -> tuple[str, list[dict[str, Any]]]:
-    """Code-level backstop for the live-sourced disclosure rule.
-
-    The weigher is instructed (DECISION_INSTRUCTION plus the coverage_note's
-    "LIVE-SOURCED DATA FOUND" block) to flag every figure it states for an
-    off-corpus destination as unconfirmed/live-sourced. It does not reliably
-    do this - reproduced live, repeatedly: the exact guard text was present,
-    the specialist's OWN report already carried the disclosure ("This
-    information is unverified and came from a live source..."), and the
-    weigher's synthesis still dropped it from the reply, presenting AUD 50
-    visa fees and $20-30/day budgets for Nauru and Uzbekistan as plain fact.
-    Strengthening the prompt alone did not fix it. This makes disclosure a
-    fact about the output rather than a hope about the model, matching the
-    coverage guard's own philosophy (backend/agents/coverage.py) of computing
-    safety-critical checks in code rather than trusting the model to comply.
-    """
-    if not live_sourced:
-        return reply, cards
-
-    marked: list[dict[str, Any]] = []
-    for card in cards:
-        if card["destination"].strip().lower() not in live_sourced:
-            marked.append(card)
-            continue
-        card_text = " ".join(
-            str(card.get(k) or "")
-            for k in ("rationale", "est_cost_note", "visa_flag", "season_flag")
-        ) + " " + " ".join(card.get("backpacker_notes") or [])
-        if any(marker in card_text.lower() for marker in _DISCLOSURE_MARKERS):
-            marked.append(card)
-            continue
-        note = (
-            "Figures for this destination are live-sourced and unconfirmed, not "
-            "part of the curated knowledge base - confirm before relying on them."
-        )
-        card = dict(card)
-        card["visa_flag"] = f"{card['visa_flag']} {note}".strip() if card.get("visa_flag") else note
-        marked.append(card)
-
-    # Prepended, unconditionally, whenever any candidate is live-sourced - not
-    # only appended when disclosure is entirely absent. A disclosure that
-    # shows up after several sentences of confidently-stated figures reads as
-    # an afterthought, not an admission: reproduced live, the model stated
-    # every figure as plain fact and only mentioned "live-sourced, unverified"
-    # in a final sentence tacked on the end, which still read as confabulation
-    # to a human (and to the eval judge, whose own rubric asks for an "upfront"
-    # admission). Leading with it is what actually satisfies that bar.
-    names = sorted(live_sourced)
-    label = " and ".join(name.title() for name in names)
-    pronoun_subject = "it is" if len(names) == 1 else "they are"
-    pronoun_object = "it" if len(names) == 1 else "them"
-    disclosure = (
-        f"A heads-up before the specifics: this assistant holds no curated, "
-        f"verified data for {label} - {pronoun_subject} outside the knowledge base "
-        f"this covers. Everything below on {pronoun_object} came from a live web "
-        f"search this turn instead, so treat it as unconfirmed and check it "
-        f"yourself before relying on it."
-    )
-    reply = f"{disclosure} {reply}".strip()
-    return reply, marked
 
 
 # --------------------------------------------------------------------------- #
@@ -872,7 +807,6 @@ async def _run_comparison(
                 break
     if not reply:
         reply = text.strip() or "I could not put together a comparison for that."
-    reply, cards = _enforce_live_source_disclosure(reply, cards, live_sourced)
     trace.set_span_summary("agent.decision_weigher", f"{len(cards)} card(s)")
     return reply, cards, names
 
