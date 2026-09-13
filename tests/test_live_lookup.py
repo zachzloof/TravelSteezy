@@ -131,3 +131,61 @@ def test_not_configured_returns_empty_without_touching_the_store(monkeypatch):
     result = live_lookup.get_or_fetch("mongolia", "routes", "how to get from nepal to mongolia")
 
     assert result == []
+
+
+# --------------------------------------------------------------------------- #
+# classify_season
+# --------------------------------------------------------------------------- #
+def test_classify_season_reads_the_cached_seasonal_passage(monkeypatch):
+    """The expensive part (search + synthesis/verify) must not re-run just to
+    classify a different month - classify_season should reuse whatever
+    get_or_fetch already has cached for the "seasonal" kind."""
+    calls = []
+
+    def _get_or_fetch(destination, kind, question, top_k=2):
+        calls.append((destination, kind))
+        return [{"id": "live-seasonal-narnia", "text": "Narnia is always winter."}]
+
+    monkeypatch.setattr(live_lookup, "get_or_fetch", _get_or_fetch)
+    monkeypatch.setattr(live_lookup, "_llm_complete", lambda prompt: "avoid")
+
+    rating = live_lookup.classify_season("narnia", "December")
+
+    assert rating == "avoid"
+    assert calls == [("narnia", "seasonal")]
+
+
+def test_classify_season_returns_none_when_no_passage_exists(monkeypatch):
+    monkeypatch.setattr(live_lookup, "get_or_fetch", lambda *a, **k: [])
+
+    def _fail(*args, **kwargs):
+        raise AssertionError("no passage to classify - should not call the LLM at all")
+
+    monkeypatch.setattr(live_lookup, "_llm_complete", _fail)
+
+    assert live_lookup.classify_season("atlantis", "June") is None
+
+
+def test_classify_season_returns_none_when_not_configured(monkeypatch):
+    monkeypatch.setattr(live_lookup, "is_configured", lambda: False)
+
+    def _fail(*args, **kwargs):
+        raise AssertionError("get_or_fetch should not run when live lookup is disabled")
+
+    monkeypatch.setattr(live_lookup, "get_or_fetch", _fail)
+
+    assert live_lookup.classify_season("narnia", "December") is None
+
+
+def test_classify_season_treats_an_unclear_verdict_as_no_rating(monkeypatch):
+    """"unknown" (the passage didn't clearly cover this month) and any other
+    junk the completion might return both mean "nothing to rank with" - the
+    caller (runner.py) must fall back to plain "unknown", not a fabricated
+    tier, so this returns None rather than the literal string "unknown"."""
+    monkeypatch.setattr(
+        live_lookup, "get_or_fetch",
+        lambda *a, **k: [{"id": "x", "text": "some passage"}],
+    )
+    monkeypatch.setattr(live_lookup, "_llm_complete", lambda prompt: "unknown")
+
+    assert live_lookup.classify_season("narnia", "December") is None

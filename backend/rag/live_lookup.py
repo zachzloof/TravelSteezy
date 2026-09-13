@@ -96,6 +96,22 @@ Delete or soften anything you cannot find explicit support for. If nothing in th
 is supported, reply with exactly: NOT_FOUND
 Return only the corrected answer text, no preamble, no markdown."""
 
+_SEASON_CLASSIFY_PROMPT = """You are rating how suitable one month is for backpacker travel in a
+destination, based ONLY on the seasonal description below - not on anything you recall from
+training.
+
+DESTINATION: {destination}
+MONTH: {month}
+
+SEASONAL DESCRIPTION:
+{passage}
+
+Reply with EXACTLY one word and nothing else - good, mixed, avoid, or unknown. "avoid" means a
+genuinely bad time (monsoon, typhoon peak, extreme heat, a major seasonal closure). "mixed" means
+a real but manageable downside. "good" means no significant seasonal problem for backpacking. If
+the description does not actually mention {month} or its season clearly enough to judge, reply
+with exactly: unknown"""
+
 
 def is_configured() -> bool:
     return settings.live_lookup_enabled
@@ -292,3 +308,56 @@ def get_or_fetch(
             "namespace": kind,
         }
     ]
+
+
+def classify_season(destination: str, month: str) -> str | None:
+    """A good/mixed/avoid/None rating for one month, for a destination
+    backend.agents.climate's static CLIMATE_TABLE has no entry for.
+
+    Built for the "where next" candidate ranking in backend/agents/runner.py,
+    which could previously only ever call climate.assess() - fine for the
+    ~15-country curated table, but permanently "unknown" for anything else, no
+    matter how good or bad the real season actually is. Reproduced live: a
+    traveller with mostly non-curated countries on their wishlist (Japan,
+    Peru, Morocco, ...) had every one of them rank below Vietnam and Thailand
+    even though both were genuinely in typhoon/monsoon season, because
+    "unknown" had nothing to compete on - the ranking had no way to tell
+    "unmeasured" apart from "actually fine".
+
+    The EXPENSIVE part - a Tavily search plus the two-pass synthesis/verify -
+    runs at most ONCE per destination, ever: this reads the same "seasonal"
+    namespace document search_seasonal_notes uses (curated, or previously
+    live-sourced), via get_or_fetch's existing cache. Once fetched for any
+    month, that passage is part of the corpus, and classifying a DIFFERENT
+    month later for the same destination is a single cheap completion against
+    already-fetched, already-verified text - no new search, no repeat cost.
+
+    Returns None (not "unknown" as a value) when there is nothing to classify
+    at all - not configured, no search/curated hit, or a failed completion -
+    so a caller can tell "genuinely nothing to go on" apart from "checked, and
+    the passage itself did not clearly answer for this month".
+    """
+    if not is_configured():
+        return None
+
+    hits = get_or_fetch(
+        destination,
+        "seasonal",
+        f"seasonal weather, monsoon or hazard season timing for {destination} for travellers",
+        top_k=1,
+    )
+    if not hits:
+        return None
+    passage = (hits[0].get("text") or "").strip()
+    if not passage:
+        return None
+
+    try:
+        rating = _llm_complete(
+            _SEASON_CLASSIFY_PROMPT.format(destination=destination, month=month, passage=passage)
+        ).strip().lower()
+    except Exception as exc:  # noqa: BLE001 - a classification failure must not kill the turn
+        logger.warning("season classification failed for %r/%r: %s", destination, month, exc)
+        return None
+
+    return rating if rating in {"good", "mixed", "avoid"} else None

@@ -25,6 +25,7 @@ from backend.agents import catchup, coverage, graph, tracking
 from backend.agents.tools import ToolRecorder, current_recorder, reset_recorder, set_recorder
 from backend.config import settings
 from backend.memory import store, travel
+from backend.rag import live_lookup
 from backend.rag import store as rag_store
 from backend.schemas import (
     AgentTrace,
@@ -515,6 +516,54 @@ async def run_turn(user_id: int, message: str, username: str = "") -> dict[str, 
 
                 pool = list(wishlist_priority) + [c for c in neighbours if c not in wishlist_priority]
                 if pool:
+                    # climate.assess() only knows the curated table (~15
+                    # countries) - everything else comes back "unknown", which
+                    # the season_rank tiering below (correctly) treats as the
+                    # worst tier. That is honest but not useful for a wishlist
+                    # that is mostly countries outside that table: a genuinely
+                    # good month for an uncurated country would always lose to
+                    # a curated country's known-bad month, because "unknown"
+                    # has nothing real to compete on. Reproduced live: a
+                    # traveller whose wishlist was mostly Japan/Peru/Morocco/
+                    # Iceland-style countries got served two typhoon/monsoon
+                    # "avoid" picks, because none of their real wishlist had a
+                    # curated rating to rank with.
+                    #
+                    # So: for wishlist countries (not hardcoded neighbours,
+                    # which are always curated by construction) the table
+                    # comes back "unknown" for, actually check - live_lookup's
+                    # existing search-once-cache-forever pipeline underneath
+                    # classify_season means this only ever pays the real
+                    # search+LLM cost once per destination; every later month
+                    # asked about the same country reuses the same fetched,
+                    # verified passage. Capped, and cheapest/highest-priority
+                    # first, so a long wishlist cannot turn one turn into a
+                    # dozen live searches.
+                    MAX_LIVE_SEASON_CHECKS = 6
+                    uncovered_wishlist = sorted(
+                        (
+                            c for c in wishlist_priority
+                            if climate.assess(c, travel_month)["rating"] == "unknown"
+                        ),
+                        key=lambda c: wishlist_priority.get(c, 3),
+                    )[:MAX_LIVE_SEASON_CHECKS]
+
+                    live_season_ratings: dict[str, str] = {}
+                    if uncovered_wishlist:
+                        with trace.local_step("wishlist.live_season_check"):
+                            results = await asyncio.gather(
+                                *(
+                                    asyncio.to_thread(live_lookup.classify_season, c, travel_month)
+                                    for c in uncovered_wishlist
+                                )
+                            )
+                            live_season_ratings = {
+                                c: r for c, r in zip(uncovered_wishlist, results) if r
+                            }
+                        trace.set_span_summary(
+                            "wishlist.live_season_check",
+                            f"{len(live_season_ratings)}/{len(uncovered_wishlist)} resolved",
+                        )
                     # More candidates than one reply should carry (e.g. several
                     # wishlist countries at the same priority) gets narrowed in
                     # three passes, cheaply and deterministically rather than by
@@ -551,10 +600,13 @@ async def run_turn(user_id: int, message: str, username: str = "") -> dict[str, 
                         ]
                         return min(hours) if hours else float("inf")
 
+                    def _season_rating(dest: str) -> str:
+                        return live_season_ratings.get(dest) or climate.assess(dest, travel_month)["rating"]
+
                     ranked = sorted(
                         pool,
                         key=lambda c: (
-                            season_rank.get(climate.assess(c, travel_month)["rating"], 3),
+                            season_rank.get(_season_rating(c), 3),
                             _distance_hours(c),
                             wishlist_priority.get(c, 3),
                         ),
