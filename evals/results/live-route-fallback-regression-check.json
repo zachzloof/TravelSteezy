@@ -1,0 +1,236 @@
+{
+  "run_id": "eval-20260913T141152Z-82aa4a",
+  "label": "live-route-fallback-regression-check",
+  "timestamp": "2026-09-13T14:12:34.800977+00:00",
+  "score": "4/4",
+  "passed": 4,
+  "total": 4,
+  "pass_rate": 1.0,
+  "repeats": 1,
+  "flaky": 0,
+  "total_attempts": 4,
+  "attempt_pass_rate": 1.0,
+  "config": {
+    "llm_model": "gpt-4o-mini",
+    "judge_model": "gpt-4o-mini",
+    "judge_enabled": true,
+    "rag_backend": "pinecone",
+    "embeddings": "openai",
+    "langfuse": true
+  },
+  "results": [
+    {
+      "id": "honesty-unknown-destination",
+      "name": "Admits when it has no verified data for a destination",
+      "failure_mode": "generic tourist advice instead of backpacker-specific advice",
+      "message": "What about heading to Nauru or Uzbekistan instead?",
+      "passed": true,
+      "elapsed_ms": 16353,
+      "trace_id": "4e6ef155b0d6cbfdebfbd3629d51d4be",
+      "checks": [
+        {
+          "type": "judge",
+          "passed": true,
+          "detail": "judge score 5/5 - The assistant clearly acknowledges its lack of verified data for Nauru and Uzbekistan and advises the traveler to confirm the information independently.",
+          "score": 5
+        }
+      ],
+      "reply": "A heads-up before the specifics: this assistant holds no curated, verified data for Nauru and Uzbekistan - they are outside the knowledge base this covers. Everything below on them came from a live web search this turn instead, so treat it as unconfirmed and check it yourself before relying on it. Based on your current situation in Thailand, I recommend heading to Uzbekistan for September. It's significantly more budget-friendly, aligning well with your shoestring budget of street food and dorms. You can expect a daily budget of about $20 to $30 USD, with dorm accommodations around $5-10 and meals starting as low as $1-2 (live-sourced/unconfirmed from [source](https://thepartyingtraveler.com/2026/03/25/backpacker-travel-guide-uzbekistan)). On the other hand, Nauru may set you back around $90 to $130 USD daily, with limited accommodation options starting at $60-80 (live-sourced/unconfirmed from [source](https://www.annaroundtheworld.com/blog/everything-you-need-to-know-about-nauru)). Given your slow travel pace and preference for cost-effective options, Uzbekistan seems like the better fit right now.",
+      "cards": [
+        {
+          "destination": "Uzbekistan",
+          "rank": 1,
+          "verdict": "go",
+          "season_flag": null,
+          "visa_flag": "Figures for this destination are live-sourced and unconfirmed, not part of the curated knowledge base - confirm before relying on them.",
+          "backpacker_notes": [
+            "$5-10 for dorm accommodations",
+            "Meals starting as low as $1-2",
+            "Budget-friendly for exploration",
+            "Confirm visa regulations before traveling."
+          ],
+          "source_ids": [
+            "thepartyingtraveler"
+          ]
+        },
+        {
+          "destination": "Nauru",
+          "rank": 2,
+          "verdict": "avoid",
+          "season_flag": null,
+          "visa_flag": "Figures for this destination are live-sourced and unconfirmed, not part of the curated knowledge base - confirm before relying on them.",
+          "backpacker_notes": [
+            "Guesthouses start at $60-80",
+            "Exercise common sense at night",
+            "Limited activities due to higher costs"
+          ],
+          "source_ids": [
+            "annaroundtheworld"
+          ]
+        }
+      ],
+      "tool_calls": [
+        "check_seasonal_conditions",
+        "search_seasonal_notes",
+        "check_seasonal_conditions",
+        "search_seasonal_notes"
+      ],
+      "retrieved": [
+        "unverified-tips-nauru",
+        "unverified-tips-uzbekistan"
+      ],
+      "runs": 1,
+      "passes": 1,
+      "pass_rate": 1.0,
+      "flaky": false
+    },
+    {
+      "id": "route-overland-vs-flight",
+      "name": "Compares overland against flying with real numbers",
+      "failure_mode": "failing to use the trip profile",
+      "message": "Getting to Laos or Malaysia from here - is it worth going overland?",
+      "passed": true,
+      "elapsed_ms": 12307,
+      "trace_id": "e9c041f18d576198beb7a0df111eb40c",
+      "checks": [
+        {
+          "type": "tool_called",
+          "passed": true,
+          "detail": "tool_calls=['search_backpacker_tips', 'search_backpacker_tips', 'search_visa_rules', 'search_visa_rules', 'check_route', 'check_route']"
+        },
+        {
+          "type": "reply_mentions_any",
+          "passed": true,
+          "detail": "matched=['hour', 'overland', 'bus', 'train', 'slow boat']"
+        },
+        {
+          "type": "reply_matches_regex",
+          "passed": true,
+          "detail": "match=$18"
+        }
+      ],
+      "reply": "I recommend going to Laos over Malaysia due to its cheaper travel experience and budget-friendly options, which fit your shoestring budget and slow travel pace. Expect to spend between **$18-25** per day. You can take a sleeper train from Bangkok to Nong Khai, crossing the Friendship Bridge to Vientiane in about **12 hours** for around **$30-45**. This aligns with your interest in rivers, as traveling on the Mekong slow boat from Huay Xai to Luang Prabang is a classic experience costing about **$35**. You're currently in Thailand and looking for cost-effective routes, so Laos is the best option right now.",
+      "cards": [
+        {
+          "destination": "Laos",
+          "rank": 1,
+          "verdict": "go",
+          "season_flag": null,
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Mekong slow boat from Huay Xai to Luang Prabang for about $35.",
+            "Sleeper train from Bangkok to Nong Khai takes about 12 hours for $30-45.",
+            "Expect to spend $18-25 per day in Laos.",
+            "Be cautious of unexploded ordnance in eastern regions."
+          ],
+          "source_ids": [
+            "logistics-laos",
+            "recommendations-laos"
+          ]
+        },
+        {
+          "destination": "Malaysia",
+          "rank": 2,
+          "verdict": "maybe",
+          "season_flag": null,
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Bus from Bangkok to Butterworth takes about 20 hours for $30-50.",
+            "Daily budget of $25-30 in Malaysia.",
+            "Complete the Malaysia Digital Arrival Card online for free before arriving.",
+            "Ensure you use reputable transport services for safety."
+          ],
+          "source_ids": [
+            "logistics-malaysia",
+            "recommendations-malaysia"
+          ]
+        }
+      ],
+      "tool_calls": [
+        "search_backpacker_tips",
+        "search_backpacker_tips",
+        "search_visa_rules",
+        "search_visa_rules",
+        "check_route",
+        "check_route"
+      ],
+      "retrieved": [
+        "tips-laos",
+        "tips-malaysia",
+        "visa-laos-western",
+        "visa-malaysia-western"
+      ],
+      "runs": 1,
+      "passes": 1,
+      "pass_rate": 1.0,
+      "flaky": false
+    },
+    {
+      "id": "discovery-uses-route-corpus",
+      "name": "Where-next-from-here uses the city-level route corpus",
+      "failure_mode": "generic tourist advice instead of backpacker-specific advice",
+      "message": null,
+      "passed": true,
+      "elapsed_ms": 6482,
+      "trace_id": "f4c523e20b0e6db71ff11bf98a911af9",
+      "checks": [
+        {
+          "type": "tool_called",
+          "passed": true,
+          "detail": "tool_calls=['discover_next_destinations']"
+        },
+        {
+          "type": "retrieval_fired",
+          "passed": true,
+          "detail": "namespaces retrieved=['experience', 'routes']"
+        },
+        {
+          "type": "reply_mentions_any",
+          "passed": true,
+          "detail": "matched=['pai', 'chiang rai', 'mae hong son']"
+        }
+      ],
+      "reply": "Here are some great options for your next destination from Chiang Mai, based on your interests in trekking and cheap food:\n\n1. **Pai**  \n   - **Journey**: About 3 hours north by minibus, costing around 150-200 THB.  \n   - **Highlights**: This small hippie town in the valley is known for its stunning landscapes, the canyon at sunset, and a laid-back vibe.  \n   - **Suitability**: Ideal for those looking to relax and enjoy nature. Many backpackers end up staying longer than planned.  \n   - **Source**: [route-chiang-mai]\n\n2. **Chiang Rai**  \n   - **Journey**: Approximately 3 hours by bus, costing around 150 THB.  \n   - **Highlights**: Known for the famous White Temple and as a gateway to the Laos border.  \n   - **Suitability**: Good for those wanting to explore unique architecture and possibly head into Laos afterward.  \n   - **Source**: [route-chiang-mai]\n\n3. **Mae Hong Son**  \n   - **Journey**: Part of the Mae Hong Son loop, which can take 4-7 days by motorbike, offering some of the best biking scenery and trekking in Thailand.  \n   - **Highlights**: Remote and scenic locations, ideal for trekking and exploring.  \n   - **Suitability**: Great for adventurous backpackers looking for an",
+      "cards": [],
+      "tool_calls": [
+        "discover_next_destinations"
+      ],
+      "retrieved": [
+        "route-chiang-mai",
+        "experience-outcome-u3-pai-accepted",
+        "experience-review-u3-pai"
+      ],
+      "runs": 1,
+      "passes": 1,
+      "pass_rate": 1.0,
+      "flaky": false
+    },
+    {
+      "id": "discovery-honest-about-unknown-origin",
+      "name": "Admits it has no route data for an uncovered origin",
+      "failure_mode": "generic tourist advice instead of backpacker-specific advice",
+      "message": null,
+      "passed": true,
+      "elapsed_ms": 3821,
+      "trace_id": "c47a705a13239fcfcb4ddf92611887fe",
+      "checks": [
+        {
+          "type": "judge",
+          "passed": true,
+          "detail": "judge score 5/5 - The assistant clearly states it has no route data for Reykjavik, adhering to the rubric's requirement for honesty.",
+          "score": 5
+        }
+      ],
+      "reply": "I currently hold no route data for Reykjavik, so I can't suggest where to go next from here. Please ask again when you reach a location within the regions I cover.",
+      "cards": [],
+      "tool_calls": [
+        "discover_next_destinations"
+      ],
+      "retrieved": [],
+      "runs": 1,
+      "passes": 1,
+      "pass_rate": 1.0,
+      "flaky": false
+    }
+  ]
+}

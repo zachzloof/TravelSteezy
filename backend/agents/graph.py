@@ -361,6 +361,13 @@ passport gives the easier entry, and say explicitly which one you assumed. A
 dual national being quoted the harder of their two options is a wrong answer,
 not a conservative one.
 
+If check_route returns "live_sourced": true, there is no curated route entry
+for this pair - what you have came from a live web search instead, in its
+"passages" field. Report it, but say plainly it is unconfirmed, live-sourced
+information rather than the verified route database, and include at least one
+of its source URLs so the traveller can check it themselves. Do not restate it
+as if it were a curated overland_hours/flight_hours figure.
+
 Report per destination:
 - Visa: what they get, cost, how long it lasts, and crucially any ADVANCE LEAD
   TIME (e.g. an e-visa that takes days to issue), because that can rule a

@@ -489,15 +489,66 @@ async def run_turn(user_id: int, message: str, username: str = "") -> dict[str, 
         # which town they are in - that dead end lost the traveller their answer
         # AND suppressed the hard-deadline warning they needed.
         if intent == "discover":
-            from backend.rag.route_data import ROUTE_GRAPH
+            from backend.agents import climate, routes
+            from backend.rag.route_data import ROUTE_GRAPH, resolve_country
 
             here = (profile.get("current_location") or "").strip().lower()
             if here and here not in ROUTE_GRAPH:
-                neighbours = coverage.nearby_country_options(here)
-                if neighbours:
-                    candidates = neighbours
-                    state["candidates"] = ", ".join(neighbours)
-                    state["coverage_note"] = coverage.coverage_note(neighbours)
+                here_country = resolve_country(here) or here
+                neighbours = coverage.nearby_country_options(here_country)
+
+                # An open "where next" should weigh places the traveller has
+                # already said they want to go, not just overland geography -
+                # a wishlist pick is still a real answer even when it isn't
+                # next door. Wishlist is already open-only. Keep each
+                # country's best (lowest-number) stored priority in case more
+                # than one wishlist entry resolves to it (e.g. two cities in
+                # the same country).
+                wishlist_priority: dict[str, int] = {}
+                for entry in travel_snapshot["wishlist"]:
+                    loc = (entry.get("country") or entry.get("location") or "").strip().lower()
+                    if not loc or loc == here_country:
+                        continue
+                    priority = entry.get("priority") or 3
+                    if loc not in wishlist_priority or priority < wishlist_priority[loc]:
+                        wishlist_priority[loc] = priority
+
+                pool = list(wishlist_priority) + [c for c in neighbours if c not in wishlist_priority]
+                if pool:
+                    # More candidates than one reply should carry (e.g. several
+                    # wishlist countries at the same priority) gets narrowed in
+                    # three passes, cheaply and deterministically rather than by
+                    # an arbitrary cut: (1) season fit right now - a country in
+                    # its rainy season loses to one actually in its travel
+                    # window, from the same curated table the Weather specialist
+                    # uses; (2) distance - the same curated flight/overland
+                    # hours the Logistics specialist uses, closest first,
+                    # unknown routes sinking to the bottom of their season tier
+                    # rather than being dropped; (3) how badly they want to go -
+                    # the wishlist priority they set themselves, overland-only
+                    # neighbours defaulting to the lowest priority since they
+                    # were never explicitly asked for.
+                    season_rank = {"good": 0, "mixed": 1, "unknown": 2, "avoid": 3}
+
+                    def _distance_hours(dest: str) -> float:
+                        route = routes.lookup(here_country, dest)
+                        hours = [
+                            h for h in (route.get("overland_hours"), route.get("flight_hours"))
+                            if h is not None
+                        ]
+                        return min(hours) if hours else float("inf")
+
+                    ranked = sorted(
+                        pool,
+                        key=lambda c: (
+                            season_rank.get(climate.assess(c, travel_month)["rating"], 2),
+                            _distance_hours(c),
+                            wishlist_priority.get(c, 3),
+                        ),
+                    )
+                    candidates = ranked[:3]
+                    state["candidates"] = ", ".join(candidates)
+                    state["coverage_note"] = coverage.coverage_note(candidates)
                     intent = "compare"
 
         if intent == "local":

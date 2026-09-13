@@ -1,0 +1,76 @@
+{
+  "run_id": "eval-20260913T141049Z-f13d5f",
+  "label": "live-route-fallback-verify",
+  "timestamp": "2026-09-13T14:11:05.661072+00:00",
+  "score": "1/1",
+  "passed": 1,
+  "total": 1,
+  "pass_rate": 1.0,
+  "repeats": 1,
+  "flaky": 0,
+  "total_attempts": 1,
+  "attempt_pass_rate": 1.0,
+  "config": {
+    "llm_model": "gpt-4o-mini",
+    "judge_model": "gpt-4o-mini",
+    "judge_enabled": true,
+    "rag_backend": "pinecone",
+    "embeddings": "openai",
+    "langfuse": true
+  },
+  "results": [
+    {
+      "id": "route-live-lookup-uncurated-pair",
+      "name": "Discloses a live-sourced route when no curated pair exists",
+      "failure_mode": "presents unverified route data as curated, or invents figures for an uncurated pair",
+      "message": "Is the Philippines a realistic next stop from where I am, or is it too far?",
+      "passed": true,
+      "elapsed_ms": 13792,
+      "trace_id": "cba81d6b6f989701554f191b688b9c37",
+      "checks": [
+        {
+          "type": "tool_called",
+          "passed": true,
+          "detail": "tool_calls=['search_visa_rules', 'check_route']"
+        },
+        {
+          "type": "judge",
+          "passed": true,
+          "detail": "judge score 5/5 - The assistant clearly stated that the information provided was from a live web search and not part of the curated knowledge base, fulfilling the rubric requirements.",
+          "score": 5
+        }
+      ],
+      "reply": "A heads-up before the specifics: this assistant holds no curated, verified data for Philippines - it is outside the knowledge base this covers. Everything below on it came from a live web search this turn instead, so treat it as unconfirmed and check it yourself before relying on it. The Philippines is indeed a realistic next stop for you, especially given your shoestring budget and slow travel pace. The average flight time from India to the Philippines is around 6 hours and 52 minutes, with the cost for the cheapest flights approximately \u20b9 20,827. As a UK passport holder, you can enter the Philippines visa-free for 30 days, which is extendable if you wish to stay longer. Since you're currently in India and have no hard deadlines, this destination aligns well with your travel style focused on temples and diving, and it fits within your budget.",
+      "cards": [
+        {
+          "destination": "Philippines",
+          "rank": 1,
+          "verdict": "go",
+          "season_flag": null,
+          "visa_flag": "Figures for this destination are live-sourced and unconfirmed, not part of the curated knowledge base - confirm before relying on them.",
+          "backpacker_notes": [
+            "Visa-free on arrival for 30 days",
+            "Flight time from India is approximately 6 hours and 52 minutes",
+            "You must have an onward or return ticket, strictly enforced by airlines"
+          ],
+          "source_ids": [
+            "visa-philippines",
+            "flight-info-india-to-philippines"
+          ]
+        }
+      ],
+      "tool_calls": [
+        "search_visa_rules",
+        "check_route"
+      ],
+      "retrieved": [
+        "visa-philippines-western",
+        "unverified-routes-philippines"
+      ],
+      "runs": 1,
+      "passes": 1,
+      "pass_rate": 1.0,
+      "flaky": false
+    }
+  ]
+}

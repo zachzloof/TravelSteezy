@@ -124,12 +124,35 @@ def check_route(origin: str, destination: str) -> dict[str, Any]:
     """Look up overland and flight options between two countries.
 
     Returns indicative journey time and cost for both, plus border-crossing notes.
+    If neither is curated for this pair, falls back to a live web search - the
+    same pattern as search_visa_rules - checked once against its sources and
+    cached, so it is a fresh search only the first time this pair is asked
+    about.
 
     Args:
         origin: Country the traveller is currently in.
         destination: Candidate country they are considering next.
     """
     result = routes.lookup(origin, destination)
+    live_sourced = False
+    if origin and destination and not result.get("known"):
+        live_hits = live_lookup.get_or_fetch(
+            destination,
+            "routes",
+            f"fastest and cheapest way to travel from {origin} to {destination}: "
+            f"flight time and cost, and any overland option with its duration and cost",
+            top_k=2,
+        )
+        _record_retrieval("unverified", live_hits)
+        if live_hits:
+            live_sourced = True
+            result = {
+                **result,
+                "known": True,
+                "passages": rag_store.format_passages(live_hits),
+                "source_ids": [h["id"] for h in live_hits if h.get("id") != "retrieval-error"],
+            }
+    result["live_sourced"] = live_sourced
     _record("check_route", {"origin": origin, "destination": destination}, result)
     return result
 

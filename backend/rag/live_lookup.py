@@ -251,6 +251,20 @@ def get_or_fetch(
         logger.warning("failed to ingest live-sourced document %s: %s", doc["id"], exc)
         return []
 
-    return rag_store.search(
-        question, namespace=NAMESPACE, destinations=[destination], top_k=top_k
-    )
+    # Return the just-verified document directly rather than re-querying the
+    # vector store immediately after the upsert. Pinecone's index is only
+    # eventually consistent, so a search microseconds after ingest can miss
+    # the vector it was just given - the live lookup quietly succeeds but the
+    # caller sees an empty result and reports "no data", on exactly the turn
+    # where a fresh answer was found and paid for. This document is what the
+    # index will hold as soon as it catches up, so there is nothing to gain by
+    # asking the store to confirm it back to us.
+    return [
+        {
+            "id": doc["id"],
+            "score": 1.0,
+            "text": doc["text"],
+            "metadata": doc["metadata"],
+            "namespace": NAMESPACE,
+        }
+    ]
