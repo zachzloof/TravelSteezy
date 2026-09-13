@@ -96,11 +96,34 @@ def check_seasonal_conditions(destination: str, month: str) -> dict[str, Any]:
     Returns a seasonal rating of 'good', 'mixed' or 'avoid' plus an explanatory
     note covering monsoon, heat, haze, typhoon and crowd considerations.
 
+    Falls back to a live-sourced rating when the curated table has no entry -
+    same pattern as check_route: climate.assess() only knows its ~15-country
+    table, so without this a destination outside it was PERMANENTLY "unknown"
+    here even on a turn where search_seasonal_notes (a different tool, already
+    live-aware) found real seasonal data for the exact same destination. That
+    mismatch is exactly what let a live-checked "mixed" candidate (see
+    live_lookup.classify_season, used when ranking wishlist candidates) get
+    reported back to the traveller as "no verified seasonal data" once this
+    tool - the one actually asked for the rating - ran its own, blind check.
+
     Args:
         destination: Country name, e.g. "thailand", "nepal", "philippines".
         month: Month name or number, e.g. "July", "jul", "7".
     """
     result = climate.assess(destination, month)
+    live_sourced = False
+    if destination and result.get("rating") == "unknown":
+        rating = live_lookup.classify_season(destination, month)
+        if rating:
+            live_sourced = True
+            result = {
+                **result,
+                "known": True,
+                "rating": rating,
+                "note": f"Live-sourced seasonal check for {month} in {destination}.",
+                "is_bad_season": rating == "avoid",
+            }
+    result["live_sourced"] = live_sourced
     _record("check_seasonal_conditions", {"destination": destination, "month": month}, result)
     return result
 

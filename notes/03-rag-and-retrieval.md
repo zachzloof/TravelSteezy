@@ -482,3 +482,59 @@ curated. `evals/cases.jsonl`'s `honesty-unknown-destination` and
 `route-live-lookup-uncurated-pair` rubrics were reworded to match - both used
 to score a confident, live-sourced answer as a failure unless hedged, which
 would have graded the new, correct behaviour as broken.
+
+### Sixth follow-up: not every tool that needed the fallback had it
+
+Caught live, immediately after the fifth follow-up shipped: a "where next"
+reply picked South Korea (correctly - `classify_season` had rated it "mixed"
+for September during candidate selection) and then, in the same reply,
+reported it as "unknown, no verified seasonal data" - a direct contradiction
+inside one turn's own output.
+
+The cause: `check_seasonal_conditions` - the Weather specialist's tool for
+producing the actual rating shown in the verdict - was a pure
+`climate.assess()` lookup with NO live fallback at all, unlike every other
+curated-data tool in this file (`search_visa_rules`, `search_backpacker_tips`,
+`search_seasonal_notes`, `check_route`). `classify_season` was built for the
+candidate-*picking* step in `runner.py` in the previous follow-up and never
+wired into the tool the specialist actually calls for its rating - so
+selection got smarter while the thing producing the user-facing verdict did
+not, and the two disagreed within the same turn. Confirmed live: Tavily found
+real South Korea seasonal data in about a second: this was not a data gap,
+it was a tool that never tried.
+
+Audited every tool for the same shape of gap rather than patching this one
+instance - the instruction was "give anything that would obviously need it
+the fallback, not tool-by-tool as bugs surface." Found one more:
+`discover_next_destinations` (the town-level "where next from here" tool)
+had the identical problem - a town outside the curated route corpus was a
+dead end even though a plain "where do backpackers go after X" question is
+exactly what a live search answers well. Both now fall back the same way
+`check_route` already did: `check_seasonal_conditions` calls
+`classify_season` when `climate.assess()` comes back "unknown" (reusing
+whatever passage is already cached, so this is a cheap reclassification, not
+a new search, after the first time); `discover_next_destinations` calls
+`live_lookup.get_or_fetch` with `kind="routes"` when neither curated route
+hits nor a `ROUTE_GRAPH` entry exist. `route_note()` (the discovery agent's
+own pre-tool-call guard, the exact analogue of `coverage_note()`) had the
+same absolute "you MUST NOT name onward destinations" wording with no
+exception for its own tool's live search succeeding - reworded to match
+`coverage_note()`'s pattern: call the tool regardless, use what it finds, and
+only fall back to the honest admission if the live search also comes up
+empty.
+
+Two tools were deliberately NOT given this fallback, for the same reason as
+each other: `get_traveller_feedback` is accumulated real-user review data,
+not a factual question a web search can substitute for - "no traveller has
+reviewed this yet" is an honest, expected state, not a coverage gap to fill.
+And the Google Places-backed tools in `place_tools.py` (`find_hostels`,
+`find_food_near`, `suggest_areas_to_stay`, `get_places_recommendations`) are
+already live via a different provider - there is no curated layer beneath
+them to fall back from, `configured: false` is the correct honest state when
+`GOOGLE_PLACES_API_KEY` is unset, and a Tavily search is not a substitute for
+a real-time places database anyway.
+
+`evals/cases.jsonl`'s `discovery-honest-about-unknown-origin` (Reykjavik) was
+reworded the same way as the fifth follow-up's two cases - it used to score a
+live-sourced onward-route answer as a failure unless the reply admitted no
+data, which would have graded the new, correct behaviour as broken.

@@ -168,12 +168,13 @@ def route_note(current_location: str | None) -> str:
             f"are in before giving hop-by-hop detail. Towns held: {', '.join(towns)}."
         )
     return (
-        f"NO ROUTE DATA HELD FOR {origin.upper()}. The route corpus covers only "
-        f"these origins: {', '.join(sorted(ROUTE_GRAPH))}. You MUST tell the "
-        f"traveller plainly that this assistant does not cover where they are, and "
-        f"you MUST NOT name onward destinations, journey times, prices or "
-        f"attractions for {origin}. Suggest they ask again once they reach a "
-        f"region it covers."
+        f"NO CURATED ROUTE DATA HELD FOR {origin.upper()}. The curated route corpus "
+        f"covers only these origins: {', '.join(sorted(ROUTE_GRAPH))}. You MUST call "
+        f"discover_next_destinations anyway - it falls back to a live search when the "
+        f"curated corpus has nothing. If it finds real onward destinations, report "
+        f"them normally. Only if it finds nothing either (found: false) must you tell "
+        f"the traveller plainly that this assistant has no data for where they are, "
+        f"and not invent onward destinations, journey times, prices or attractions."
     )
 
 

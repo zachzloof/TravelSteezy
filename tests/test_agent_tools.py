@@ -148,3 +148,52 @@ def test_search_visa_rules_does_not_flag_curated_hits_as_live_sourced(monkeypatc
     result = tools.search_visa_rules("thailand", "United Kingdom")
 
     assert result["live_sourced"] is False
+
+
+# --------------------------------------------------------------------------- #
+# check_seasonal_conditions's live-lookup fallback
+# --------------------------------------------------------------------------- #
+def test_curated_seasonal_rating_never_calls_classify_season(monkeypatch):
+    def _fail(*args, **kwargs):
+        raise AssertionError("classify_season should not run for a curated destination")
+
+    monkeypatch.setattr(tools.live_lookup, "classify_season", _fail)
+
+    result = tools.check_seasonal_conditions("thailand", "September")
+
+    assert result["known"] is True
+    assert result["rating"] == "avoid"  # curated: wettest month on the Andaman coast
+    assert result["live_sourced"] is False
+
+
+def test_uncurated_destination_falls_back_to_classify_season(monkeypatch):
+    """Regression test for the exact bug reported live: check_seasonal_conditions
+    used to have NO live fallback at all, so a wishlist country outside the
+    curated table (e.g. South Korea) was reported as "unknown, no verified
+    seasonal data" even on a turn where search_seasonal_notes - a different
+    tool, already live-aware - found real seasonal data for the same country."""
+    calls = []
+
+    def _fake_classify_season(destination, month):
+        calls.append((destination, month))
+        return "mixed"
+
+    monkeypatch.setattr(tools.live_lookup, "classify_season", _fake_classify_season)
+
+    result = tools.check_seasonal_conditions("south korea", "September")
+
+    assert calls == [("south korea", "September")]
+    assert result["known"] is True
+    assert result["rating"] == "mixed"
+    assert result["is_bad_season"] is False
+    assert result["live_sourced"] is True
+
+
+def test_uncurated_destination_stays_honest_when_classify_season_finds_nothing(monkeypatch):
+    monkeypatch.setattr(tools.live_lookup, "classify_season", lambda *a, **k: None)
+
+    result = tools.check_seasonal_conditions("atlantis", "September")
+
+    assert result["known"] is False
+    assert result["rating"] == "unknown"
+    assert result["live_sourced"] is False
