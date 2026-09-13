@@ -305,14 +305,17 @@ Ingest with `python -m scripts.ingest_rag` (or `--stats` to inspect the index).
 > retried unscoped, which handed the agent passages about entirely different
 > countries and led directly to confabulation. That fallback was removed.
 
-The extension adds three more namespaces on top of these — `routes` (47
-town-level "where next from here" documents), `experience` (written at
+The extension adds two more namespaces on top of these — `routes` (47
+town-level "where next from here" documents) and `experience` (written at
 runtime from reviews and accepted/rejected suggestions, so recommendations
-improve with use), and `unverified` (written at runtime from a live web
-search + two-pass LLM synthesis/verification, only when a scoped curated
-search comes back empty and `TAVILY_API_KEY` is set - see note 03) — bringing
-the live index to 99 curated documents plus runtime content. See
-[docs/EXTENSION.md](docs/EXTENSION.md) section 6 and
+improve with use). A live web search + two-pass LLM synthesis/verification
+fallback (`TAVILY_API_KEY`, see note 03) fires only when a scoped curated
+search comes back empty, and writes its result into whichever of the
+namespaces above matches the question's kind - tagged `origin: live` in its
+metadata rather than kept in a separate namespace, so retrieval for that kind
+of question stays correctly scoped instead of colliding across question types
+for the same country. This bumps the live index to 99 curated documents plus
+runtime content. See [docs/EXTENSION.md](docs/EXTENSION.md) section 6 and
 [notes/03-rag-and-retrieval.md](notes/03-rag-and-retrieval.md) for the design
 and the bugs found building it.
 

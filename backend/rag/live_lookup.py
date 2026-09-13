@@ -21,19 +21,33 @@ sentence-by-sentence against those same snippets and strips anything not
 directly supported. That is real, if imperfect, grounding against external
 text - not the model checking its own homework from nothing.
 
-Three-tier trust model, kept deliberately visible rather than laundered into
-one pile of "the RAG store":
-  - curated (``visa``/``seasonal``/``tips``/``routes``) - hand-written seed
-    content, the thing the app's honesty guarantees are actually built on.
-  - ``unverified`` - written here, from a live search, checked once against
-    its own sources. Presented to the traveller as unconfirmed, always.
-  - ``experience`` - real traveller reviews/outcomes, presented as anecdote.
+Trust is tracked with a metadata flag, not a separate namespace. A document
+this module writes lands in the SAME Pinecone namespace as curated content of
+that kind (``visa``/``seasonal``/``tips``/``routes``), tagged
+``metadata.origin = "live"`` - curated seed docs carry no such field (see
+backend/rag/seed_data.py). Curated and live-sourced content used to be kept in
+physically separate namespaces (a dedicated ``unverified`` namespace, keyed
+only by destination). That looked safer but was not: a namespace keyed only by
+destination cannot tell a visa question from a tips question, so once ANY
+question about a country got a live answer, every OTHER kind of question about
+that same country silently received that same cached, unrelated document
+instead of ever searching for its own answer - reproduced live: a visa lookup
+for Japan came back with backpacker-budget tips, because tips had been
+live-searched for Japan first in the same turn. Sharing the real per-kind
+namespace with curated content fixes that at the root: a visa search only ever
+searches the visa namespace, live-sourced or not. The trust distinction that
+matters - "was this hand-curated or fetched and synthesised this session" -
+still needs disclosing to the traveller, which is exactly what
+``metadata.origin`` is for; see search_visa_rules/search_backpacker_tips/
+search_seasonal_notes and check_route in backend/agents/tools.py, and
+_run_comparison in backend/agents/runner.py, which now key off ``origin``
+instead of off namespace.
 
 The ``coverage`` guard (backend/agents/coverage.py) is deliberately NOT
 touched by this module: SUPPORTED stays curated-only, so a destination this
 module has filled in via live search still cannot be ranked first or treated
-as verified. Closing a knowledge gap and lowering the honesty bar are two
-different things, and this only does the first.
+as verified without disclosure. Closing a knowledge gap and lowering the
+honesty bar are two different things, and this only does the first.
 """
 from __future__ import annotations
 
@@ -51,7 +65,6 @@ logger = logging.getLogger(__name__)
 
 TAVILY_URL = "https://api.tavily.com/search"
 TIMEOUT_SECONDS = 15.0
-NAMESPACE = "unverified"
 
 _SYNTHESIS_PROMPT = """You are answering one narrow, factual backpacker travel question
 using ONLY the search results below. Do not use anything you recall from training -
@@ -207,11 +220,15 @@ def fetch_and_verify(destination: str, kind: str, question: str) -> dict[str, An
     )
     slug = destination.lower().strip().replace(" ", "-").replace(",", "")
     return {
-        "id": f"unverified-{kind}-{slug}",
+        "id": f"live-{kind}-{slug}",
         "text": text,
         "metadata": {
-            "content_type": NAMESPACE,
+            # Same content_type/namespace a curated doc of this kind would use
+            # (see backend/rag/seed_data.py) - `origin` is what marks this one
+            # as live-sourced rather than a separate namespace doing that job.
+            "content_type": kind,
             "kind": kind,
+            "origin": "live",
             "destination": destination.lower().strip(),
             "region": "live-sourced",
             "source_urls": source_urls,
@@ -227,16 +244,23 @@ def get_or_fetch(
     came back empty (see backend/agents/tools.py) - this never runs instead of,
     or ahead of, real curated data.
 
-    Checks the ``unverified`` namespace first, so a destination is only ever
-    searched live, synthesised and verified ONCE - "next time it is in the
-    RAG" is this cache hit, not a fresh web search and two more LLM calls on
-    every subsequent turn.
+    Checks the ``kind`` namespace first - the same one curated docs of this
+    kind live in, since a live-sourced doc is ingested there too (see
+    fetch_and_verify) - so a destination is only ever searched live,
+    synthesised and verified ONCE per kind. "Next time it is in the RAG" is
+    this cache hit (or, after the first hit, the caller's own curated-namespace
+    search in backend/agents/tools.py finding it directly), not a fresh web
+    search and two more LLM calls on every subsequent turn. Scoping the cache
+    check to ``kind`` rather than a shared namespace is the fix for a real bug:
+    a shared "unverified" namespace keyed only by destination could not tell a
+    visa question from a tips question, so the first live answer for a country
+    got reused for every other kind of question about it too.
     """
     if not is_configured():
         return []
 
     cached = rag_store.search(
-        question, namespace=NAMESPACE, destinations=[destination], top_k=top_k
+        question, namespace=kind, destinations=[destination], top_k=top_k
     )
     if cached:
         return cached
@@ -265,6 +289,6 @@ def get_or_fetch(
             "score": 1.0,
             "text": doc["text"],
             "metadata": doc["metadata"],
-            "namespace": NAMESPACE,
+            "namespace": kind,
         }
     ]

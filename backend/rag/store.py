@@ -29,12 +29,17 @@ from backend.rag.seed_data import KNOWN_DESTINATIONS, SEED_DOCUMENTS
 # routes is city-level hop knowledge ("where next from Chiang Mai").
 # experience is written at runtime from real user reviews and from whether a
 # suggestion was accepted, so the store improves with use.
-# unverified is written at runtime by backend/rag/live_lookup.py when a scoped
-# search of the curated corpus comes back empty - real web search, grounded LLM
-# synthesis, one verification pass against its own sources, then ingested here
-# rather than into visa/seasonal/tips, so it can never be mistaken for curated
-# data. See notes/03-rag-and-retrieval.md.
-NAMESPACES = ("visa", "seasonal", "tips", "routes", "experience", "unverified")
+#
+# There is no separate "unverified" namespace any more. backend/rag/live_lookup.py
+# writes live-sourced documents into whichever of the namespaces above matches
+# their kind (a live visa answer goes into "visa", alongside curated visa docs),
+# tagged with metadata.origin = "live" rather than quarantined by namespace. A
+# namespace keyed only by destination could not tell a visa question from a
+# tips question, so the first live answer for a country was silently reused for
+# every other kind of question about it - seed_data.py's curated docs carry no
+# "origin" field, which is what distinguishes the two. See
+# notes/03-rag-and-retrieval.md.
+NAMESPACES = ("visa", "seasonal", "tips", "routes", "experience")
 
 ALL_SEED_DOCUMENTS = SEED_DOCUMENTS + ROUTE_DOCS
 
@@ -411,10 +416,11 @@ def fetch_by_ids(ids: list[str], namespace: str = "experience") -> list[dict[str
 def format_passages(hits: list[dict[str, Any]]) -> str:
     """Render hits as a numbered, citable block for an agent prompt.
 
-    Live-sourced (``unverified`` namespace) hits carry real URLs in
-    ``metadata.source_urls`` - surfaced here so the agent can actually hand the
-    traveller a link to check, rather than a disclaimer with nothing to click.
-    Curated hits have no such field and this is a no-op for them.
+    Live-sourced hits (``metadata.origin == "live"``, see
+    backend/rag/live_lookup.py) carry real URLs in ``metadata.source_urls`` -
+    surfaced here so the agent can actually hand the traveller a link to
+    check, rather than a disclaimer with nothing to click. Curated hits have
+    no such field and this is a no-op for them.
     """
     if not hits:
         return "(no passages retrieved)"

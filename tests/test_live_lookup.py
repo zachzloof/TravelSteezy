@@ -25,7 +25,7 @@ def _configured(monkeypatch):
 
 def test_cache_hit_short_circuits_before_any_fetch(monkeypatch):
     monkeypatch.setattr(
-        live_lookup.rag_store, "search", lambda *a, **k: [{"id": "unverified-routes-laos"}]
+        live_lookup.rag_store, "search", lambda *a, **k: [{"id": "live-routes-laos"}]
     )
 
     def _fail(*args, **kwargs):
@@ -35,7 +35,27 @@ def test_cache_hit_short_circuits_before_any_fetch(monkeypatch):
 
     result = live_lookup.get_or_fetch("laos", "routes", "how far is laos")
 
-    assert result == [{"id": "unverified-routes-laos"}]
+    assert result == [{"id": "live-routes-laos"}]
+
+
+def test_cache_check_is_scoped_to_the_kind_namespace(monkeypatch):
+    """Regression test: the cache check used to run against a single shared
+    "unverified" namespace keyed only by destination, so a visa question and a
+    tips question about the same country collided - the first live answer for
+    a country got reused for every other kind of question about it. The check
+    must now be scoped to the SAME namespace curated docs of this kind use."""
+    seen_namespaces = []
+
+    def _search(query, namespace, destinations=None, top_k=2, **kwargs):
+        seen_namespaces.append(namespace)
+        return []
+
+    monkeypatch.setattr(live_lookup.rag_store, "search", _search)
+    monkeypatch.setattr(live_lookup, "fetch_and_verify", lambda *a, **k: None)
+
+    live_lookup.get_or_fetch("laos", "visa", "visa requirements for laos")
+
+    assert seen_namespaces == ["visa"]
 
 
 def test_fresh_fetch_returns_the_document_without_re_querying_the_store(monkeypatch):
@@ -54,10 +74,15 @@ def test_fresh_fetch_returns_the_document_without_re_querying_the_store(monkeypa
     ingested = []
 
     doc = {
-        "id": "unverified-routes-mongolia",
+        "id": "live-routes-mongolia",
         "text": "[UNVERIFIED - live-sourced] Flights from Nepal to Mongolia run via Delhi, "
         "roughly 8-10 hours total.",
-        "metadata": {"content_type": "unverified", "kind": "routes", "destination": "mongolia"},
+        "metadata": {
+            "content_type": "routes",
+            "kind": "routes",
+            "origin": "live",
+            "destination": "mongolia",
+        },
     }
 
     monkeypatch.setattr(live_lookup.rag_store, "search", _search)
@@ -74,7 +99,7 @@ def test_fresh_fetch_returns_the_document_without_re_querying_the_store(monkeypa
     assert result[0]["id"] == doc["id"]
     assert result[0]["text"] == doc["text"]
     assert result[0]["metadata"] == doc["metadata"]
-    assert result[0]["namespace"] == "unverified"
+    assert result[0]["namespace"] == "routes"
 
 
 def test_failed_ingest_returns_empty_rather_than_raising(monkeypatch):

@@ -38,6 +38,11 @@ class ToolRecorder:
                 {
                     "id": hit["id"],
                     "namespace": namespace,
+                    # "live" for a live-sourced document, "curated" for a
+                    # hand-written seed doc - see backend/rag/live_lookup.py's
+                    # module docstring for why this, not the namespace, is what
+                    # now carries the trust distinction.
+                    "origin": hit.get("metadata", {}).get("origin", "curated"),
                     "score": round(float(hit.get("score", 0.0)), 4),
                     "destination": hit.get("metadata", {}).get("destination"),
                     "excerpt": (hit.get("text") or "")[:240],
@@ -107,13 +112,17 @@ def _search_with_live_fallback(
     fallback - dormant unless TAVILY_API_KEY is configured, in which case it
     returns [] immediately (see backend/rag/live_lookup.py) and this behaves
     exactly as it always has: an empty scoped search stays empty.
+
+    A live-sourced hit is ingested into this SAME namespace (see
+    live_lookup.get_or_fetch), not a separate one, so both calls below record
+    under the one real ``namespace`` for this kind of question.
     """
     hits = rag_store.search(query, namespace=namespace, destinations=[destination], top_k=top_k)
-    _record_retrieval(namespace, hits)
     if hits:
+        _record_retrieval(namespace, hits)
         return hits
     live_hits = live_lookup.get_or_fetch(destination, namespace, live_question, top_k=top_k)
-    _record_retrieval("unverified", live_hits)
+    _record_retrieval(namespace, live_hits)
     return live_hits
 
 
@@ -143,7 +152,7 @@ def check_route(origin: str, destination: str) -> dict[str, Any]:
             f"flight time and cost, and any overland option with its duration and cost",
             top_k=2,
         )
-        _record_retrieval("unverified", live_hits)
+        _record_retrieval("routes", live_hits)
         if live_hits:
             live_sourced = True
             result = {
@@ -179,7 +188,7 @@ def search_visa_rules(destination: str, nationality: str) -> dict[str, Any]:
         "nationality": nationality,
         "passages": rag_store.format_passages(hits),
         "source_ids": [h["id"] for h in hits if h.get("id") != "retrieval-error"],
-        "live_sourced": bool(hits) and hits[0].get("namespace") == "unverified",
+        "live_sourced": bool(hits) and hits[0].get("metadata", {}).get("origin") == "live",
     }
     _record("search_visa_rules", {"destination": destination, "nationality": nationality}, result)
     return result
@@ -209,7 +218,7 @@ def search_backpacker_tips(destination: str, topic: str) -> dict[str, Any]:
         "destination": destination,
         "passages": rag_store.format_passages(hits),
         "source_ids": [h["id"] for h in hits if h.get("id") != "retrieval-error"],
-        "live_sourced": bool(hits) and hits[0].get("namespace") == "unverified",
+        "live_sourced": bool(hits) and hits[0].get("metadata", {}).get("origin") == "live",
     }
     _record("search_backpacker_tips", {"destination": destination, "topic": topic}, result)
     return result
@@ -233,7 +242,7 @@ def search_seasonal_notes(destination: str) -> dict[str, Any]:
         "destination": destination,
         "passages": rag_store.format_passages(hits),
         "source_ids": [h["id"] for h in hits if h.get("id") != "retrieval-error"],
-        "live_sourced": bool(hits) and hits[0].get("namespace") == "unverified",
+        "live_sourced": bool(hits) and hits[0].get("metadata", {}).get("origin") == "live",
     }
     _record("search_seasonal_notes", {"destination": destination}, result)
     return result

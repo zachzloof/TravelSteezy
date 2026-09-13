@@ -82,7 +82,7 @@ def coverage_note(candidates: list[str], live_sourced: Iterable[str] | None = No
     nothing - and gets an explicit permission to be used at full strength
     provided it is disclosed, rather than being swept into the same "you have
     literally nothing, do not invent a figure" bucket as a destination this
-    turn found nothing for at all. See the "unverified namespace" section of
+    turn found nothing for at all. See the live-sourced disclosure section of
     notes/03-rag-and-retrieval.md for why this split exists: without it, a
     successful live lookup is either indistinguishable from curated fact (the
     honesty bar silently drops) or gets fetched, verified, and then thrown

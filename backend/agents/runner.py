@@ -528,7 +528,20 @@ async def run_turn(user_id: int, message: str, username: str = "") -> dict[str, 
                     # the wishlist priority they set themselves, overland-only
                     # neighbours defaulting to the lowest priority since they
                     # were never explicitly asked for.
-                    season_rank = {"good": 0, "mixed": 1, "unknown": 2, "avoid": 3}
+                    #
+                    # "unknown" sits WORSE than "avoid", not between "mixed" and
+                    # "avoid": a wishlist country this app holds zero seasonal
+                    # data for is not a safer bet than a covered neighbour having
+                    # a bad month, it is an untested one. Ranking unknown ahead of
+                    # avoid let bucket-list countries with no curated coverage at
+                    # all (e.g. Japan, Australia) push out actually-covered
+                    # neighbours just because the neighbours' real season happened
+                    # to be bad that month - reproduced live from a Bali account
+                    # with Japan/Australia on the wishlist in September, when
+                    # Thailand and Philippines are both genuinely "avoid" season:
+                    # the old tiering chose Japan and Australia over Malaysia,
+                    # Thailand and Philippines, none of which this app can back up.
+                    season_rank = {"good": 0, "mixed": 1, "avoid": 2, "unknown": 3}
 
                     def _distance_hours(dest: str) -> float:
                         route = routes.lookup(here_country, dest)
@@ -541,7 +554,7 @@ async def run_turn(user_id: int, message: str, username: str = "") -> dict[str, 
                     ranked = sorted(
                         pool,
                         key=lambda c: (
-                            season_rank.get(climate.assess(c, travel_month)["rating"], 2),
+                            season_rank.get(climate.assess(c, travel_month)["rating"], 3),
                             _distance_hours(c),
                             wishlist_priority.get(c, 3),
                         ),
@@ -550,6 +563,18 @@ async def run_turn(user_id: int, message: str, username: str = "") -> dict[str, 
                     state["candidates"] = ", ".join(candidates)
                     state["coverage_note"] = coverage.coverage_note(candidates)
                     intent = "compare"
+                    # The needs_* flags on `parse` were set by turn_parser for the
+                    # ORIGINAL "discover" intent, where the discovery agent (not
+                    # these three specialists) does the work and there was nothing
+                    # to compare yet - so needs_logistics/needs_weather often came
+                    # back false. Reusing those stale flags here silently skipped
+                    # whole specialists on exactly the turns this fallback exists
+                    # for. Now that there is a real candidate set to weigh, all
+                    # three specialists are back in scope regardless of what the
+                    # parser guessed before it knew that.
+                    parse["needs_weather"] = True
+                    parse["needs_logistics"] = True
+                    parse["needs_recommendations"] = True
 
         if intent == "local":
             reply, cards, fired = await _run_local_guide(state, message, user_id, trace)
@@ -752,14 +777,18 @@ async def _run_comparison(
     # succeed. The ToolRecorder is a single mutable object shared across the
     # gathered specialist tasks (contextvars carry the same reference, not a
     # copy), so by this point it holds every retrieval any specialist made,
-    # including any "unverified" namespace hit from live_lookup - checking it
-    # here is how the weigher finds out a gap got filled this turn instead of
-    # relying on the stale, necessarily-more-cautious pre-run note.
+    # including any live-sourced hit from live_lookup - checking it here is how
+    # the weigher finds out a gap got filled this turn instead of relying on
+    # the stale, necessarily-more-cautious pre-run note.
+    #
+    # "origin", not "namespace": live-sourced documents now live in the same
+    # per-kind namespace as curated content (see backend/rag/live_lookup.py),
+    # so namespace alone no longer distinguishes them.
     recorder = current_recorder()
     live_sourced = {
         (r.get("destination") or "").strip().lower()
         for r in (recorder.retrieved if recorder else [])
-        if r.get("namespace") == "unverified" and r.get("destination")
+        if r.get("origin") == "live" and r.get("destination")
     }
     weigher_state = {
         **state,

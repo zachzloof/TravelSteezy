@@ -351,3 +351,60 @@ testing what it tested. A destination that live-lookup actually found and
 verified this turn is now used at full strength in the final reply, disclosed
 but not discounted, which is what "closing the gap" was supposed to mean in
 the first place.
+
+### Third follow-up: the `unverified` namespace itself was the bug
+
+Reproduced live, 2026-09-13: a traveller in Bali with Japan and Australia on
+their wishlist asked "where next" and got told this app holds no data for
+either — reasonable, since neither is curated — but the reply also failed to
+use the live lookup that should have covered the gap, even though calling
+`search_visa_rules("japan", ...)` directly returned a perfectly good,
+correctly-sourced live answer.
+
+The cause was the `unverified` namespace design itself. It was keyed only by
+`destination`, with no `kind` (visa vs. tips vs. routes vs. seasonal). Once
+ANY question about a country got a live answer, `get_or_fetch`'s cache check
+found that same document for every OTHER kind of question about the same
+country — a visa lookup for Japan came back with backpacker-budget tips,
+because tips had been live-searched for Japan earlier in the same turn.
+Quarantining live-sourced content in its own namespace, meant to keep the
+honesty guarantee visible and separate, instead broke the one thing retrieval
+scoping depends on: that a namespace search returns passages actually
+relevant to the question asked.
+
+**The fix removes the separate namespace rather than patching around it.** A
+live-sourced document is now ingested into the SAME namespace curated content
+of that kind already uses — a live visa answer for Japan goes into `visa`,
+right where `search_visa_rules` already looks. The trust distinction that
+namespace used to carry — "was this hand-curated or fetched this session" —
+moved to a `metadata.origin = "live"` field instead; curated seed docs carry
+no such field. Everywhere that used to check `namespace == "unverified"`
+(`search_visa_rules`/`search_backpacker_tips`/`search_seasonal_notes` in
+`tools.py`, and the Decision-Weigher's `live_sourced` set in
+`runner.py::_run_comparison`) now checks `metadata.origin == "live"` instead.
+Nothing about the disclosure behaviour changed — a live-sourced hit is still
+flagged unconfirmed with its source link, same as before — only *where the
+document lives* and *what a real per-kind search actually finds* changed.
+
+One side effect worth naming: this also means a live-sourced document is now
+a genuine, permanent improvement to that namespace's coverage for every
+future turn — not just a same-turn patch. The next traveller who asks about
+Japan's visa rules gets served that same verified-once answer directly out of
+the curated-shaped `visa` namespace, correctly scoped, instead of triggering
+a fresh search or (worse, under the old design) getting handed an unrelated
+cached document. The old `unverified` namespace, now unused, was deleted from
+the live Pinecone index along with the handful of stale dev/eval artifacts
+that had accumulated in it (`nauru`, `uzbekistan`, `perhentian-islands`, a
+literal `-test-ping` id) — none of it was curated content or real traveller
+`experience` data, so nothing of value was lost.
+
+A separate, code-level bug in the same turn compounded this: the "where
+next from here" fallback (`runner.py`, the country-neighbour + wishlist
+candidate picker used when only a country, not a town, is known) ranked
+seasonal fit with `{"good": 0, "mixed": 1, "unknown": 2, "avoid": 3}` —
+treating "we hold no seasonal data at all" as *better* than "we know this is
+a bad month." That let wishlist countries with zero curated coverage (Japan,
+Australia) outrank actually-covered neighbours (Thailand, Philippines) simply
+because the covered ones were in their real, known-bad season that month.
+Reordered to `{"good": 0, "mixed": 1, "avoid": 2, "unknown": 3}` so "unknown"
+is treated as the least favourable tier, not a safer bet than a known-bad one.

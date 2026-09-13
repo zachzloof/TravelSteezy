@@ -47,12 +47,13 @@ def test_uncurated_pair_falls_back_to_live_lookup_and_discloses_it(monkeypatch):
         calls.append({"destination": destination, "kind": kind, "question": question})
         return [
             {
-                "id": "unverified-routes-philippines",
+                "id": "live-routes-philippines",
                 "text": "[UNVERIFIED - live-sourced 2026-09-13] Flights from India to the "
                 "Philippines run via Singapore or Bangkok, roughly 6-8 hours total.",
                 "metadata": {
-                    "content_type": "unverified",
+                    "content_type": "routes",
                     "kind": "routes",
+                    "origin": "live",
                     "destination": "philippines",
                     "source_urls": ["https://example.com/india-philippines-flights"],
                 },
@@ -70,7 +71,7 @@ def test_uncurated_pair_falls_back_to_live_lookup_and_discloses_it(monkeypatch):
 
     assert result["known"] is True
     assert result["live_sourced"] is True
-    assert "unverified-routes-philippines" in result["source_ids"]
+    assert "live-routes-philippines" in result["source_ids"]
     assert "philippines" in result["passages"].lower()
 
 
@@ -93,4 +94,57 @@ def test_missing_origin_skips_live_lookup_entirely(monkeypatch):
     result = tools.check_route("", "philippines")
 
     assert result["known"] is False
+    assert result["live_sourced"] is False
+
+
+def test_search_visa_rules_flags_live_sourced_via_origin_metadata(monkeypatch):
+    """Regression test: live_sourced used to be computed from
+    hits[0]["namespace"] == "unverified". Now that a live-sourced document is
+    ingested into the SAME namespace as curated content of its kind (see
+    backend/rag/live_lookup.py), namespace alone can no longer tell the two
+    apart - metadata.origin is what a live-sourced document carries and a
+    curated one does not, so that is what live_sourced must check."""
+    monkeypatch.setattr(tools.rag_store, "search", lambda *a, **k: [])
+    monkeypatch.setattr(
+        tools.live_lookup,
+        "get_or_fetch",
+        lambda *a, **k: [
+            {
+                "id": "live-visa-japan",
+                "score": 1.0,
+                "text": "[UNVERIFIED - live-sourced] ...",
+                "metadata": {"content_type": "visa", "origin": "live", "destination": "japan"},
+                "namespace": "visa",
+            }
+        ],
+    )
+
+    result = tools.search_visa_rules("japan", "United Kingdom")
+
+    assert result["live_sourced"] is True
+    assert "live-visa-japan" in result["source_ids"]
+
+
+def test_search_visa_rules_does_not_flag_curated_hits_as_live_sourced(monkeypatch):
+    monkeypatch.setattr(
+        tools.rag_store,
+        "search",
+        lambda *a, **k: [
+            {
+                "id": "visa-thailand-western",
+                "score": 0.9,
+                "text": "Thailand visa exemption...",
+                "metadata": {"content_type": "visa", "destination": "thailand"},
+                "namespace": "visa",
+            }
+        ],
+    )
+
+    def _fail(*args, **kwargs):
+        raise AssertionError("a curated hit should short-circuit before any live lookup")
+
+    monkeypatch.setattr(tools.live_lookup, "get_or_fetch", _fail)
+
+    result = tools.search_visa_rules("thailand", "United Kingdom")
+
     assert result["live_sourced"] is False

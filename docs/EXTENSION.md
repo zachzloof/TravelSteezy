@@ -297,7 +297,7 @@ links.
 
 ## 6. The RAG feedback loop
 
-Three new Pinecone namespaces:
+Two new Pinecone namespaces:
 
 - **`routes`** - 47 curated city-level documents ("onward from Chiang Mai": Pai 3h
   by minibus, Chiang Rai for the Laos border, the Mae Hong Son loop). The original
@@ -305,15 +305,21 @@ Three new Pinecone namespaces:
   Southeast Asia, South Asia (India added), and Myanmar and Mongolia.
 - **`experience`** - written at runtime from post-visit reviews and from whether a
   suggestion was accepted or rejected.
-- **`unverified`** - written at runtime by `backend/rag/live_lookup.py` when a
-  scoped search of the curated corpus (`visa`/`seasonal`/`tips`) comes back
-  empty. Real web search, an LLM synthesis pass grounded strictly in the search
-  results, a second LLM pass that verifies the draft against those same
-  results, then ingested - so the same gap is never searched and re-verified
-  twice. Dormant unless `TAVILY_API_KEY` is set; always presented to the
-  traveller as unconfirmed, never mixed into the curated namespaces, and never
-  treated as "covered" by the `coverage` guard. See
-  [notes/03-rag-and-retrieval.md](../notes/03-rag-and-retrieval.md).
+
+Plus a live-lookup fallback, written at runtime by `backend/rag/live_lookup.py`
+when a scoped search of the curated corpus (`visa`/`seasonal`/`tips`/`routes`)
+comes back empty. Real web search, an LLM synthesis pass grounded strictly in
+the search results, a second LLM pass that verifies the draft against those
+same results, then ingested - so the same gap is never searched and
+re-verified twice. Dormant unless `TAVILY_API_KEY` is set; always presented to
+the traveller as unconfirmed, and never treated as "covered" by the
+`coverage` guard. It is NOT a separate namespace: the document is ingested
+into whichever curated namespace matches its kind (a live visa answer joins
+`visa`), tagged `metadata.origin = "live"` so it stays distinguishable from
+hand-curated content without needing its own namespace to do that job - an
+earlier, namespace-per-trust-tier design let a visa question and a tips
+question about the same country collide on the same cached answer. See
+[notes/03-rag-and-retrieval.md](../notes/03-rag-and-retrieval.md).
 
 `backend/rag/experience.py` builds the documents. Reviews shorter than a dozen
 characters are skipped: a bare rating adds noise without information. Documents
