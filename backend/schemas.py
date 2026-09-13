@@ -333,6 +333,37 @@ class CatchupUpdateRequest(BaseModel):
 
 
 # --------------------------------------------------------------------------- #
+# bug reports
+# --------------------------------------------------------------------------- #
+class BugReportCreate(BaseModel):
+    description: str = Field(min_length=1, max_length=4000)
+    # Where in the app they were, and what browser they were using - both
+    # supplied by the frontend since the backend has no way to know either.
+    page: Optional[str] = Field(default=None, max_length=200)
+    user_agent: Optional[str] = Field(default=None, max_length=500)
+    # The most recent /chat trace id the frontend has seen, if any. Lets the
+    # report link straight to the Langfuse trace for that turn.
+    trace_id: Optional[str] = Field(default=None, max_length=200)
+
+
+class BugReportCreated(BaseModel):
+    id: int
+    created_at: str
+
+
+class BugReportAdmin(BaseModel):
+    id: int
+    username: str
+    description: str
+    page: Optional[str] = None
+    status: str
+    created_at: str
+    trace_url: Optional[str] = None
+    # Fully-formatted, ready to paste straight into Claude Code.
+    trace_text: str
+
+
+# --------------------------------------------------------------------------- #
 # memory debug page
 #
 # Deliberately loose (dict[str, Any] rows rather than strict per-field models):

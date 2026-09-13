@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import { api, tokens } from '../api'
+import { api, tokens, lastTrace } from '../api'
 import DestinationCard from '../components/DestinationCard.vue'
 import MemorySidebar from '../components/MemorySidebar.vue'
 import TripPanel from '../components/TripPanel.vue'
@@ -82,6 +82,7 @@ async function updateCatchup(message) {
       traceId: res.trace_id,
       showDetail: false
     })
+    lastTrace.id = res.trace_id || lastTrace.id
     if (res.profile) profile.value = res.profile
     if (res.visited_history) visited.value = res.visited_history
     lastWrites.value = res.memory_writes || []
@@ -182,6 +183,7 @@ async function send(text) {
       traceId: res.trace_id,
       showDetail: false
     })
+    lastTrace.id = res.trace_id || lastTrace.id
     if (res.profile) profile.value = res.profile
     if (res.visited_history) visited.value = res.visited_history
     lastWrites.value = res.memory_writes || []

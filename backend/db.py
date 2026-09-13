@@ -183,6 +183,25 @@ CREATE TABLE IF NOT EXISTS places_cache (
     payload     TEXT NOT NULL,                         -- JSON
     created_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+-- In-app bug reports. trace_text is a fully-formatted snapshot (description +
+-- recent conversation + trace link) frozen at report time, so it stays exactly
+-- what the reporter meant even if their conversation history moves on -
+-- readable straight off the admin panel and pastable into Claude Code as-is.
+CREATE TABLE IF NOT EXISTS bug_reports (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    username    TEXT    NOT NULL,
+    description TEXT    NOT NULL,
+    page        TEXT,
+    user_agent  TEXT,
+    trace_id    TEXT,
+    trace_url   TEXT,
+    trace_text  TEXT    NOT NULL,
+    status      TEXT    NOT NULL DEFAULT 'open',        -- open | resolved
+    created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_bugreports_status ON bug_reports(status, created_at);
 """
 
 

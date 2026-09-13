@@ -43,6 +43,11 @@ export const tokens = {
   }
 }
 
+// The most recent /chat trace id seen anywhere in the app. Set by ChatView on
+// every turn; read by the bug report button, which lives in the global header
+// and so has no view-local access to "what was the last agent trace".
+export const lastTrace = { id: null }
+
 export class ApiError extends Error {
   constructor(message, status) {
     super(message)
@@ -107,6 +112,10 @@ export const api = {
   forgetMe: () => request('/profile/me', { method: 'DELETE' }),
 
   chat: (message) => request('/chat', { method: 'POST', body: { message } }),
+
+  reportBug: (payload) => request('/bugs', { method: 'POST', body: payload }),
+  adminBugs: () => request('/admin/bugs', { auth: 'admin' }),
+  adminResolveBug: (id) => request(`/admin/bugs/${id}/resolve`, { method: 'POST', auth: 'admin' }),
 
   // structured travel memory: route, wishlist, reviews, onboarding
   getTravel: () => request('/travel/me'),

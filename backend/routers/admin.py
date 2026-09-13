@@ -16,6 +16,7 @@ from backend.db import get_conn
 from backend.schemas import (
     AdminActionResponse,
     AdminLoginRequest,
+    BugReportAdmin,
     PendingUser,
     TokenResponse,
 )
@@ -83,3 +84,32 @@ def approve(user_id: int, _: dict = Depends(current_admin)) -> AdminActionRespon
 @router.post("/reject/{user_id}", response_model=AdminActionResponse)
 def reject(user_id: int, _: dict = Depends(current_admin)) -> AdminActionResponse:
     return _set_status(user_id, "rejected")
+
+
+# --------------------------------------------------------------------------- #
+# bug reports (see backend/routers/bugs.py for how a report is created)
+# --------------------------------------------------------------------------- #
+@router.get("/bugs", response_model=list[BugReportAdmin])
+def list_bugs(_: dict = Depends(current_admin)) -> list[BugReportAdmin]:
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT id, username, description, page, status, created_at, trace_url, trace_text "
+            "FROM bug_reports ORDER BY id DESC"
+        ).fetchall()
+    return [BugReportAdmin(**dict(r)) for r in rows]
+
+
+@router.post("/bugs/{report_id}/resolve", response_model=BugReportAdmin)
+def toggle_bug_resolved(report_id: int, _: dict = Depends(current_admin)) -> BugReportAdmin:
+    with get_conn() as conn:
+        row = conn.execute("SELECT status FROM bug_reports WHERE id = ?", (report_id,)).fetchone()
+        if row is None:
+            raise HTTPException(status_code=404, detail="No such bug report.")
+        new_status = "resolved" if row["status"] == "open" else "open"
+        conn.execute("UPDATE bug_reports SET status = ? WHERE id = ?", (new_status, report_id))
+        row = conn.execute(
+            "SELECT id, username, description, page, status, created_at, trace_url, trace_text "
+            "FROM bug_reports WHERE id = ?",
+            (report_id,),
+        ).fetchone()
+    return BugReportAdmin(**dict(row))

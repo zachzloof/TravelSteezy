@@ -274,13 +274,24 @@ class Trace:
 
     @property
     def url(self) -> str | None:
-        client = _client()
-        if client is None:
-            return None
-        try:
-            return client.get_trace_url(trace_id=self.id)
-        except Exception:  # noqa: BLE001
-            return None
+        return trace_url(self.id)
+
+
+def trace_url(trace_id: str | None) -> str | None:
+    """Build a Langfuse dashboard link for a trace id, or None if tracing is
+    off or the lookup fails. Shared by Trace.url and the bug-report route,
+    which only has the bare id (returned to the frontend on /chat) to work
+    from - it never holds a live Trace object.
+    """
+    if not trace_id:
+        return None
+    client = _client()
+    if client is None:
+        return None
+    try:
+        return client.get_trace_url(trace_id=trace_id)
+    except Exception:  # noqa: BLE001
+        return None
 
 
 def flush() -> None:

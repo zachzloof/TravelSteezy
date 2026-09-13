@@ -7,6 +7,9 @@ import { api, tokens } from '../api'
 const authed = ref(false)
 const password = ref('')
 const users = ref([])
+const bugs = ref([])
+const openBugId = ref(null)
+const copiedId = ref(null)
 const error = ref('')
 const busy = ref(false)
 
@@ -32,7 +35,7 @@ async function login() {
 async function refresh() {
   error.value = ''
   try {
-    users.value = await api.adminUsers()
+    ;[users.value, bugs.value] = await Promise.all([api.adminUsers(), api.adminBugs()])
     authed.value = true
   } catch (e) {
     if (e.status === 401 || e.status === 403) {
@@ -41,6 +44,36 @@ async function refresh() {
     } else {
       error.value = e.message
     }
+  }
+}
+
+function toggleBug(id) {
+  openBugId.value = openBugId.value === id ? null : id
+}
+
+async function copyBug(bug) {
+  try {
+    await navigator.clipboard.writeText(bug.trace_text)
+    copiedId.value = bug.id
+    setTimeout(() => {
+      if (copiedId.value === bug.id) copiedId.value = null
+    }, 1500)
+  } catch {
+    error.value = 'Could not copy to clipboard - select and copy the text manually.'
+  }
+}
+
+async function toggleResolved(bug) {
+  busy.value = true
+  error.value = ''
+  try {
+    const updated = await api.adminResolveBug(bug.id)
+    const i = bugs.value.findIndex((b) => b.id === bug.id)
+    if (i !== -1) bugs.value[i] = updated
+  } catch (e) {
+    error.value = e.message
+  } finally {
+    busy.value = false
   }
 }
 
@@ -61,6 +94,7 @@ function logout() {
   tokens.clearAdmin()
   authed.value = false
   users.value = []
+  bugs.value = []
 }
 </script>
 
@@ -116,6 +150,34 @@ function logout() {
         </table>
         <p v-else class="muted small">No accounts registered yet.</p>
       </div>
+
+      <div class="head bugs-head">
+        <h1>Bug reports</h1>
+      </div>
+
+      <div class="panel">
+        <div v-if="bugs.length" class="bug-list">
+          <div v-for="b in bugs" :key="b.id" class="bug" :class="{ resolved: b.status === 'resolved' }">
+            <div class="bug-row" @click="toggleBug(b.id)">
+              <span class="tag" :class="{ go: b.status === 'resolved', maybe: b.status === 'open' }">{{ b.status }}</span>
+              <span class="bug-desc">{{ b.description }}</span>
+              <span class="muted small hide-narrow">{{ b.username }}</span>
+              <span class="muted small hide-narrow">{{ b.created_at }}</span>
+            </div>
+            <div v-if="openBugId === b.id" class="bug-detail">
+              <pre class="mono trace-text">{{ b.trace_text }}</pre>
+              <div class="actions">
+                <a v-if="b.trace_url" :href="b.trace_url" target="_blank" rel="noopener" class="muted small">Open Langfuse trace ↗</a>
+                <button class="small" @click="copyBug(b)">{{ copiedId === b.id ? 'Copied!' : 'Copy trace' }}</button>
+                <button class="ghost small" :disabled="busy" @click="toggleResolved(b)">
+                  {{ b.status === 'resolved' ? 'Reopen' : 'Mark resolved' }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p v-else class="muted small">No bug reports yet.</p>
+      </div>
     </div>
   </div>
 </template>
@@ -144,5 +206,37 @@ th {
 td { padding: 10px 8px 10px 0; border-bottom: 1px solid var(--line); }
 tbody tr { transition: background-color var(--dur-fast) ease; }
 tbody tr:hover { background-color: var(--panel-2); }
-.actions { display: flex; gap: 6px; justify-content: flex-end; }
+.actions { display: flex; gap: 6px; justify-content: flex-end; align-items: center; }
+
+.bugs-head { margin-top: 28px; }
+
+.bug-list { display: flex; flex-direction: column; }
+.bug { border-bottom: 1px solid var(--line); }
+.bug:last-child { border-bottom: none; }
+.bug.resolved { opacity: .6; }
+
+.bug-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 4px;
+  cursor: pointer;
+}
+.bug-row:hover { background-color: var(--panel-2); }
+.bug-desc { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.bug-detail { padding: 0 4px 14px; }
+.trace-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+  font-size: 12.5px;
+  max-height: 320px;
+  overflow-y: auto;
+  margin: 0 0 10px;
+}
+.bug-detail .actions { justify-content: flex-start; }
 </style>

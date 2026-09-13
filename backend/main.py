@@ -18,7 +18,7 @@ from backend.config import REPO_ROOT, settings
 from backend.db import init_db
 from backend.rag import embeddings
 from backend.rag import store as rag_store
-from backend.routers import admin, auth, chat, memory_debug, profile, travel
+from backend.routers import admin, auth, bugs, chat, memory_debug, profile, travel
 from backend.tracing.langfuse_setup import flush, init_tracing, tracing_enabled
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -65,6 +65,7 @@ app.include_router(admin.router)
 app.include_router(profile.router)
 app.include_router(travel.router)
 app.include_router(chat.router)
+app.include_router(bugs.router)
 app.include_router(memory_debug.router)
 
 

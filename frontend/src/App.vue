@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { tokens } from './api'
+import BugReportButton from './components/BugReportButton.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -45,6 +46,8 @@ function logout() {
         </Transition>
       </RouterView>
     </main>
+
+    <BugReportButton v-if="loggedIn" />
   </div>
 </template>
 

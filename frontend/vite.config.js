@@ -14,7 +14,8 @@ export default defineConfig({
       '/chat': 'http://localhost:8000',
       '/health': 'http://localhost:8000',
       '/travel': 'http://localhost:8000',
-      '/memory': 'http://localhost:8000'
+      '/memory': 'http://localhost:8000',
+      '/bugs': 'http://localhost:8000'
     }
   },
   build: { outDir: 'dist', emptyOutDir: true }
