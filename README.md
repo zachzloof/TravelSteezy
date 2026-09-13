@@ -121,7 +121,78 @@ specialist also gets one retry.
 
 ---
 
-## 3. Memory
+## 3. Agents and tool routing
+
+One function, `run_turn()` (`backend/agents/runner.py`), handles every turn. It
+is not one agent — it's a fixed pipeline of parse → write → re-read → route →
+run:
+
+1. **Read memory** — `store.get_memory_snapshot(user_id)`.
+2. **Parse the turn** — `turn_parser` (no tools) turns the message plus the
+   stored profile into JSON: intent, profile changes, visits/departures/
+   wishlist, and which specialists this turn needs. A missing or malformed
+   response falls back to `_fallback_parse`, a heuristic that keeps the turn
+   alive rather than erroring.
+3. **Write memory** — the parsed JSON drives plain Python calls
+   (`_apply_memory_writes`, `tracking.apply_tracking`), not a model-authored
+   side effect.
+4. **Re-read memory** and compute the code-side guards (`coverage_note`,
+   `deadline_note`, `route_note`) so the specialists see what was just learned.
+5. **Route by intent** — `compare | discover | local | memory | review`. One
+   override matters more than the classifier: any message naming two or more
+   destinations is forced into `compare`, because that is the only path with
+   visa/route tools. This exists because the classifier once sent a
+   two-country visa question to `local_guide`, which has no visa tool, and it
+   answered from parametric memory — wrong.
+6. **Run the chosen agent(s)**, append the turn to history, return the reply.
+
+### Agent reference
+
+| Agent | Tools | Fires on | Job |
+|---|---|---|---|
+| `turn_parser` | none | every turn | Extracts structured facts and a dispatch plan. Text in, JSON out — never talks to the user. |
+| `weather_agent` | `check_seasonal_conditions`, `search_seasonal_notes` | `compare` | Season fit per candidate, for the stated travel month. |
+| `logistics_agent` | `search_visa_rules`, `check_route` | `compare` | Visa requirements and overland/flight options per candidate. |
+| `recommendations_agent` | `search_backpacker_tips`, `find_hostels`, `suggest_areas_to_stay`, `find_food_near`, `get_places_recommendations`, `get_traveller_feedback` | `compare` | Backpacker-specific budget, activity, route and warning content — curated RAG plus live Google Places. |
+| `decision_weigher` | none | `compare` | Reads the three specialist reports out of session state and ranks candidates against the traveller's stored preferences. |
+| `concierge` | none | `memory`, `review` | Small talk and "what do you remember about me" — answered straight from the profile. |
+| `local_guide` | `suggest_areas_to_stay`, `find_hostels`, `find_food_near`, `get_places_recommendations`, `search_backpacker_tips`, `get_traveller_feedback`, `get_booking_links` | `local` | On-the-ground questions about one place the traveller is already in. Deliberately holds no visa/route tools, which is what makes the intent override in step 5 necessary. |
+| `discovery_agent` | `discover_next_destinations`, `get_traveller_feedback` | `discover` | Open "where next from here", answered from the curated route graph rather than Places — Places can say what's nearby, not that backpackers leaving Chiang Mai go to Pai. |
+
+A specialist is only qualified for an intent if its tools cover what that
+intent needs: `compare` needs all three inputs (season, visas, on-the-ground
+advice) weighed together; `local` needs place-level tools but never visas;
+`discover` needs route knowledge that Places cannot provide. Giving an agent a
+tool it doesn't need was avoided deliberately — more tools per agent is more
+chances for the model to reach for the wrong one (see
+[notes/01-agent-architecture.md](notes/01-agent-architecture.md)).
+
+### Reading the trace: `agents.fan_out` vs a single agent call
+
+The trace span names in Section 7's trace tree map onto this table directly.
+Every agent call — whichever intent it belongs to — shows up the same way in
+Langfuse: a `CHAIN(invocation) -> AGENT(agent_run [name])` pair, captured
+automatically (see Section 7 and
+[notes/09](notes/09-observability-and-tracing.md)). The one thing that's
+still manually traced, because it is app-level orchestration rather than an
+agent call, is:
+
+- **`agents.fan_out`** — the `compare` path's parallel stage, a real Langfuse
+  span wrapping `asyncio.gather` over whichever of `weather_agent` /
+  `logistics_agent` / `recommendations_agent` this turn selected, each in its
+  own isolated `Runner` with its own retry and failure isolation (see "Why
+  not ParallelAgent" above). It's what turns three concurrent agent calls
+  into three sibling branches under one span in the trace, rather than three
+  unrelated top-level traces.
+
+`local_guide`, `discovery_agent` and `concierge` (the `local`, `discover` and
+`memory`/`review` intents) call a single agent with no fan-out, so they need
+no such wrapper — their `CHAIN -> AGENT` pair hangs directly off the root
+`onward.turn` span.
+
+---
+
+## 4. Memory
 
 A standalone, inspectable module (`backend/memory/store.py`) — not conversation
 history replayed into a prompt. The five syllabus questions each map to named
@@ -213,7 +284,7 @@ address account B's row. Two eval cases and four unit tests assert this.
 
 ---
 
-## 4. RAG
+## 5. RAG
 
 Seed corpus: 52 curated country-level documents covering the Southeast Asia
 backpacker circuit, South Asia (Nepal, Sri Lanka, India, Bhutan) and Mongolia
@@ -247,19 +318,19 @@ and the bugs found building it.
 
 ---
 
-## 5. Stack
+## 6. Stack
 
 | Layer | Choice |
 |---|---|
 | Frontend | Vue 3 + Vite, plain CSS, no component library |
 | Backend | FastAPI, served by uvicorn |
-| Agents | Google ADK 1.20 (`LlmAgent`, `FunctionTool`, `Runner`) |
+| Agents | Google ADK 2.9 (`LlmAgent`, `FunctionTool`, `Runner`) |
 | LLM | OpenAI `gpt-4o-mini` via ADK's `LiteLlm` |
 | Memory | SQLite on a Railway volume |
-| RAG | Pinecone (serverless) + `text-embedding-3-small` |
-| Tracing | Langfuse |
+| RAG | Pinecone 10 (serverless) + `text-embedding-3-small` |
+| Tracing | Langfuse 4 (OTEL), auto-instrumented via OpenInference — see [notes/09](notes/09-observability-and-tracing.md) |
 | Places | Google Places API (New), Bayesian-ranked, SQLite-cached |
-| Auth | `passlib` bcrypt hashing, JWT via `python-jose` |
+| Auth | Direct `bcrypt` hashing (passlib removed 2026-09 — dead upstream since 2020), JWT via `python-jose` |
 | Hosting | Railway, one service serving API and frontend |
 
 ### API
@@ -284,7 +355,7 @@ in [docs/EXTENSION.md](docs/EXTENSION.md) section 8.
 
 ---
 
-## 6. What is real and what is a fallback
+## 7. What is real and what is a fallback
 
 Stated plainly, because the difference matters when marking this.
 
@@ -321,34 +392,56 @@ which path each dependency is on, so this is checkable rather than a claim:
 
 ### The trace tree
 
+Tracing is built on OpenTelemetry auto-instrumentation
+(`openinference-instrumentation-google-adk` + `-openai`, turned on once at
+startup), not hand-rolled spans — the officially documented way to trace a
+Google ADK app with Langfuse. Every `Runner.run_async()` call and every raw
+OpenAI completion is captured with zero tracing code at the call site,
+correctly typed and nested. A real run (verified by reading the trace back
+through the Langfuse API, not just inspecting the code):
+
 ```
-TRACE onward.turn  user=19  spans=18
-memory.read                         11ms
-agent.turn_parser                 1857ms
-memory.write                        15ms
-agents.fan_out                    9872ms
-   weather_agent                     7133ms
-      tool.check_seasonal_conditions
-      tool.check_seasonal_conditions        (one call per candidate)
-      tool.search_seasonal_notes
-      tool.search_seasonal_notes
-   logistics_agent                   9869ms
-      tool.search_visa_rules
-      tool.search_visa_rules
-      tool.check_route
-      tool.check_route
-   recommendations_agent             9319ms
-      tool.search_backpacker_tips
-      tool.search_backpacker_tips
-agent.decision_weigher            5029ms
+SPAN       onward.turn
+  SPAN       memory.read
+  CHAIN      invocation [onward]
+    AGENT      agent_run [turn_parser]
+      GENERATION call_llm                    model=openai/gpt-4o-mini  in=1188 out=105
+        GENERATION ChatCompletion              model=gpt-4o-mini-2024-07-18
+  SPAN       memory.write
+  SPAN       agents.fan_out                             (parallel - see below)
+    CHAIN      invocation [onward]
+      AGENT      agent_run [weather_agent]
+        GENERATION call_llm                  model=openai/gpt-4o-mini  in=2421 out=233
+        TOOL       check_seasonal_conditions
+        TOOL       search_seasonal_notes
+    CHAIN      invocation [onward]
+      AGENT      agent_run [logistics_agent]
+        GENERATION call_llm                  model=openai/gpt-4o-mini  in=2866 out=564
+        TOOL       search_visa_rules
+          EMBEDDING  CreateEmbeddings          (the RAG lookup the tool made)
+        TOOL       check_route
+    CHAIN      invocation [onward]
+      AGENT      agent_run [recommendations_agent]
+        GENERATION call_llm                  model=openai/gpt-4o-mini  in=4212 out=629
+        TOOL       search_backpacker_tips
+  CHAIN      invocation [onward]
+    AGENT      agent_run [decision_weigher]
+      GENERATION call_llm                    model=openai/gpt-4o-mini  in=2793 out=584
 ```
 
-The fan-out is visible as parallelism, not just as structure: 26.3 seconds of
-specialist work completed in 9.87 seconds of wall clock.
+49 observations on the real run this was captured from — every `GENERATION`
+carries the real model name and real token usage (shown above), every `TOOL`
+carries its actual arguments and return value, and even the embedding calls
+a RAG lookup makes underneath a tool show up as their own typed `EMBEDDING`
+node. The three specialists under `agents.fan_out` run concurrently — visible
+as three sibling `CHAIN`s under one span, not sequential nesting. See
+[notes/09-observability-and-tracing.md](notes/09-observability-and-tracing.md)
+for how this replaced an earlier hand-rolled tracer, the exact verification
+steps, and the standard new agent/tool code is held to.
 
 ---
 
-## 7. Evals (TRACE)
+## 8. Evals (TRACE)
 
 19 base-app cases in `evals/cases.jsonl`, run by `python -m evals.run_evals`.
 The extension adds 16 more (8 `travel`, 8 `onboarding`) for 35 in total.
@@ -444,7 +537,7 @@ python -m pytest tests -q      # 82 tests: memory contract, auth, isolation,
 
 ---
 
-## 8. Running it locally
+## 9. Running it locally
 
 ```bash
 python -m venv .venv
@@ -466,7 +559,7 @@ Open http://localhost:8000. For frontend hot-reload use `npm run dev` in
 
 ---
 
-## 9. Deploying to Railway
+## 10. Deploying to Railway
 
 1. Create a service from this repo. `nixpacks.toml` installs Python and Node,
    builds the frontend, and starts uvicorn.
@@ -504,7 +597,7 @@ You can run both: auto-approve off, demo account on.
 
 ---
 
-## 10. Demo script
+## 11. Demo script
 
 1. **Incognito, cold.** Open the URL. Log in as the demo account.
 2. **Memory is already there.** The sidebar shows nationality, budget, pace,
@@ -559,31 +652,31 @@ Full extension design (and every bug found building it) is in
 
 ---
 
-## 11. Checklist status
+## 12. Checklist status
 
 | Requirement | Status |
 |---|---|
 | Problem / product | Section 1 |
-| Architecture: agents, memory, tools, APIs | Section 2, extended by [docs/EXTENSION.md](docs/EXTENSION.md) |
-| Stack | Section 5 — all of it live, including Pinecone, Langfuse and Places |
-| Evals: what TRACE proved + a shipped fix | Base app: Section 7, 14/19 → 19/19, four fixes. Extension: 16 more cases — six fixes, including a bug in the eval harness itself (two runs corrupting each other's data). The onboarding rework added 8 more cases which caught two real bugs on their first run, `evals/results/11-onboarding-v2.md`. All in [notes/06-eval-methodology.md](notes/06-eval-methodology.md) and [notes/08-decisions-log.md](notes/08-decisions-log.md) |
-| Memory: keep / write / lives / retrieve / forget | Section 3 — five separately implemented answers, extended with structured route/wishlist/review tables, a passport list, and five-point preference scales |
+| Architecture: agents, memory, tools, APIs | Sections 2–3, extended by [docs/EXTENSION.md](docs/EXTENSION.md) |
+| Stack | Section 6 — all of it live, including Pinecone, Langfuse and Places |
+| Evals: what TRACE proved + a shipped fix | Base app: Section 8, 14/19 → 19/19, four fixes. Extension: 16 more cases — six fixes, including a bug in the eval harness itself (two runs corrupting each other's data). The onboarding rework added 8 more cases which caught two real bugs on their first run, `evals/results/11-onboarding-v2.md`. All in [notes/06-eval-methodology.md](notes/06-eval-methodology.md) and [notes/08-decisions-log.md](notes/08-decisions-log.md) |
+| Memory: keep / write / lives / retrieve / forget | Section 4 — five separately implemented answers, extended with structured route/wishlist/review tables, a passport list, and five-point preference scales |
 | URL loads for a stranger in incognito | Needs the Railway deploy; no hostname is baked into the frontend build |
 | Core task works end to end | Verified locally against the live OpenAI API, including the full onboarding → discover → track → review loop |
 | Memory persists across a fresh session | **Verified** against a real process restart, plus tests and an eval case |
-| Eval suite passes / latest score shown | **34/35** on the full suite after the onboarding rework (`evals/results/12-full-after-onboarding-rework.md`). The onboarding cases specifically: **9/9 passing all 3 runs, 27/27 attempts** (`evals/results/11-onboarding-v2.md`). The one failure is the judge case `rag-backpacker-not-tourist`, which an A/B isolation run showed is flaky independently of this work (3/6 without the change, 7/11 with it) — the investigation is written up in [notes/06-eval-methodology.md](notes/06-eval-methodology.md) |
-| At least one fix from TRACE shipped | Twelve across three phases — four base-app (Section 7), six extension, and two from the onboarding rework's first eval run: a `set_social_style` write that silently no-opped for every brand-new account, and a dropped revisit ([notes/08-decisions-log.md](notes/08-decisions-log.md)) |
+| Eval suite passes / latest score shown | **34/35** on the full suite after the onboarding rework (`evals/results/12-full-after-onboarding-rework.md`). The onboarding cases specifically: **9/9 passing all 3 runs, 27/27 attempts** (`evals/results/11-onboarding-v2.md`). The one failure is the judge case `rag-backpacker-not-tourist`, which an A/B isolation run showed is flaky independently of this work (3/6 without the change, 7/11 with it) — the investigation is written up in [notes/06-eval-methodology.md](notes/06-eval-methodology.md). Re-verified after the 2026-09 dependency modernization (Section 7): **33/35** (`evals/results/modernization-v3-final.md`), after that pass's own eval run caught and fixed a real regression in the live-source disclosure guard — see [notes/01-agent-architecture.md](notes/01-agent-architecture.md) and [notes/09](notes/09-observability-and-tracing.md) for the full trail, kept in `evals/results/modernization-*.md` |
+| At least one fix from TRACE shipped | Twelve across three phases — four base-app (Section 8), six extension, and two from the onboarding rework's first eval run: a `set_social_style` write that silently no-opped for every brand-new account, and a dropped revisit ([notes/08-decisions-log.md](notes/08-decisions-log.md)) |
 | README covers problem/architecture/stack/demo | This file, plus [docs/EXTENSION.md](docs/EXTENSION.md) and [notes/](notes/00-index.md) for depth |
 | Backup recording exported | **Outstanding** — record once deployed |
 
 ### Outstanding before demo day
 
 1. Deploy to Railway with a `/data` volume and verify in incognito.
-2. Decide the demo-safety mechanism (Section 9).
+2. Decide the demo-safety mechanism (Section 10).
 3. Run `python -m scripts.ingest_rag` against the production Pinecone index to
    pick up the expanded corpus (99 curated documents total once it has - see
    [notes/03-rag-and-retrieval.md](notes/03-rag-and-retrieval.md)).
-4. Screen-record the Section 10 flow, extension steps included.
+4. Screen-record the Section 11 flow, extension steps included.
 
 Pinecone and Langfuse are done — keys supplied, corpus ingested, traces verified,
 and the full suite re-run green against both.

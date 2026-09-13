@@ -1,25 +1,39 @@
 # --- web ---
-fastapi==0.115.14
-uvicorn[standard]==0.34.3
+fastapi==0.141.1
+uvicorn[standard]==0.52.4
 python-multipart==0.0.32
 pydantic==2.13.5
 python-dotenv==1.2.3
 
 # --- auth ---
-passlib==1.7.4
-bcrypt==4.0.1          # pinned: passlib 1.7.4 reads bcrypt.__about__, removed in 4.1
+# passlib removed 2026-09: last released 2020-10-08 (dead upstream), and its
+# bcrypt<4.1 pin (reads the bcrypt.__about__ attribute removed in 4.1+) was
+# permanently unfixable as a result. Its only job here was CryptContext over
+# a single scheme, i.e. no real abstraction being used - see backend/security.py.
+bcrypt==5.0.0
 python-jose[cryptography]==3.5.0
 
 # --- agents / llm ---
-google-adk==1.20.0
-litellm==1.72.0        # pinned: >=1.78 requires Python 3.11 (typing.NotRequired)
-openai==2.54.0
+google-adk==2.9.0
+litellm==1.72.0        # pinned: >=1.78 requires Python 3.11 (typing.NotRequired) -
+                        # reverified 2026-09 against the current release (1.100.1),
+                        # still fails the same import on 3.10. Bumping needs a
+                        # Python 3.11+ runtime, not just this pin.
+openai==3.13.0
 
 # --- rag ---
-pinecone==5.4.2
+pinecone==10.0.0
 
 # --- tracing ---
-langfuse==2.60.10
+langfuse==4.15.2
+openinference-instrumentation-google-adk==0.1.27
+openinference-instrumentation-openai==0.1.60
+# google-adk caps opentelemetry-api/sdk at <=1.42.1; langfuse alone would pull
+# a newer one. Pinned explicitly so a fresh install resolves in one pass
+# instead of pip installing 1.44.x first and then conflicting.
+opentelemetry-api==1.42.1
+opentelemetry-sdk==1.42.1
+opentelemetry-exporter-otlp-proto-http==1.42.1
 
 # --- misc ---
 httpx==0.28.1

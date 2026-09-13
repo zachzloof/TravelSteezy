@@ -74,7 +74,18 @@ async def _run_agent(
     user_id: str,
     session_id: str,
 ) -> tuple[str, dict[str, Any], list[str]]:
-    """Run one agent (or pipeline) and return its text, final state and tool calls."""
+    """Run one agent (or pipeline) and return its text, final state, and the
+    names of the tools it called.
+
+    That tool-name list is for this app's OWN "what ran" panel only. The full
+    detail Langfuse needs - model, real token usage, tool args/results, the
+    correct agent/tool/generation typing - is captured automatically by the
+    google-adk OTEL instrumentation turned on in
+    backend/tracing/langfuse_setup.py, with no per-call code here; see that
+    module's docstring for why this is the officially recommended way to
+    trace a Google ADK app, and notes/09-observability-and-tracing.md for the
+    hand-rolled version this replaced.
+    """
     session_service = InMemorySessionService()
     seeded = {key: "" for key in STATE_KEYS}
     seeded.update({k: ("" if v is None else str(v)) for k, v in state.items()})
@@ -219,6 +230,73 @@ def _coerce_cards(raw: Any) -> list[dict[str, Any]]:
     return cards
 
 
+_DISCLOSURE_MARKERS = ("unconfirmed", "unverified", "live-sourced", "live sourced")
+
+
+def _enforce_live_source_disclosure(
+    reply: str, cards: list[dict[str, Any]], live_sourced: set[str]
+) -> tuple[str, list[dict[str, Any]]]:
+    """Code-level backstop for the live-sourced disclosure rule.
+
+    The weigher is instructed (DECISION_INSTRUCTION plus the coverage_note's
+    "LIVE-SOURCED DATA FOUND" block) to flag every figure it states for an
+    off-corpus destination as unconfirmed/live-sourced. It does not reliably
+    do this - reproduced live, repeatedly: the exact guard text was present,
+    the specialist's OWN report already carried the disclosure ("This
+    information is unverified and came from a live source..."), and the
+    weigher's synthesis still dropped it from the reply, presenting AUD 50
+    visa fees and $20-30/day budgets for Nauru and Uzbekistan as plain fact.
+    Strengthening the prompt alone did not fix it. This makes disclosure a
+    fact about the output rather than a hope about the model, matching the
+    coverage guard's own philosophy (backend/agents/coverage.py) of computing
+    safety-critical checks in code rather than trusting the model to comply.
+    """
+    if not live_sourced:
+        return reply, cards
+
+    marked: list[dict[str, Any]] = []
+    for card in cards:
+        if card["destination"].strip().lower() not in live_sourced:
+            marked.append(card)
+            continue
+        card_text = " ".join(
+            str(card.get(k) or "")
+            for k in ("rationale", "est_cost_note", "visa_flag", "season_flag")
+        ) + " " + " ".join(card.get("backpacker_notes") or [])
+        if any(marker in card_text.lower() for marker in _DISCLOSURE_MARKERS):
+            marked.append(card)
+            continue
+        note = (
+            "Figures for this destination are live-sourced and unconfirmed, not "
+            "part of the curated knowledge base - confirm before relying on them."
+        )
+        card = dict(card)
+        card["visa_flag"] = f"{card['visa_flag']} {note}".strip() if card.get("visa_flag") else note
+        marked.append(card)
+
+    # Prepended, unconditionally, whenever any candidate is live-sourced - not
+    # only appended when disclosure is entirely absent. A disclosure that
+    # shows up after several sentences of confidently-stated figures reads as
+    # an afterthought, not an admission: reproduced live, the model stated
+    # every figure as plain fact and only mentioned "live-sourced, unverified"
+    # in a final sentence tacked on the end, which still read as confabulation
+    # to a human (and to the eval judge, whose own rubric asks for an "upfront"
+    # admission). Leading with it is what actually satisfies that bar.
+    names = sorted(live_sourced)
+    label = " and ".join(name.title() for name in names)
+    pronoun_subject = "it is" if len(names) == 1 else "they are"
+    pronoun_object = "it" if len(names) == 1 else "them"
+    disclosure = (
+        f"A heads-up before the specifics: this assistant holds no curated, "
+        f"verified data for {label} - {pronoun_subject} outside the knowledge base "
+        f"this covers. Everything below on {pronoun_object} came from a live web "
+        f"search this turn instead, so treat it as unconfirmed and check it "
+        f"yourself before relying on it."
+    )
+    reply = f"{disclosure} {reply}".strip()
+    return reply, marked
+
+
 # --------------------------------------------------------------------------- #
 # main entry point
 # --------------------------------------------------------------------------- #
@@ -277,11 +355,19 @@ async def run_turn(user_id: int, message: str, username: str = "") -> dict[str, 
             return _llm_disabled_response(user_id, message, trace)
 
         # ---- 1. HOW WE RETRIEVE: read memory at the top of every turn --------
-        with trace.span("memory.read"):
+        with trace.span("memory.read", input={"user_id": user_id}) as mem_read:
             snapshot = store.get_memory_snapshot(user_id)
             travel_snapshot = travel.get_travel_snapshot(user_id)
             memory_block = store.format_profile_for_prompt(snapshot)
             travel_block = travel.format_travel_for_prompt(travel_snapshot)
+            mem_read.update(
+                output={
+                    "profile": {k: v for k, v in snapshot["profile"].items() if k != "user_id"},
+                    "visited_count": len(snapshot["visited_history"]),
+                    "travel_history_count": len(travel_snapshot["travel_history"]),
+                    "wishlist_count": len(travel_snapshot["wishlist"]),
+                }
+            )
         trace.set_span_summary(
             "memory.read",
             f"{len(travel_snapshot['travel_history'])} places, "
@@ -304,25 +390,38 @@ async def run_turn(user_id: int, message: str, username: str = "") -> dict[str, 
         # answer), so a turn that reaches this function is always a real turn.
 
         # ---- 2. parse the turn ----------------------------------------------
+        # Real Langfuse detail (model, tokens, prompt/completion) for this call
+        # is captured automatically by the google-adk instrumentation - see
+        # backend/tracing/langfuse_setup.py. local_step is this app's own
+        # "what ran" timing only, not a second Langfuse observation.
         parse: dict[str, Any] = {}
-        with trace.span("agent.turn_parser", input={"message": message}):
+        with trace.local_step("agent.turn_parser") as parser_step:
             try:
-                text, _, _ = await _run_agent(
+                text, final_state, _ = await _run_agent(
                     graph.make_turn_parser(), base_state, message,
                     str(user_id), f"parse-{user_id}",
                 )
-                parse = graph.parse_json_block(text) or {}
+                # turn_parser has a real output_schema (see graph.py), so ADK
+                # already validated the model's JSON and put a clean dict in
+                # state - parse_json_block is only a fallback for the rare
+                # case that didn't happen (an ADK/litellm hiccup, not
+                # something observed in practice).
+                structured = final_state.get("turn_parse")
+                parse = structured if isinstance(structured, dict) else (graph.parse_json_block(text) or {})
             except Exception as exc:  # noqa: BLE001
                 logger.warning("turn_parser failed: %s", exc)
                 parse = {}
+                parser_step["status"] = "error"
+                parser_step["summary"] = f"{type(exc).__name__}: {exc}"
         if not parse:
             parse = _fallback_parse(message, snapshot)
             trace.set_span_summary("agent.turn_parser", "fell back to heuristic parse")
 
         # ---- 3. WHEN WE WRITE: explicit memory writes ------------------------
-        with trace.span("memory.write", input=parse.get("profile_updates")):
+        with trace.span("memory.write", input=parse.get("profile_updates")) as mem_write:
             writes = _apply_memory_writes(user_id, parse)
             writes += _apply_structured_writes(user_id, parse)
+            mem_write.update(output={"writes": writes})
         trace.set_span_summary("memory.write", f"{len(writes)} write(s)")
 
         # ---- 4. re-read so specialists see what we just learned --------------
@@ -444,13 +543,18 @@ async def run_turn(user_id: int, message: str, username: str = "") -> dict[str, 
         }
     finally:
         reset_recorder(token)
+        # Safety net for the (already-guarded-against) uncaught-exception path:
+        # Trace.end() is idempotent, so this only matters when nothing above
+        # got a chance to call it with the real output - it still needs to
+        # close the OTEL span so it exports instead of hanging open forever.
+        trace.end()
 
 
 async def _run_local_guide(
     state: dict[str, Any], message: str, user_id: int, trace: Trace
 ) -> tuple[str, list[dict[str, Any]], list[str]]:
     """On-the-ground questions about one town: where to stay, eat, go."""
-    with trace.span("agent.local_guide", input={"focus": state.get("focus_location")}):
+    with trace.local_step("agent.local_guide"):
         text, _, tool_calls = await _run_agent(
             graph.make_local_guide(), state, message, str(user_id), f"local-{user_id}"
         )
@@ -466,7 +570,7 @@ async def _run_discovery(
     state: dict[str, Any], message: str, user_id: int, trace: Trace
 ) -> tuple[str, list[dict[str, Any]], list[str]]:
     """Open "where next from here", answered at town level from the route corpus."""
-    with trace.span("agent.discovery", input={"from": state.get("current_location")}):
+    with trace.local_step("agent.discovery"):
         text, _, tool_calls = await _run_agent(
             graph.make_discovery_agent(), state, message, str(user_id), f"discover-{user_id}"
         )
@@ -481,7 +585,7 @@ async def _run_discovery(
 async def _run_concierge(
     state: dict[str, Any], message: str, user_id: int, trace: Trace
 ) -> tuple[str, list[dict[str, Any]], list[str]]:
-    with trace.span("agent.concierge"):
+    with trace.local_step("agent.concierge"):
         text, _, _ = await _run_agent(
             graph.make_concierge(), state, message, str(user_id), f"concierge-{user_id}"
         )
@@ -495,31 +599,24 @@ async def _run_one_specialist(
     message: str,
     user_id: int,
     trace: Trace,
-    parent_span: Any = None,
 ) -> tuple[str, str, list[str], str | None]:
     """Run one specialist. Never raises: a failure is reported, not propagated.
 
-    Opens its own Langfuse span nested under the fan-out, and emits a child span
-    per tool call, so the trace tree shows which specialist called what.
+    No explicit parent handle is threaded through any more: this runs inside
+    ``asyncio.gather`` under the ``agents.fan_out`` span (see
+    ``_run_comparison``), and OpenTelemetry's context propagation - which
+    survives a Task being spawned mid-context, copying it at creation time -
+    is what nests this call's auto-instrumented ADK activity under that span
+    correctly, with no manual wiring.
     """
     last_error: Exception | None = None
     for attempt in (1, 2):
         try:
-            with trace.span(
-                agent.name,
-                parent=parent_span,
-                input={"candidates": state.get("candidates"), "attempt": attempt},
-            ) as span_handle:
+            with trace.local_step(agent.name):
                 text, final_state, tool_calls = await _run_agent(
                     agent, state, message, str(user_id), f"{agent.name}-{user_id}-{attempt}"
                 )
                 output = str(final_state.get(key) or text or "")
-                for tool_name in tool_calls:
-                    trace.tool_span(span_handle, tool_name)
-                try:
-                    span_handle.end(output=output[:2000])
-                except Exception:  # noqa: BLE001
-                    pass
 
             trace.set_span_summary(agent.name, output[:180] or "(no output)")
             if output.strip():
@@ -552,16 +649,18 @@ async def _run_comparison(
     names = [agent.name for agent, _ in specialists]
 
     # ---- stage 1: parallel fan-out ----------------------------------------
-    with trace.span("agents.fan_out", metadata={"specialists": names}) as fan_span:
-        outcomes = await asyncio.gather(
-            *(
-                _run_one_specialist(
-                    agent, key, state, message, user_id, trace, fan_span
-                )
-                for agent, key in specialists
-            )
-        )
-
+    # The whole stage - the gather AND building the reports/failures summary -
+    # stays inside this one span, so its aggregate output can be attached
+    # before the span closes. A v4 Langfuse span is a real OTEL span: once its
+    # `with` block exits the span has genuinely ended, and updating it after
+    # that (the old v2 approach - close early, attach output later) is no
+    # longer possible.
+    #
+    # Each gathered specialist's own auto-instrumented ADK activity (see
+    # backend/tracing/langfuse_setup.py) nests under this span automatically:
+    # OpenTelemetry propagates the "current span" through contextvars, and
+    # asyncio.gather's Tasks each copy that context at creation time, which
+    # happens synchronously here, still inside this `with` block.
     reports: dict[str, str] = {
         "weather_assessment": "",
         "logistics_assessment": "",
@@ -569,14 +668,26 @@ async def _run_comparison(
     }
     all_tool_calls: list[str] = []
     failures: list[str] = []
-    for (agent, _), (key, output, tool_calls, error) in zip(specialists, outcomes):
-        reports[key] = output
-        all_tool_calls.extend(tool_calls)
-        if error:
-            failures.append(f"{agent.name}: {error}")
-            # The span itself was already recorded by _run_one_specialist; just
-            # mark the failure so the UI panel shows it.
-            trace.set_span_status(agent.name, "error", error)
+    with trace.span("agents.fan_out", metadata={"specialists": names}) as fan_span:
+        outcomes = await asyncio.gather(
+            *(
+                _run_one_specialist(agent, key, state, message, user_id, trace)
+                for agent, key in specialists
+            )
+        )
+
+        for (agent, _), (key, output, tool_calls, error) in zip(specialists, outcomes):
+            reports[key] = output
+            all_tool_calls.extend(tool_calls)
+            if error:
+                failures.append(f"{agent.name}: {error}")
+                # The local timing entry was already recorded by
+                # _run_one_specialist; just mark the failure for the UI panel.
+                trace.set_span_status(agent.name, "error", error)
+
+        fan_span.update(
+            output={"reports": {k: v[:300] for k, v in reports.items() if v}, "failures": failures}
+        )
 
     summary = f"{', '.join(names)}; {len(all_tool_calls)} tool call(s)"
     if failures:
@@ -607,13 +718,12 @@ async def _run_comparison(
     cards: list[dict[str, Any]] = []
     reply = ""
     text = ""
-    with trace.span(
-        "agent.decision_weigher",
-        input={k: v[:400] for k, v in reports.items() if v},
-    ):
+    with trace.local_step("agent.decision_weigher"):
         # Up to three attempts: the weigher occasionally answers in prose instead
         # of JSON, and returning no comparison at all is the worst outcome for the
-        # user, so it is worth another cheap call before giving up.
+        # user, so it is worth another cheap call before giving up. No
+        # output_schema on this agent - see graph.py's make_decision_weigher for
+        # why - so parse_json_block is the primary path here, not a fallback.
         for attempt in (1, 2, 3):
             try:
                 text, final_state, _ = await _run_agent(
@@ -630,6 +740,7 @@ async def _run_comparison(
                 break
     if not reply:
         reply = text.strip() or "I could not put together a comparison for that."
+    reply, cards = _enforce_live_source_disclosure(reply, cards, live_sourced)
     trace.set_span_summary("agent.decision_weigher", f"{len(cards)} card(s)")
     return reply, cards, names
 

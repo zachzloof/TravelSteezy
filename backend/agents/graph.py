@@ -8,20 +8,35 @@ Shape:
          |                (only the specialists this turn actually needs)
     decision_weigher  (reads all three from session state, ranks candidates)
 
-Note on structured output: ADK's ``output_schema`` serialises to
-``response_format.response_schema``, which the OpenAI API rejects through
-litellm. So the agents that must return JSON are prompted for it and parsed
-tolerantly in Python (see ``parse_json_block``), with a pydantic validation pass.
+Note on structured output: ``turn_parser`` and ``decision_weigher`` use ADK's
+``output_schema`` with real Pydantic models (below), not a prompted-JSON
+convention parsed after the fact. This used to be impossible: older ADK
+serialised ``output_schema`` to ``response_format.response_schema``, a
+Gemini-specific key OpenAI's API rejects through litellm. Current ADK
+(verified against 2.9 - see ``_to_litellm_response_format`` in
+``google.adk.models.lite_llm``) detects a non-Gemini model and instead emits
+OpenAI's real structured-outputs shape (`{"type": "json_schema", "json_schema":
+{..., "strict": true}}`), and automatically rewrites the generated schema for
+OpenAI's strict-mode requirements (``additionalProperties: false``, every
+property forced into ``required``) - confirmed by reading
+``_enforce_strict_openai_schema`` directly, not assumed, and confirmed live: a
+schema-typed agent call returns an already-validated ``dict`` in
+``session.state[output_key]``, no text to parse at all. ``parse_json_block``
+is kept only as a defensive fallback for the rare case a schema-typed call
+doesn't populate state as expected (an ADK/litellm hiccup, not something
+observed) - see notes/09-observability-and-tracing.md's dependency
+modernization section for how this was verified before being adopted.
 """
 from __future__ import annotations
 
 import json
 import re
 from functools import lru_cache
-from typing import Any
+from typing import Any, Literal, Optional
 
 from google.adk.agents import LlmAgent
 from google.adk.models.lite_llm import LiteLlm
+from pydantic import BaseModel, Field
 
 from backend.agents.discovery_tools import (
     discover_next_destinations,
@@ -138,36 +153,74 @@ COVERAGE_BLOCK = """
 # --------------------------------------------------------------------------- #
 # 1. turn parser  (the orchestrator's parsing step)
 # --------------------------------------------------------------------------- #
+class ProfileUpdates(BaseModel):
+    """Only fields stated or changed in THIS message - see the field rules below
+    for what counts. Absent/null fields mean nothing changed."""
+
+    nationality: Optional[str] = None
+    budget_band: Optional[str] = None
+    travel_style: Optional[str] = None
+    climate_preference: Optional[str] = None
+    current_location: Optional[str] = None
+    visa_deadline_date: Optional[str] = None
+    visa_deadline_note: Optional[str] = None
+    interests: Optional[str] = None
+
+
+class ParsedVisit(BaseModel):
+    location: str
+    location_type: Optional[str] = None
+    country: Optional[str] = None
+    arrival_date: Optional[str] = None
+
+
+class ParsedDeparture(BaseModel):
+    location: str
+    location_type: Optional[str] = None
+    departure_date: Optional[str] = None
+
+
+class ParsedWishlistAdd(BaseModel):
+    location: str
+    location_type: Optional[str] = None
+    country: Optional[str] = None
+    priority: int = 2
+
+
+class ParsedReview(BaseModel):
+    location: str
+    rating: Optional[int] = None
+    notes: Optional[str] = None
+
+
+class TurnParse(BaseModel):
+    intent: Literal["compare", "discover", "local", "memory", "review"]
+    profile_updates: ProfileUpdates = Field(default_factory=ProfileUpdates)
+    departures: list[ParsedDeparture] = Field(default_factory=list)
+    visits: list[ParsedVisit] = Field(default_factory=list)
+    wishlist_adds: list[ParsedWishlistAdd] = Field(default_factory=list)
+    wishlist_removes: list[str] = Field(default_factory=list)
+    reviews: list[ParsedReview] = Field(default_factory=list)
+    candidate_destinations: list[str] = Field(default_factory=list)
+    focus_location: Optional[str] = None
+    travel_month: Optional[str] = None
+    question_focus: str = ""
+    needs_weather: bool = True
+    needs_logistics: bool = True
+    needs_recommendations: bool = True
+
+
 TURN_PARSER_INSTRUCTION = (
     """
 You are the parsing step of the Travel Steezy orchestrator. You do not talk to the user.
-Read their latest message together with the stored trip profile, and return JSON
-describing what changed and what work the specialists need to do.
+Read their latest message together with the stored trip profile, and describe what
+changed and what work the specialists need to do.
 """
     + MEMORY_BLOCK
     + """
 Today's date is {today?}.
 Places awaiting a review: {pending_reviews?}
 The user's message is the conversation input you have been given.
-
-Return ONLY a raw JSON object, no code fences, with exactly these keys:
-
-{{
-  "intent": "compare",
-  "profile_updates": {{}},
-  "departures": [],
-  "visits": [],
-  "wishlist_adds": [],
-  "wishlist_removes": [],
-  "reviews": [],
-  "candidate_destinations": [],
-  "focus_location": null,
-  "travel_month": null,
-  "question_focus": "",
-  "needs_weather": true,
-  "needs_logistics": true,
-  "needs_recommendations": true
-}}
 
 "intent" is the single most important field. One of:
 - "compare"  : weighing two or more destinations against each other.
@@ -228,6 +281,7 @@ def make_turn_parser() -> LlmAgent:
         model=build_model(),
         description="Parses the user turn into memory updates and a dispatch plan.",
         instruction=TURN_PARSER_INSTRUCTION,
+        output_schema=TurnParse,
         output_key="turn_parse",
     )
 
@@ -428,6 +482,10 @@ def make_recommendations_agent() -> LlmAgent:
 # --------------------------------------------------------------------------- #
 # 3. decision weigher
 # --------------------------------------------------------------------------- #
+# No output_schema here - see the comment on make_decision_weigher() below for
+# why, and notes/01-agent-architecture.md for the reproduced regression. This
+# agent is prompted for JSON and parsed tolerantly by parse_json_block,
+# same as before the 2026-09 modernization pass.
 DECISION_INSTRUCTION = (
     HOUSE_STYLE
     + MEMORY_BLOCK
@@ -496,7 +554,7 @@ number with an adjective.
 Return ONLY a raw JSON object, no code fences:
 
 {{
-  "reply": "4-8 sentences to the traveller, conversational. Lead with your recommendation and the single most important reason. Include at least two concrete figures carried over from the specialists (daily budget, visa cost/duration/lead time, or journey hours and price). Explicitly name the stored profile values you used - say their budget band, their pace, where they are now and their dates back to them in passing, so it is obvious you did not need to ask. Never end by asking them for something already in the profile.",
+  "reply": "4-8 sentences to the traveller, conversational. Lead with your recommendation and the single most important reason. Include at least two concrete figures carried over from the specialists (daily budget, visa cost/duration/lead time, or journey hours and price). Explicitly name the stored profile values you used - say their budget band, their pace, where they are now and their dates back to them in passing, so it is obvious you did not need to ask. Never end by asking them for something already in the profile. If ANY destination is live-sourced/unconfirmed rather than curated, say so explicitly in this prose, in plain words a traveller would notice - not only in that card's flags.",
   "cards": [
     {{
       "destination": "Country Name",
@@ -532,6 +590,17 @@ def make_decision_weigher() -> LlmAgent:
         model=build_model(),
         description="Ranks candidates against the traveller's stated priorities.",
         instruction=DECISION_INSTRUCTION,
+        # Deliberately NOT output_schema=Decision. Tried it, verified live, reverted:
+        # under strict schema mode the model reliably dropped the coverage guard's
+        # disclosure requirement (stating live-sourced figures for Nauru/Uzbekistan
+        # with no "unverified" qualifier at all, reproduced 3/3 runs) even though the
+        # SAME guard text, unchanged, is respected when this agent answers in prompted
+        # JSON instead. This agent carries the most safety-critical, most deeply
+        # conditional prose of any agent here (five hard rules plus two guard blocks);
+        # schema mode appears to prioritise the schema's own field descriptions over a
+        # long surrounding system prompt, which is fine for straightforward extraction
+        # (turn_parser, the onboarding extractor keep output_schema) but not safe here.
+        # See notes/01-agent-architecture.md and notes/09 for the reproduction.
         output_key="decision",
     )
 

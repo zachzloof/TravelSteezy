@@ -158,16 +158,25 @@ def detect_cities(text: str) -> list[dict[str, str]]:
 # --------------------------------------------------------------------------- #
 @lru_cache(maxsize=1)
 def _pinecone_index():
-    from pinecone import Pinecone, ServerlessSpec
+    from pinecone import CloudProvider, Metric, Pinecone, ServerlessSpec
 
     pc = Pinecone(api_key=settings.pinecone_api_key)
-    existing = {i["name"] for i in pc.list_indexes()}
+    # list_indexes()/query()/fetch() all still accept dict-style access for
+    # migration ease (verified live against pinecone==10.0.0), but attribute
+    # access is the real, current interface - the whole client was rewritten
+    # as hand-written, mypy --strict-typed models in v9. CloudProvider/Metric
+    # are likewise the current idiom in place of raw strings; there is no
+    # equivalent enum for `region`, since which one applies depends on the
+    # cloud provider chosen, so it stays a plain string.
+    existing = {index.name for index in pc.list_indexes()}
     if settings.pinecone_index not in existing:
         pc.create_index(
             name=settings.pinecone_index,
             dimension=embeddings.embedding_dims(),
-            metric="cosine",
-            spec=ServerlessSpec(cloud=settings.pinecone_cloud, region=settings.pinecone_region),
+            metric=Metric.COSINE,
+            spec=ServerlessSpec(
+                cloud=CloudProvider(settings.pinecone_cloud), region=settings.pinecone_region
+            ),
         )
     return pc.Index(settings.pinecone_index)
 
@@ -226,15 +235,14 @@ def _pinecone_query(
         include_metadata=True,
         filter=flt,
     )
-    matches = result.get("matches", []) if isinstance(result, dict) else result.matches
     out = []
-    for match in matches:
-        metadata = dict(match["metadata"] if isinstance(match, dict) else match.metadata)
+    for match in result.matches:
+        metadata = dict(match.metadata or {})
         text = metadata.pop("text", "")
         out.append(
             {
-                "id": match["id"] if isinstance(match, dict) else match.id,
-                "score": float(match["score"] if isinstance(match, dict) else match.score),
+                "id": match.id,
+                "score": float(match.score),
                 "text": text,
                 "metadata": metadata,
                 "namespace": namespace,

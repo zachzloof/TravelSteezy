@@ -143,6 +143,16 @@ def _format_snippets(results: list[dict[str, str]]) -> str:
 
 
 def _llm_complete(prompt: str) -> str:
+    """One raw OpenAI completion, outside ADK entirely.
+
+    No manual tracing here: the openai auto-instrumentation turned on in
+    backend/tracing/langfuse_setup.py captures every ``chat.completions.create``
+    call - including this one, several calls removed from run_turn inside a
+    tool function called back by ADK's own tool-execution loop - as its own
+    Langfuse generation with the real model, prompt, completion and token
+    usage, via OpenTelemetry's automatic context propagation. Nothing here
+    needs to know tracing exists.
+    """
     completion = _openai_client().chat.completions.create(
         model=settings.llm_model,
         temperature=0,

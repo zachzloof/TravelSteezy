@@ -1,23 +1,36 @@
 """Password hashing, JWT issuing/verification, and FastAPI auth dependencies.
 
-Passwords are bcrypt-hashed via passlib and never stored in plaintext. The admin
-identity is separate from user accounts entirely: it is not a row in ``users``, it
-is a password checked against the ADMIN_PASSWORD environment variable.
+Passwords are bcrypt-hashed directly (see the note on passlib below) and never
+stored in plaintext. The admin identity is separate from user accounts
+entirely: it is not a row in ``users``, it is a password checked against the
+ADMIN_PASSWORD environment variable.
+
+Hashing was migrated off passlib's ``CryptContext`` straight onto the
+``bcrypt`` package it wraps: passlib's last PyPI release was 2020-10-08 and it
+pins ``bcrypt<4.1`` because it reads ``bcrypt.__about__``, an attribute bcrypt
+removed in 4.1 - a permanently unfixable pin as long as passlib is in the
+loop, since there is no newer passlib to fix it. This app's entire usage was
+`CryptContext(schemes=["bcrypt"])` with no other scheme ever configured, so
+passlib's actual job here - scheme migration - was pure abstraction over a
+single scheme, with the abandoned dependency and the bcrypt version ceiling as
+its only remaining costs. Passlib's bcrypt handler produces a standard
+``$2b$...`` hash with no passlib-specific wrapper, so this needed no data
+migration - verified directly: a hash produced by the old passlib code
+verified correctly with a bare ``bcrypt.checkpw()`` call before this was
+touched.
 """
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 from typing import Any, Literal
 
+import bcrypt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 
 from backend.config import settings
 from backend.db import get_conn
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # auto_error=False so we can return our own 401 body rather than FastAPI's default.
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -32,12 +45,12 @@ def hash_password(plain: str) -> str:
     # bcrypt silently truncates past 72 bytes; reject instead of hashing a prefix.
     if len(plain.encode("utf-8")) > 72:
         raise HTTPException(status_code=400, detail="Password must be 72 bytes or fewer.")
-    return pwd_context.hash(plain)
+    return bcrypt.hashpw(plain.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 
 def verify_password(plain: str, hashed: str) -> bool:
     try:
-        return pwd_context.verify(plain, hashed)
+        return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
     except ValueError:
         return False
 

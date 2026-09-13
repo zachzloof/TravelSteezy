@@ -26,6 +26,7 @@ written — none of it is aspirational.
 | [06-eval-methodology.md](06-eval-methodology.md) | Why single-run scores are meaningless here, the repeat-mode design, the judge evidence rule |
 | [07-known-limitations.md](07-known-limitations.md) | What is simplified, what is untested, what would break first in production |
 | [08-decisions-log.md](08-decisions-log.md) | Chronological log of every non-obvious choice, in the order they were made |
+| [09-observability-and-tracing.md](09-observability-and-tracing.md) | Tracing rebuilt on OTEL auto-instrumentation (not hand-rolled spans) - why, how it was verified against a live trace - plus the full 2026-09 dependency modernization (google-adk, openai, pinecone, langfuse, fastapi, bcrypt/passlib removal) and what stayed pinned and why |
 
 ## How to use these if you're picking this project back up
 
@@ -37,3 +38,6 @@ written — none of it is aspirational.
    "fixing" it — both algorithms had a wrong-seeming first version that was
    actually the bug, and the fix is documented with the numbers that proved it.
 4. If you're about to trust an eval score, read `06` first.
+5. If you're adding a new agent, endpoint, or anything that calls an LLM, read
+   `09` first — it's a short checklist, and skipping it is exactly how the
+   gaps documented there happened in the first place.

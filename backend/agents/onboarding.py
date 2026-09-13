@@ -33,7 +33,9 @@ from __future__ import annotations
 
 import logging
 from datetime import date
-from typing import Any
+from typing import Any, Optional
+
+from pydantic import BaseModel, Field
 
 from backend.config import settings
 from backend.memory import store, travel
@@ -178,33 +180,52 @@ def next_step(answered: list[str]) -> str | None:
 
 
 # --------------------------------------------------------------------------- #
-# extraction prompt
+# extraction schema and prompt
 # --------------------------------------------------------------------------- #
-# The example below is deliberately abstract (Example City / Example Country,
-# not a real place) rather than a real, plausible-sounding entry. An earlier
-# version used "Koh Tao" / "Thailand" / order 2 as the example, and gpt-4o-mini
-# would sometimes copy that literal content into its output on an UNRELATED
-# question - a "Thailand" entry with no basis in what the traveller actually
-# wrote, at exactly order 2, matching the example verbatim. Small models lean on
-# few-shot examples more than they should; giving it nothing real to copy closes
-# that off entirely rather than relying on an instruction not to.
-EXTRACTION_SCHEMA = """{{
-  "travel_history": [
-    {{"location": "Example City", "country": "Example Country", "order": 1,
-     "rating": null, "review_notes": null}}
-  ],
-  "wishlist": [{{"location": "Example City", "country": "Example Country", "priority": 2}}],
-  "interests": [],
-  "passports": [],
-  "budget_band": null,
-  "travel_style": null,
-  "climate_preference": null,
-  "social_style": null,
-  "current_location": null,
-  "visa_deadline_date": null,
-  "visa_deadline_note": null,
-  "nothing_to_extract": false
-}}"""
+class OnboardingTravelHistoryEntry(BaseModel):
+    location: str
+    country: Optional[str] = None
+    order: int
+    rating: Optional[int] = None
+    review_notes: Optional[str] = None
+
+
+class OnboardingWishlistEntry(BaseModel):
+    location: str
+    country: Optional[str] = None
+    priority: int = 2
+
+
+class OnboardingCapture(BaseModel):
+    """The extractor's output shape. Enforced via ``output_schema`` (see
+    ``build_extractor`` below), not a prompted JSON convention - see the note
+    on structured output at the top of ``backend/agents/graph.py``.
+
+    An earlier version showed the model a literal example JSON block
+    ("Example City" / "Example Country") to illustrate this exact shape, and
+    gpt-4o-mini would sometimes copy that literal content into its output on
+    an UNRELATED question - a phantom entry with no basis in what the
+    traveller actually wrote, matching the example verbatim. Small models
+    lean on few-shot examples more than they should. Real ``output_schema``
+    removes the example from the prompt entirely - the shape is now conveyed
+    to the model via the API's own structured-output mechanism, not text it
+    could copy from - which closes off that failure mode as a side effect of
+    the fix, not something that needed a separate workaround.
+    """
+
+    travel_history: list[OnboardingTravelHistoryEntry] = Field(default_factory=list)
+    wishlist: list[OnboardingWishlistEntry] = Field(default_factory=list)
+    interests: list[str] = Field(default_factory=list)
+    passports: list[str] = Field(default_factory=list)
+    budget_band: Optional[str] = None
+    travel_style: Optional[str] = None
+    climate_preference: Optional[str] = None
+    social_style: Optional[str] = None
+    current_location: Optional[str] = None
+    visa_deadline_date: Optional[str] = None
+    visa_deadline_note: Optional[str] = None
+    nothing_to_extract: bool = False
+
 
 EXTRACTOR_INSTRUCTION = """You extract structured travel facts from ONE answer a
 traveller typed into an onboarding form. You never speak to the user and you
@@ -218,10 +239,6 @@ THE QUESTION THEY WERE ASKED:
 
 THIS QUESTION IS ABOUT: {captures}
 {extra_rules}
-
-Return ONLY a raw JSON object in exactly this shape - no code fences, no prose:
-
-{schema}
 
 RULES
 
@@ -321,13 +338,13 @@ def build_extractor(step_id: str):
         hint=question.get("hint", ""),
         captures=", ".join(question.get("captures", [])) or "anything stated",
         extra_rules=f"\nFOR THIS QUESTION SPECIFICALLY: {extra}\n" if extra else "",
-        schema=EXTRACTION_SCHEMA.format(),
     )
     return LlmAgent(
         name="onboarding_extractor",
         model=build_model(),
         description="Turns one plain-text onboarding answer into structured travel fields.",
         instruction=instruction,
+        output_schema=OnboardingCapture,
         output_key="onboarding_capture",
     )
 
@@ -612,33 +629,58 @@ async def answer_step(user_id: int, step_id: str, text: str) -> dict[str, Any]:
     """
     from backend.agents import graph
     from backend.agents.runner import _run_agent
+    from backend.tracing.langfuse_setup import Trace
 
     answer = (text or "").strip()
     if not answer:
         return {"captured": {}, "writes": [], "extracted": False, "note": "no answer given"}
 
+    # This step's own trace, not folded into a chat turn's - it runs on its own
+    # endpoint, outside run_turn entirely, and was previously untraced. The
+    # extractor call itself needs no manual span: it goes through _run_agent's
+    # ADK Runner, which the google-adk auto-instrumentation (see
+    # backend/tracing/langfuse_setup.py) captures as a full
+    # chain/agent/generation tree with real model name and token usage, as
+    # long as it runs while this Trace is open - which it does, below.
+    trace = Trace(
+        name="onward.onboarding",
+        user_id=str(user_id),
+        session_id=f"onboard-{user_id}",
+        input={"step_id": step_id, "answer": answer},
+        tags=["onboarding"],
+    )
+
     captured: dict[str, Any] = {}
     error: str | None = None
-    if settings.llm_enabled:
-        try:
-            raw, _, _ = await _run_agent(
-                build_extractor(step_id),
-                {"today": date.today().isoformat()},
-                answer,
-                str(user_id),
-                f"onboard-{step_id}-{user_id}",
-            )
-            captured = graph.parse_json_block(raw) or {}
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("onboarding extraction failed on step %s: %s", step_id, exc)
-            error = "extraction unavailable"
-    else:
-        error = "the assistant is not configured, so nothing could be read from that"
+    try:
+        if settings.llm_enabled:
+            try:
+                raw, final_state, _ = await _run_agent(
+                    build_extractor(step_id),
+                    {"today": date.today().isoformat()},
+                    answer,
+                    str(user_id),
+                    f"onboard-{step_id}-{user_id}",
+                )
+                # The extractor has a real output_schema (OnboardingCapture,
+                # see above), so ADK already validated the model's JSON into a
+                # clean dict in state - parse_json_block is only a fallback
+                # for the rare case that didn't happen.
+                structured = final_state.get("onboarding_capture")
+                captured = structured if isinstance(structured, dict) else (graph.parse_json_block(raw) or {})
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("onboarding extraction failed on step %s: %s", step_id, exc)
+                error = "extraction unavailable"
+        else:
+            error = "the assistant is not configured, so nothing could be read from that"
 
-    writes = apply_capture(user_id, captured, step_id=step_id)
-    return {
-        "captured": captured,
-        "writes": writes,
-        "extracted": bool(writes),
-        "note": error,
-    }
+        writes = apply_capture(user_id, captured, step_id=step_id)
+        trace.end(output={"captured": captured, "writes": writes, "note": error})
+        return {
+            "captured": captured,
+            "writes": writes,
+            "extracted": bool(writes),
+            "note": error,
+        }
+    finally:
+        trace.end()

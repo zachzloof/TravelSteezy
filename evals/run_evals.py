@@ -39,7 +39,9 @@ from backend.config import settings  # noqa: E402
 from backend.db import get_conn, init_db  # noqa: E402
 from backend.memory import store  # noqa: E402
 from backend.security import hash_password  # noqa: E402
-from backend.tracing.langfuse_setup import flush, tracing_enabled  # noqa: E402
+from backend.tracing.langfuse_setup import flush, init_tracing, tracing_enabled  # noqa: E402
+
+init_tracing()
 
 CASES_PATH = Path(__file__).parent / "cases.jsonl"
 RESULTS_DIR = Path(__file__).parent / "results"

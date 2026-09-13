@@ -23,17 +23,75 @@ this app reads.
 (`typing.NotRequired`), and this was developed against Python 3.10.1. If the
 deploy environment moves to 3.11+, the pin can be relaxed.
 
-## `output_schema` doesn't work with OpenAI through LiteLlm
+## `output_schema` — fixed upstream, since re-adopted (2026-09)
 
-ADK's `LlmAgent(output_schema=SomePydanticModel)` serialises to
-`response_format.response_schema` in the request body. OpenAI's API rejects that
-key — it's a Gemini-specific field name. Every agent that needs structured output
-(the turn parser, the onboarding extractor, the decision-weigher) is instead
-prompted to emit raw JSON and parsed tolerantly in Python
-(`graph.parse_json_block`), which tries a fenced block, then bare JSON, then the
-outermost `{...}` span. This was discovered empirically by hitting the error,
-not from documentation — LiteLlm's OpenAI mapping doesn't surface this
-incompatibility until you actually call it.
+This used to say `output_schema` didn't work with OpenAI through LiteLlm:
+older ADK serialised `LlmAgent(output_schema=SomePydanticModel)` to
+`response_format.response_schema`, a Gemini-specific key OpenAI's API
+rejects, discovered empirically by hitting the error. Every agent needing
+structured output (turn parser, onboarding extractor, decision-weigher) was
+instead prompted to emit raw JSON and parsed tolerantly in Python
+(`graph.parse_json_block`: fenced block, then bare JSON, then the outermost
+`{...}` span).
+
+**That is no longer true.** Verified directly against the ADK version this
+app now runs (2.9, up from 1.20 — see the 2026-09 dependency modernization in
+[notes/09](09-observability-and-tracing.md)): `google.adk.models.lite_llm`
+now branches on the model — Gemini gets the old `response_schema` shape,
+anything else gets OpenAI's real `{"type": "json_schema", "json_schema":
+{..., "strict": true}}` structured-outputs format, with the generated schema
+automatically rewritten to satisfy OpenAI's strict-mode rules
+(`additionalProperties: false`, every property forced into `required`). This
+was read from the ADK source (`_to_litellm_response_format`,
+`_enforce_strict_openai_schema`) and confirmed live: a schema-typed call
+returns an already-validated `dict` in `session.state[output_key]`, no text
+to parse.
+
+`turn_parser` and the onboarding extractor now declare a real Pydantic
+`output_schema` (see `backend/agents/graph.py`, `backend/agents/onboarding.py`)
+instead of relying on a prompted JSON convention. `parse_json_block` is kept
+only as a defensive fallback for the case a schema-typed call doesn't
+populate state as expected — not observed in practice for these two, but
+cheap insurance. One genuine side benefit: the onboarding extractor used to
+show the model a literal example JSON block to convey its shape, and the
+model would occasionally copy that literal example into unrelated answers
+(see `backend/agents/onboarding.py` for the specific bug this caused). Real
+`output_schema` conveys the shape via the API's own mechanism instead of
+prompt text, so there is no example left to copy — the failure mode
+disappeared as a side effect of the fix, not something that needed a
+separate workaround.
+
+**`decision_weigher` deliberately did NOT keep `output_schema`.** It was
+tried, and reverted after being caught live: with the exact same
+coverage-guard text present, and the specialist's own report already
+correctly labeling its findings "unverified... came from a live source,"
+the schema-typed weigher still dropped that disclosure when synthesising its
+reply and cards — reproduced 3/3 runs, stating AUD 50 visa fees and
+$20-30/day budgets for Nauru and Uzbekistan (destinations this app holds zero
+curated data for) as plain, undisclosed fact. Reverting to prompted JSON
+alone did not fix it either — the same failure reproduced again without
+`output_schema` in the picture at all, which means it was never really about
+strict mode specifically; it is a standing weakness in how reliably this
+agent follows its most safety-critical, most deeply conditional instruction
+(five "hard rules" plus two guard blocks - by far the most prose-instruction
+load of any agent here) under either calling convention. The fix that
+actually held is a code-level backstop,
+`_enforce_live_source_disclosure` in `backend/agents/runner.py`: after the
+weigher answers, code checks whether its own output actually discloses
+live-sourced figures and, if not, prepends an explicit disclosure to the
+reply and appends one to the affected cards' `visa_flag` - unconditionally,
+every time a candidate came from live lookup, not only when disclosure looks
+absent. This mirrors the existing coverage guard's own philosophy
+(`backend/agents/coverage.py`): compute the safety-critical fact in code,
+don't hope the model states it. The first version of this backstop only
+*appended* the disclosure when it looked entirely missing, which technically
+satisfied "mentions unverified somewhere" but still read - correctly - as an
+afterthought to a human and to the eval judge, whose rubric explicitly wants
+an "upfront" admission; leading with it unconditionally is what actually
+holds under repeat runs. See `evals/results/modernization-final.md` (30/35,
+the regression caught), `modernization-v2.md` (32/35, append-only fix,
+`honesty-unknown-destination` still failing on "not upfront"), and
+`modernization-v3-final.md` (33/35, fixed) for the documented trail.
 
 ## Why not ADK's `ParallelAgent`
 

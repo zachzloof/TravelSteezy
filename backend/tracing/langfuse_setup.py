@@ -1,19 +1,47 @@
-"""Langfuse tracing.
+"""Langfuse tracing (SDK v4, OpenTelemetry-based).
 
-One top-level trace per user turn, one span per agent and per tool call, so the
-orchestrator fan-out and the final synthesis show up as a tree in the Langfuse UI.
+Two layers, deliberately different in how they get captured:
 
-When Langfuse keys are absent every object here becomes a no-op with the same
-interface, so tracing can never take down a chat turn and the app runs fine
-without the service. Trace ids are generated locally either way, which is what
-lets an eval run be tagged and correlated even in offline mode.
+1. AUTOMATIC. google-adk and openai are instrumented once at process startup
+   (``init_tracing()``, called from backend/main.py's lifespan) via
+   OpenInference's OTEL instrumentors. From that point on, EVERY ADK
+   ``Runner.run_async()`` call anywhere in this app - every specialist,
+   turn_parser, decision_weigher, concierge, local_guide, discovery_agent, the
+   onboarding extractor - and every raw OpenAI completion
+   (backend/rag/live_lookup.py) is captured with zero tracing code at the call
+   site: the real model name, real token usage, the actual request/response,
+   and (for ADK) the correct chain -> agent -> generation/tool tree - because
+   that IS the officially documented, recommended way to trace a Google ADK
+   app with Langfuse. See notes/09-observability-and-tracing.md.
+
+   This replaced an earlier hand-rolled version that manually parsed ADK's
+   event stream (pairing function-call/function-response events by id,
+   summing usage_metadata) and wrapped every agent call in a manually-typed
+   span or generation. That version worked, but it was reinventing - less
+   completely - what this instrumentation already does for free: it never
+   captured the actual request/response bodies, and it had no way to produce
+   the ``agent``/``tool``/``chain`` observation types at all (those plus
+   ``retriever``/``evaluator``/``embedding``/``guardrail`` require SDK
+   >=3.3.1; this app was pinned to a much older v2 SDK that only had
+   span/generation/event, with no documented reason for the pin).
+
+2. MANUAL, for the few things that are neither an ADK call nor an OpenAI call:
+   the root span for one whole turn (so everything above lands under ONE
+   trace instead of a fresh one per agent call), and the two purely-Python
+   orchestration steps - memory read/write, and the ``asyncio.gather``
+   fan-out wrapper itself.
+
+When Langfuse keys are absent, every object here becomes a no-op with the
+same interface, so tracing can never take down a chat turn and the app runs
+fine without the service. Trace ids are generated locally either way, which
+is what lets an eval run be tagged and correlated even in offline mode.
 """
 from __future__ import annotations
 
 import logging
 import time
 import uuid
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 from functools import lru_cache
 from typing import Any, Iterator
 
@@ -39,28 +67,57 @@ def _client():
         return None
 
 
+@lru_cache(maxsize=1)
+def _instrumented() -> bool:
+    """Turn on OTEL auto-instrumentation for google-adk and openai.
+
+    ``lru_cache`` makes this idempotent, so ``init_tracing()`` can be called
+    more than once (e.g. once from the app lifespan, once from an eval
+    script) without double-instrumenting.
+    """
+    if _client() is None:
+        return False
+    try:
+        from openinference.instrumentation.google_adk import GoogleADKInstrumentor
+        from openinference.instrumentation.openai import OpenAIInstrumentor
+
+        GoogleADKInstrumentor().instrument()
+        OpenAIInstrumentor().instrument()
+        logger.info("Langfuse: google-adk + openai auto-instrumentation enabled")
+        return True
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Langfuse auto-instrumentation failed: %s", exc)
+        return False
+
+
+def init_tracing() -> None:
+    """Call once at process startup (see backend/main.py's lifespan)."""
+    _instrumented()
+
+
 def tracing_enabled() -> bool:
     return _client() is not None
 
 
-class _NoOpSpan:
-    """Same surface as a Langfuse span, does nothing."""
+class _NoOpObservation:
+    """Same surface as a Langfuse v4 observation, does nothing."""
 
-    def end(self, **_: Any) -> None:
-        return None
-
-    def update(self, **_: Any) -> None:
-        return None
-
-    def span(self, **_: Any) -> "_NoOpSpan":
-        return self
-
-    def generation(self, **_: Any) -> "_NoOpSpan":
+    def update(self, **_: Any) -> "_NoOpObservation":
         return self
 
 
 class Trace:
-    """A single user turn. Wraps a Langfuse trace, or nothing at all."""
+    """One user turn (or one onboarding step). Wraps a Langfuse v4 root
+    observation for it, or nothing at all.
+
+    Everything ADK or OpenAI does during the turn is captured automatically
+    (see module docstring) as long as it happens while this Trace is open.
+    OpenTelemetry propagates the "current span" through contextvars, which
+    survives await points and ``asyncio.gather`` (each gathered coroutine is
+    wrapped in a Task that copies the context at creation time) - so, unlike
+    the old hand-rolled tracer, nothing here needs an explicit ``parent=``
+    handle threaded through the fan-out for correct nesting.
+    """
 
     def __init__(
         self,
@@ -71,88 +128,109 @@ class Trace:
         tags: list[str] | None = None,
         input: Any = None,
     ) -> None:
-        self.id = str(uuid.uuid4())
         self.name = name
-        # Recorded locally regardless of Langfuse, so /chat can always return a
-        # per-agent timing breakdown for the demo panel.
+        # Recorded locally regardless of Langfuse, so /chat can always return
+        # a per-agent timing breakdown for the demo panel - independent of,
+        # and a cross-check against, whatever Langfuse itself captured.
         self.spans: list[dict[str, Any]] = []
-        self._handle: Any = None
+        self._stack = ExitStack()
+        self._observation: Any = None
+        self._ended = False
+        self.id = str(uuid.uuid4())
 
         client = _client()
         if client is not None:
             try:
-                self._handle = client.trace(
-                    id=self.id,
-                    name=name,
-                    user_id=user_id,
-                    session_id=session_id,
-                    metadata=metadata,
-                    tags=tags,
-                    input=input,
+                from langfuse import propagate_attributes
+
+                self._stack.enter_context(
+                    propagate_attributes(
+                        trace_name=name,
+                        user_id=user_id,
+                        session_id=session_id,
+                        tags=tags,
+                        metadata=metadata,
+                    )
                 )
+                self._observation = self._stack.enter_context(
+                    client.start_as_current_observation(name=name, as_type="span", input=input)
+                )
+                self.id = client.get_current_trace_id() or self.id
             except Exception as exc:  # noqa: BLE001
                 logger.warning("Langfuse trace creation failed: %s", exc)
-                self._handle = None
+                self._observation = None
+                self._stack.close()
+                self._stack = ExitStack()
 
     @contextmanager
     def span(
-        self,
-        name: str,
-        input: Any = None,
-        metadata: dict[str, Any] | None = None,
-        parent: Any = None,
+        self, name: str, input: Any = None, metadata: dict[str, Any] | None = None
     ) -> Iterator[Any]:
-        """Time a child operation (an agent, a tool call, a retrieval).
-
-        ``parent`` nests this span under another span's handle, which is what
-        turns the Langfuse view into an actual tree: the specialists hang off the
-        fan-out span, and each specialist's tool calls hang off the specialist.
+        """A real Langfuse span for a step that is NOT an ADK or OpenAI call
+        (those are captured automatically - see module docstring): memory
+        read/write, the asyncio.gather fan-out wrapper.
         """
         started = time.perf_counter()
-        handle: Any = _NoOpSpan()
-        owner = parent if parent is not None else self._handle
-        if owner is not None and not isinstance(owner, _NoOpSpan):
+        record: dict[str, Any] = {"name": name, "status": "ok", "summary": None}
+        client = _client()
+        cm = None
+        handle: Any = _NoOpObservation()
+        if client is not None:
             try:
-                handle = owner.span(name=name, input=input, metadata=metadata)
+                cm = client.start_as_current_observation(
+                    name=name, as_type="span", input=input, metadata=metadata
+                )
+                handle = cm.__enter__()
             except Exception as exc:  # noqa: BLE001
                 logger.warning("Langfuse span creation failed: %s", exc)
-
-        record: dict[str, Any] = {"name": name, "status": "ok", "summary": None}
+                cm = None
         try:
             yield handle
         except Exception as exc:
             record["status"] = "error"
             record["summary"] = f"{type(exc).__name__}: {exc}"
-            try:
-                handle.end(level="ERROR", status_message=str(exc))
-            except Exception:  # noqa: BLE001
-                pass
+            record["duration_ms"] = int((time.perf_counter() - started) * 1000)
+            self.spans.append(record)
+            if cm is not None:
+                try:
+                    handle.update(level="ERROR", status_message=str(exc))
+                except Exception:  # noqa: BLE001
+                    pass
+                try:
+                    cm.__exit__(type(exc), exc, exc.__traceback__)
+                except Exception:  # noqa: BLE001
+                    pass
+            raise
+        else:
+            record["duration_ms"] = int((time.perf_counter() - started) * 1000)
+            self.spans.append(record)
+            if cm is not None:
+                try:
+                    cm.__exit__(None, None, None)
+                except Exception:  # noqa: BLE001
+                    pass
+
+    @contextmanager
+    def local_step(self, name: str) -> Iterator[dict[str, Any]]:
+        """Local-only timing for the app's own "what ran" panel, for a step
+        whose real tracing detail is already captured elsewhere - an ADK
+        agent call, auto-instrumented per the module docstring - and only
+        needs a wall-clock entry in this app's own UI, not a second Langfuse
+        observation duplicating what the instrumentor already recorded.
+        """
+        started = time.perf_counter()
+        record: dict[str, Any] = {"name": name, "status": "ok", "summary": None}
+        try:
+            yield record
+        except Exception as exc:
+            record["status"] = "error"
+            record["summary"] = f"{type(exc).__name__}: {exc}"
             record["duration_ms"] = int((time.perf_counter() - started) * 1000)
             self.spans.append(record)
             raise
         else:
             record["duration_ms"] = int((time.perf_counter() - started) * 1000)
             self.spans.append(record)
-            try:
-                handle.end()
-            except Exception:  # noqa: BLE001
-                pass
-
-    def tool_span(self, parent: Any, name: str, args: Any = None, result: Any = None) -> None:
-        """Record one completed tool call as a child of the calling agent's span.
-
-        Tool calls are discovered from the ADK event stream after the agent has
-        finished, so they are emitted as already-closed spans rather than timed
-        inline. They exist so the trace shows WHICH tools an agent actually
-        invoked - the same fact the eval suite asserts on.
-        """
-        if parent is None or isinstance(parent, _NoOpSpan):
-            return
-        try:
-            child = parent.span(name=f"tool.{name}", input=args)
-            child.end(output=result)
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("Langfuse tool span failed: %s", exc)
 
     def note(self, name: str, summary: str, status: str = "ok", duration_ms: int | None = None) -> None:
         """Record a span that was not timed inline (e.g. a skipped agent)."""
@@ -175,17 +253,34 @@ class Trace:
                 return
 
     def end(self, output: Any = None, metadata: dict[str, Any] | None = None) -> None:
-        if self._handle is not None:
+        """Close the root observation. Idempotent - safe to call more than
+        once (e.g. an explicit call with the real output on every normal
+        return path, plus an unconditional safety-net call in the caller's
+        ``finally``, for the rare uncaught-exception path where nothing else
+        would close it). Only the first call's output is kept.
+        """
+        if self._ended:
+            return
+        self._ended = True
+        if self._observation is not None:
             try:
-                self._handle.update(output=output, metadata=metadata)
+                self._observation.update(output=output, metadata=metadata)
             except Exception as exc:  # noqa: BLE001
                 logger.warning("Langfuse trace update failed: %s", exc)
+        try:
+            self._stack.close()
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Langfuse trace close failed: %s", exc)
 
     @property
     def url(self) -> str | None:
-        if not settings.langfuse_enabled:
+        client = _client()
+        if client is None:
             return None
-        return f"{settings.langfuse_host.rstrip('/')}/trace/{self.id}"
+        try:
+            return client.get_trace_url(trace_id=self.id)
+        except Exception:  # noqa: BLE001
+            return None
 
 
 def flush() -> None:

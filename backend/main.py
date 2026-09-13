@@ -19,7 +19,7 @@ from backend.db import init_db
 from backend.rag import embeddings
 from backend.rag import store as rag_store
 from backend.routers import admin, auth, chat, memory_debug, profile, travel
-from backend.tracing.langfuse_setup import flush, tracing_enabled
+from backend.tracing.langfuse_setup import flush, init_tracing, tracing_enabled
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger("onward")
@@ -28,6 +28,11 @@ logger = logging.getLogger("onward")
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     settings.ensure_dirs()
     init_db()
+    # Must run before any agent call: this turns on OTEL auto-instrumentation
+    # for google-adk and openai, which is what gives every agent/tool call
+    # from here on a real Langfuse generation/agent/tool span with no tracing
+    # code at the call site. See backend/tracing/langfuse_setup.py.
+    init_tracing()
     logger.info("Travel Steezy starting up")
     logger.info("  database        : %s", settings.db_path)
     logger.info("  llm             : %s", settings.llm_model if settings.llm_enabled else "DISABLED")
