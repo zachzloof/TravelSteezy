@@ -506,10 +506,35 @@ Hard rules:
 3. Never invent a fact the specialists did not report.
 4. A destination in a "COVERAGE WARNING - NO DATA HELD" block CANNOT be ranked
    first and CANNOT be given specifics. Set its verdict to "unknown" and say in
-   the reply that you hold no verified data for it.
+   the reply that you hold no verified data for it. "unknown" means EXACTLY
+   this one situation - a destination named in that block - and nothing else.
+   It is not a hedge for "I'm not fully certain" or "the specialists' numbers
+   look unofficial." If the specialists reported real numbers for a
+   destination (a visa type, a flight time, a daily budget), it is not
+   "unknown" - use go/maybe/avoid, whichever your genuine judgment says.
 5. If the HARD DEADLINE block names a date, you MUST state that date explicitly in
    your reply and say whether your top recommendation fits inside it. Do not
    silently plan past a deadline the traveller is under.
+6. "verdict" is your genuine, holistic judgment of that ONE destination on its
+   own merits - is this actually a good idea right now, all things considered
+   (season, visa, cost, fit with their stated priorities). It is NOT a slot to
+   fill in so the cards look varied, and it is NOT mechanically tied to season
+   alone or to rank position. Two failure modes to avoid, both real and both
+   previously reproduced:
+     - Inventing a spread across go/maybe/avoid purely because there are
+       several cards to fill in, with no real difference in the underlying
+       facts to justify it (e.g. downgrading your third-ranked pick to
+       "avoid" when the specialists rated its season identically to your
+       first-ranked pick's "go").
+     - Swinging the other way and mechanically pinning verdict to season tier
+       alone, so a "mixed" season always reads as "maybe" even when a
+       destination is clearly your best realistic option overall. "go" means
+       "this is a good recommendation," not "the weather is flawless" - your
+       actual top pick, ranked 1st for good reason, should normally BE a
+       "go" unless something concrete (a real visa/deadline problem, a
+       genuinely bad season, a poor fit with their stated budget or pace)
+       argues against it. A real, nameable reason justifies a lower verdict;
+       rank position alone never does.
 
 CARRY THE DETAIL THROUGH. The specialists did the research; your job is to weigh
 it, NOT to compress it into generalities. A reply that says "lower visa costs" or

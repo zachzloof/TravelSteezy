@@ -181,6 +181,14 @@ def check_route(origin: str, destination: str) -> dict[str, Any]:
             result = {
                 **result,
                 "known": True,
+                # routes.lookup()'s "note" for an uncurated pair says to treat
+                # any figure as unverified - true before this point, no longer
+                # true now that a live search actually found something. Left
+                # in place, that leftover wording was still reaching the
+                # Logistics specialist's own report even after a successful
+                # live lookup, undoing the fix that stopped treating
+                # live-sourced data as untrustworthy.
+                "note": None,
                 "passages": rag_store.format_passages(live_hits),
                 "source_ids": [h["id"] for h in live_hits if h.get("id") != "retrieval-error"],
             }
