@@ -46,8 +46,40 @@ class Settings:
 
         # --- llm -----------------------------------------------------------
         self.openai_api_key: str | None = os.getenv("OPENAI_API_KEY")
+        # The shared default for every agent except the two overridden below:
+        # turn_parser, concierge, local_guide, discovery_agent, the onboarding
+        # extractor, and live_lookup's synthesis/verify/classify_season calls.
+        # All of these are either structured extraction (schema-validated by
+        # ADK) or narrow, already-grounded completions - well within a small
+        # model's reliability, and called often enough per turn that
+        # cost/latency actually matters.
         self.llm_model: str = os.getenv("LLM_MODEL", "gpt-4o-mini")
-        self.judge_model: str = os.getenv("JUDGE_MODEL", "gpt-4o-mini")
+        # decision_weigher is the one agent that earned a stronger model first:
+        # it is the single most complex reasoning step in the graph (synthesise
+        # three specialist reports, hold five hard rules simultaneously,
+        # produce internally-consistent verdicts, emit valid JSON) and is
+        # called exactly once per turn, so a pricier model here barely moves
+        # per-turn cost. It was also the direct source of the reliability bugs
+        # traced in notes/03-rag-and-retrieval.md's later follow-ups -
+        # manufacturing a verdict spread across ranked candidates, needing
+        # multiple attempts because it answered in prose instead of JSON.
+        self.weigher_model: str = os.getenv("WEIGHER_MODEL", "gpt-4o")
+        # The three specialists (weather/logistics/recommendations) also moved
+        # to this tier - a real, live-reproduced case had the Weather
+        # specialist skip its required tool calls entirely for a turn, and
+        # each one is instructed to hold multiple MUST-call-this-tool rules
+        # plus the coverage/disclosure guard simultaneously, the same shape of
+        # multi-constraint prompt that caused trouble for the weigher. This
+        # triples the cost of the upgrade (three calls per turn instead of
+        # one) versus WEIGHER_MODEL alone - a real tradeoff, made deliberately
+        # rather than by default. See notes/01-agent-architecture.md's "Model
+        # selection" section.
+        self.specialist_model: str = os.getenv("SPECIALIST_MODEL", "gpt-4o")
+        # Deliberately different from llm_model by default: a model grading
+        # output from its own model family shares its blind spots, so the
+        # judge is less likely to catch the exact class of mistake it would
+        # make itself. Independent of any of the above upgrades.
+        self.judge_model: str = os.getenv("JUDGE_MODEL", "gpt-4o")
         self.embedding_model: str = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
 
         # --- rag -----------------------------------------------------------

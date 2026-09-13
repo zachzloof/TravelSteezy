@@ -328,7 +328,7 @@ and the bugs found building it.
 | Frontend | Vue 3 + Vite, plain CSS, no component library |
 | Backend | FastAPI, served by uvicorn |
 | Agents | Google ADK 2.9 (`LlmAgent`, `FunctionTool`, `Runner`) |
-| LLM | OpenAI `gpt-4o-mini` via ADK's `LiteLlm` |
+| LLM | OpenAI via ADK's `LiteLlm` — `gpt-4o-mini` for the turn parser/concierge/local guide/discovery agent, `gpt-4o` for the three specialists, the Decision-Weigher and the eval judge (see [notes/01](notes/01-agent-architecture.md#model-selection-not-every-agent-needs-the-same-model-2026-09)) |
 | Memory | SQLite on a Railway volume |
 | RAG | Pinecone 10 (serverless) + `text-embedding-3-small` |
 | Tracing | Langfuse 4 (OTEL), auto-instrumented via OpenInference — see [notes/09](notes/09-observability-and-tracing.md) |

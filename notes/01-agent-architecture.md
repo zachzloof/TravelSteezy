@@ -253,3 +253,61 @@ several coroutines at once. Fixed by `@lru_cache`-ing the `LiteLlm` instance per
 model name, so all agents share one client object. Combined with the retry
 logic in `_run_one_specialist`, this brought that failure mode's observed rate
 to zero across the repeat-3 eval runs (81 turns × several tool calls each).
+
+## Model selection: not every agent needs the same model (2026-09)
+
+Every agent used `settings.llm_model` (`gpt-4o-mini`) uniformly until this
+point. That stopped being a neutral default once the reliability bugs traced
+through most of `notes/03-rag-and-retrieval.md`'s later follow-ups turned out
+to concentrate in one place: `decision_weigher`. It is the single most complex
+reasoning step in the graph - synthesise three specialist reports, hold five
+hard rules simultaneously (season, visa/deadline, no-invented-facts, coverage,
+verdict-consistency), stay internally consistent across candidates, and emit
+valid JSON - and it was where the actual bugs showed up: a verdict spread
+manufactured across ranked candidates with no data behind it, needing up to
+three attempts because it sometimes answered in prose instead of JSON, and
+residual "avoid" verdicts for destinations the specialists had reported
+cleanly and positively.
+
+The fix is not a bigger prompt, it's a bigger model for that one call.
+`decision_weigher` now runs on `settings.weigher_model` (default `gpt-4o`)
+instead of the shared `settings.llm_model` (`gpt-4o-mini`) - see
+`build_model()`'s optional `model_name` argument in `backend/agents/graph.py`.
+This is called exactly ONCE per turn, so the cost/latency delta against a
+pricier model is negligible per turn even though the per-token price is
+higher; upgrading a tool the specialists call three times each would be a
+real cost decision, upgrading the one-shot final synthesis is not.
+
+**Initially left on the shared cheap model** - the three specialists
+(`weather_agent`/`logistics_agent`/`recommendations_agent`) each hold several
+MUST-call-this-tool rules plus the coverage/disclosure guard simultaneously,
+the same multi-constraint prompt shape that caused trouble for the weigher,
+and one live reproduction had the Weather specialist skip its required tool
+calls entirely for a turn. Upgrading three agents that each run once per turn
+is a real cost multiplier though (triples the added spend versus the weigher
+alone), so this was deliberately deferred pending actual measurement of how
+often the skip happens, rather than upgraded on a guess.
+
+**Upgraded anyway, on explicit instruction** rather than after that
+measurement: `settings.specialist_model` (default `gpt-4o`) now backs all
+three specialists too. The cost tradeoff named above is real and un-measured
+- this was a judgment call to accept it now rather than wait, not a finding
+that the skip rate turned out to be high. If it later turns out unnecessary,
+the fix is a one-line env var change (`SPECIALIST_MODEL=gpt-4o-mini`), not a
+code change.
+
+**`judge_model` (`evals/run_evals.py`) was also decoupled from `llm_model` and
+upgraded to `gpt-4o`**, independent of the weigher change above and for a
+different reason: it used to default to the same model (`gpt-4o-mini`) the
+system under test runs on, which means the judge shares that model's blind
+spots - it is structurally less likely to catch the exact class of mistake it
+would make itself. A judge from a different model line does not have this
+problem.
+
+`LLM_MODEL` was NOT retired or made redundant by any of this - it is still
+the model seven-plus agents actually run on (`turn_parser`, all three
+specialists, `concierge`, `local_guide`, `discovery_agent`, the onboarding
+extractor) plus every `live_lookup.py` synthesis/verify/`classify_season`
+call. `WEIGHER_MODEL` and `JUDGE_MODEL` are narrow overrides for the two
+places that specifically warranted a different model, not a replacement for
+the shared default everything else still relies on.

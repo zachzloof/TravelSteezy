@@ -66,15 +66,22 @@ def _cached_model(model_name: str) -> LiteLlm:
     return LiteLlm(model=f"openai/{model_name}", api_key=settings.openai_api_key)
 
 
-def build_model() -> LiteLlm:
+def build_model(model_name: str | None = None) -> LiteLlm:
     """LiteLlm is ADK's bridge to non-Gemini providers; we point it at OpenAI.
 
     Shared rather than constructed per agent: litellm keeps process-global client
     state, and building a fresh instance for each of the concurrently-running
     specialists was implicated in intermittent "coroutine raised StopIteration"
     failures during the fan-out.
+
+    ``model_name`` lets one agent use a different model than the shared
+    default (see make_decision_weigher below) - still routed through the same
+    process-global cache, just keyed by whichever name is actually requested,
+    so the "one client instance per model" property holds regardless of how
+    many distinct models are in play. Defaults to ``settings.llm_model``, the
+    shared default every other agent uses.
     """
-    return _cached_model(settings.llm_model)
+    return _cached_model(model_name or settings.llm_model)
 
 
 # --------------------------------------------------------------------------- #
@@ -415,7 +422,11 @@ destination, say so explicitly instead of filling the gap from memory.
 def make_weather_agent() -> LlmAgent:
     return LlmAgent(
         name="weather_agent",
-        model=build_model(),
+        # See settings.specialist_model in backend/config.py and notes/01-
+        # agent-architecture.md's "Model selection" section - upgraded
+        # alongside the other two specialists after a live reproduction of
+        # this exact agent skipping its required tool calls for a turn.
+        model=build_model(settings.specialist_model),
         description="Assesses seasonal fit for candidate destinations.",
         instruction=WEATHER_INSTRUCTION,
         tools=[check_seasonal_conditions, search_seasonal_notes],
@@ -426,7 +437,7 @@ def make_weather_agent() -> LlmAgent:
 def make_logistics_agent() -> LlmAgent:
     return LlmAgent(
         name="logistics_agent",
-        model=build_model(),
+        model=build_model(settings.specialist_model),
         description="Visa requirements, routes, journey time and cost.",
         instruction=LOGISTICS_INSTRUCTION,
         tools=[search_visa_rules, check_route],
@@ -437,7 +448,7 @@ def make_logistics_agent() -> LlmAgent:
 def make_recommendations_agent() -> LlmAgent:
     return LlmAgent(
         name="recommendations_agent",
-        model=build_model(),
+        model=build_model(settings.specialist_model),
         description="Backpacker-specific things to do and budget notes from the RAG store.",
         instruction=RECOMMENDATIONS_INSTRUCTION,
         tools=[
@@ -581,7 +592,13 @@ that destination's notes empty and say so in the reply.
 def make_decision_weigher() -> LlmAgent:
     return LlmAgent(
         name="decision_weigher",
-        model=build_model(),
+        # Deliberately on a stronger model than every other agent here (see
+        # settings.weigher_model in backend/config.py and notes/01-agent-
+        # architecture.md's "Model selection" section) - this is the most
+        # complex, most safety-critical reasoning step in the graph, called
+        # once per turn, so the cost of a pricier model here is negligible
+        # against the reliability it buys.
+        model=build_model(settings.weigher_model),
         description="Ranks candidates against the traveller's stated priorities.",
         instruction=DECISION_INSTRUCTION,
         # Deliberately NOT output_schema=Decision. Tried it, verified live, reverted:
