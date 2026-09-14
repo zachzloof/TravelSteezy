@@ -34,6 +34,10 @@ function remove(index) {
 function backspace() {
   if (!draft.value && props.modelValue.length) remove(props.modelValue.length - 1)
 }
+
+function unused(suggestion) {
+  return !props.modelValue.some((v) => String(v).toLowerCase() === suggestion.toLowerCase())
+}
 </script>
 
 <template>
@@ -45,10 +49,10 @@ function backspace() {
 
     <div class="box">
       <TransitionGroup name="pop">
-      <span v-for="(value, index) in modelValue" :key="value" class="chip">
-        <span class="text">{{ value }}</span>
-        <button type="button" class="x" :aria-label="`Remove ${value}`" @click="remove(index)">×</button>
-      </span>
+        <span v-for="(value, index) in modelValue" :key="value" class="chip">
+          <span class="text">{{ value }}</span>
+          <button type="button" class="x" :aria-label="`Remove ${value}`" @click="remove(index)">×</button>
+        </span>
       </TransitionGroup>
       <input
         v-model="draft"
@@ -60,12 +64,12 @@ function backspace() {
       />
     </div>
 
-    <div v-if="suggestions.length" class="suggestions">
+    <div v-if="suggestions.filter(unused).length" class="suggestions">
       <button
-        v-for="s in suggestions.filter((s) => !modelValue.some((v) => String(v).toLowerCase() === s.toLowerCase()))"
+        v-for="s in suggestions.filter(unused)"
         :key="s"
         type="button"
-        class="ghost small suggestion"
+        class="ghost suggestion"
         @click="add(s)"
       >+ {{ s }}</button>
     </div>
@@ -73,10 +77,10 @@ function backspace() {
 </template>
 
 <style scoped>
-.tags { margin-bottom: 18px; }
+.tags { margin-bottom: var(--sp-5); }
 
-.head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 7px; }
-.label { font-size: 13px; color: var(--muted); }
+.head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--sp-3); margin-bottom: 7px; }
+.label { font-size: var(--fs-sm); color: var(--muted); }
 
 .box {
   display: flex;
@@ -85,39 +89,56 @@ function backspace() {
   align-items: center;
   background: var(--bg);
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   padding: 7px 8px;
+  min-height: 46px;
+  transition: border-color var(--dur-fast) ease, box-shadow var(--dur) ease;
 }
-.box:focus-within { border-color: var(--accent-dim); box-shadow: 0 0 0 3px var(--accent-soft); }
+.box:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 
 .chip {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--sp-1);
   background: var(--panel-2);
   border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 2px 4px 2px 10px;
-  font-size: 13px;
-  transition: transform var(--dur) var(--ease-spring), border-color var(--dur-fast) ease;
+  border-radius: var(--radius-pill);
+  padding: 3px 4px 3px 11px;
+  font-size: var(--fs-sm);
+  max-width: 100%;
+  transition: border-color var(--dur-fast) ease;
 }
-.chip:hover { border-color: var(--accent-dim); transform: translateY(-1px); }
+.chip:hover { border-color: var(--accent-dim); }
+.chip .text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .x {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 22px; height: 22px;
   border: none; background: none; color: var(--muted);
-  padding: 0 5px; font-size: 15px; line-height: 1;
+  padding: 0; font-size: 16px; line-height: 1;
+  border-radius: 50%;
 }
-.x:hover { color: var(--bad); }
+.x:hover { color: var(--bad-bright); background: var(--bad-soft); transform: none; }
+@media (pointer: coarse) { .x { width: 26px; height: 26px; } }
 
 input {
   flex: 1;
-  min-width: 120px;
+  min-width: 110px;
   width: auto;
   border: none;
   background: none;
-  padding: 3px 2px;
+  padding: 4px 2px;
 }
-input:focus { outline: none; border: none; }
+input:focus { outline: none; border: none; box-shadow: none; background: none; }
 
-.suggestions { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
-.suggestion { padding: 3px 9px; font-size: 12px; border-radius: 999px; }
+.suggestions { display: flex; flex-wrap: wrap; gap: 5px; margin-top: var(--sp-2); }
+.suggestion {
+  padding: 5px 11px;
+  font-size: 12px;
+  border-radius: var(--radius-pill);
+  border-color: var(--line);
+  color: var(--muted);
+}
+.suggestion:hover:not(:disabled) { color: var(--accent-bright); border-color: var(--accent-dim); background: var(--accent-soft); }
 </style>

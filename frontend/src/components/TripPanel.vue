@@ -2,6 +2,10 @@
 // The route and wishlist, shown live in the chat sidebar. Backed by /travel/me,
 // the same rows the agents query, so "it remembered where I went" is visible
 // rather than merely claimed in a reply.
+//
+// The "edit this list" link that used to sit at the bottom is gone: the panel
+// this is slotted into already links to the same page, and two links to
+// /preferences a few centimetres apart is just noise.
 import { computed } from 'vue'
 import StarRating from './StarRating.vue'
 
@@ -14,116 +18,122 @@ const emit = defineEmits(['drop-wishlist'])
 
 const PRIORITY = { 1: 'high', 2: 'medium', 3: 'low' }
 
+// A country-level stop stores the same string in both fields, which rendered as
+// "Vietnam" with "Vietnam" underneath it.
+const showCountry = (entry) =>
+  entry.country && entry.country.toLowerCase() !== entry.location.toLowerCase()
+
 // Newest first: the most recent stops are the ones worth seeing at a glance.
 const route = computed(() => [...props.history].reverse())
 </script>
 
 <template>
   <section class="trip">
-    <h4>Route so far</h4>
-    <ol v-if="route.length" class="route">
-      <li v-for="entry in route" :key="entry.location">
-        <span class="dot" :class="{ rated: entry.rating }" />
-        <div class="body">
-          <span class="place">{{ entry.location }}</span>
-          <StarRating v-if="entry.rating" :model-value="entry.rating" readonly />
-          <div v-if="entry.review_notes" class="muted small note">{{ entry.review_notes }}</div>
-          <div class="muted small meta">
-            <span v-if="entry.country">{{ entry.country }}</span>
-            <span v-if="entry.source === 'tracked'" class="tracked">auto-logged</span>
+    <div class="group">
+      <div class="group-head">
+        <p class="eyebrow">Route so far</p>
+        <span v-if="route.length" class="muted small">{{ route.length }}</span>
+      </div>
+      <ol v-if="route.length" class="route">
+        <li v-for="entry in route" :key="entry.location">
+          <span class="dot" :class="{ rated: entry.rating }" />
+          <div class="body">
+            <div class="line">
+              <span class="place">{{ entry.location }}</span>
+              <StarRating v-if="entry.rating" :model-value="entry.rating" readonly />
+            </div>
+            <div v-if="entry.review_notes" class="muted small note">{{ entry.review_notes }}</div>
+            <div v-if="showCountry(entry) || entry.source === 'tracked'" class="muted small meta">
+              <span v-if="showCountry(entry)">{{ entry.country }}</span>
+              <span v-if="entry.source === 'tracked'" class="tracked">auto-logged</span>
+            </div>
           </div>
-        </div>
-      </li>
-    </ol>
-    <p v-else class="muted small">Nothing logged yet.</p>
+        </li>
+      </ol>
+      <p v-else class="muted small none">Nothing logged yet.</p>
+    </div>
 
-    <h4>Want to go</h4>
-    <TransitionGroup v-if="wishlist.length" tag="ul" name="fade-slide" class="wish">
-      <li v-for="item in wishlist" :key="item.location">
-        <span class="place">{{ item.location }}</span>
-        <span class="tag" :class="{ go: item.priority === 1 }">
-          {{ item.revisit ? 'again' : PRIORITY[item.priority] }}
-        </span>
-        <button
-          class="ghost drop"
-          :title="`Remove ${item.location}`"
-          @click="emit('drop-wishlist', item.location)"
-        >×</button>
-      </li>
-    </TransitionGroup>
-    <p v-else class="muted small">Nothing on the wishlist.</p>
+    <div class="group">
+      <div class="group-head">
+        <p class="eyebrow">Want to go</p>
+        <span v-if="wishlist.length" class="muted small">{{ wishlist.length }}</span>
+      </div>
+      <TransitionGroup v-if="wishlist.length" tag="ul" name="fade-slide" class="wish">
+        <li v-for="item in wishlist" :key="item.location">
+          <span class="place grow">{{ item.location }}</span>
+          <span class="tag" :class="{ go: item.priority === 1 }">
+            {{ item.revisit ? 'again' : PRIORITY[item.priority] }}
+          </span>
+          <button
+            class="icon-btn destructive"
+            :title="`Remove ${item.location}`"
+            :aria-label="`Remove ${item.location}`"
+            @click="emit('drop-wishlist', item.location)"
+          >×</button>
+        </li>
+      </TransitionGroup>
+      <p v-else class="muted small none">Nothing on the wishlist.</p>
+    </div>
 
-    <template v-if="interests.length">
-      <h4>Interests</h4>
+    <div v-if="interests.length" class="group">
+      <p class="eyebrow">Interests</p>
       <div class="chips">
         <span v-for="i in interests" :key="i" class="tag">{{ i }}</span>
       </div>
-    </template>
-
-    <RouterLink class="manage small" to="/preferences">
-      Rate a stop or edit this list →
-    </RouterLink>
+    </div>
   </section>
 </template>
 
 <style scoped>
-.trip { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 14px; }
+.trip { margin-top: var(--sp-5); border-top: 1px solid var(--line); padding-top: var(--sp-4); }
 
-h4 {
-  margin: 0 0 8px;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: .05em;
-  color: var(--muted);
-}
-h4:not(:first-child) { margin-top: 16px; }
+.group { margin-bottom: var(--sp-5); }
+.group:last-child { margin-bottom: 0; }
+.group-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-2); }
 
+.none { margin: 0; }
+
+/* ------------------------------------------------------------------- route */
 .route { list-style: none; margin: 0; padding: 0; }
-.route li { display: flex; gap: 9px; padding-bottom: 10px; position: relative; }
+.route li { display: flex; gap: 10px; padding-bottom: var(--sp-3); position: relative; }
+.route li:last-child { padding-bottom: 0; }
 .route li:not(:last-child)::before {
   content: '';
   position: absolute;
   left: 4px;
-  top: 13px;
-  bottom: 0;
+  top: 14px;
+  bottom: 2px;
   width: 1px;
   background: var(--line);
 }
 .dot {
   width: 9px; height: 9px;
   border-radius: 50%;
-  background: var(--line);
-  border: 1px solid var(--muted);
-  margin-top: 4px;
+  background: var(--stone-700);
+  border: 1px solid var(--muted-2);
+  margin-top: 5px;
   flex: none;
   z-index: 1;
-  transition: box-shadow var(--dur) ease;
 }
 .dot.rated { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 
-.body { min-width: 0; }
-.place { font-size: 13.5px; text-transform: capitalize; margin-right: 6px; }
-.note { font-style: italic; word-break: break-word; }
-.meta { display: flex; gap: 8px; text-transform: capitalize; }
-.tracked { color: var(--accent-dim); text-transform: none; }
+.body { min-width: 0; flex: 1; }
+.line { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+.place { font-size: 13.5px; text-transform: capitalize; }
+.note { font-style: italic; word-break: break-word; margin-top: 2px; }
+.meta { display: flex; gap: var(--sp-2); text-transform: capitalize; margin-top: 2px; }
+.tracked { color: var(--muted-2); text-transform: none; }
 
+/* ---------------------------------------------------------------- wishlist */
 .wish { list-style: none; margin: 0; padding: 0; }
-.wish li { display: flex; align-items: center; gap: 7px; margin-bottom: 6px; font-size: 13.5px; }
-.wish .place { flex: 1; }
-.drop {
-  border: none; background: none; color: var(--muted);
-  padding: 0 4px; font-size: 16px; line-height: 1;
+.wish li {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: 13.5px;
+  padding: 3px 0;
 }
-.drop:hover { color: var(--bad); }
+.wish .place { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .chips { display: flex; flex-wrap: wrap; gap: 5px; }
-
-.manage {
-  display: inline-block;
-  margin-top: 14px;
-  color: var(--accent);
-  text-decoration: none;
-  transition: transform var(--dur-fast) ease, color var(--dur-fast) ease;
-}
-.manage:hover { color: var(--accent-bright); transform: translateX(2px); }
 </style>

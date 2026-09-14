@@ -1,11 +1,26 @@
 <script setup>
 // Shows what the assistant currently remembers for THIS account, read from
-// GET /profile/me. It is deliberately the same data the agents are hydrated with,
-// so "it remembers me" is visible rather than merely claimed in the chat reply.
-defineProps({
+// GET /profile/me. It is deliberately the same data the agents are hydrated
+// with, so "it remembers me" is visible rather than merely claimed in the chat
+// reply.
+//
+// Two things it deliberately does NOT show:
+//
+//   Visited this trip — the country-level departure log. It was a second,
+//     shorter list sitting directly above the route, showing the same journey
+//     at a coarser grain. Route so far covers it. The departure log is still
+//     editable on the Trip page, where logging one is an explicit action.
+//   Interests — the free-text mirror column. TripPanel renders the real
+//     weighted interest rows just below, so this was the same answer twice.
+import { computed } from 'vue'
+import { labelFor } from '../preferences'
+
+const props = defineProps({
   profile: { type: Object, default: null },
-  visited: { type: Array, default: () => [] },
-  writes: { type: Array, default: () => [] }
+  writes: { type: Array, default: () => [] },
+  // Inside the mobile sheet the surrounding chrome already exists, so the
+  // panel border and padding would be a box drawn inside a box.
+  flat: { type: Boolean, default: false }
 })
 
 const FIELDS = [
@@ -13,43 +28,48 @@ const FIELDS = [
   ['current_location', 'Currently in'],
   ['budget_band', 'Budget'],
   ['travel_style', 'Pace'],
-  ['climate_preference', 'Climate'],
-  ['interests', 'Interests']
+  ['climate_preference', 'Climate']
 ]
+
+// Stored values are enum keys ("mid", "very_slow"). Showing the label the user
+// actually picked - "Mid-range", "Very slow" - is the difference between this
+// reading as your profile and reading as a database dump.
+const rows = computed(() => {
+  const p = props.profile || {}
+  return FIELDS.map(([key, label]) => ({
+    key,
+    label,
+    value: p[key] ? labelFor(p[key]) : ''
+  }))
+})
+
+const filled = computed(() => rows.value.filter((r) => r.value).length)
 </script>
 
 <template>
-  <aside class="panel">
-    <h3>What I remember</h3>
-    <p class="muted small sub">Stored against your account, not this browser.</p>
+  <div :class="flat ? 'context flat' : 'context panel'">
+    <header v-if="!flat" class="head">
+      <h3>What I remember</h3>
+      <span class="muted small">{{ filled }}/{{ rows.length }}</span>
+    </header>
+    <p v-if="!flat" class="muted small sub">Stored against your account, not this browser.</p>
 
-    <dl v-if="profile">
-      <template v-for="[key, label] in FIELDS" :key="key">
-        <dt>{{ label }}</dt>
-        <dd :class="{ unknown: !profile[key] }">{{ profile[key] || 'not set' }}</dd>
+    <dl>
+      <template v-for="row in rows" :key="row.key">
+        <dt>{{ row.label }}</dt>
+        <dd :class="{ unknown: !row.value }">{{ row.value || 'not set' }}</dd>
       </template>
-      <template v-if="profile.visa_deadline_date">
+      <template v-if="profile?.visa_deadline_date">
         <dt>Deadline</dt>
         <dd class="deadline">
           {{ profile.visa_deadline_date }}
-          <span v-if="profile.visa_deadline_note" class="muted"> - {{ profile.visa_deadline_note }}</span>
+          <span v-if="profile.visa_deadline_note" class="muted">— {{ profile.visa_deadline_note }}</span>
         </dd>
       </template>
     </dl>
 
-    <div class="section">
-      <h4>Visited this trip</h4>
-      <ul v-if="visited.length" class="visited">
-        <li v-for="(v, i) in visited" :key="i">
-          <span class="country">{{ v.country }}</span>
-          <span v-if="v.departure_date" class="muted small"> left {{ v.departure_date }}</span>
-        </li>
-      </ul>
-      <p v-else class="muted small">Nothing logged yet.</p>
-    </div>
-
     <div v-if="writes.length" class="section">
-      <h4>Just remembered</h4>
+      <p class="eyebrow">Just remembered</p>
       <TransitionGroup tag="ul" name="pop" class="writes">
         <li v-for="(w, i) in writes" :key="w.operation + i">
           <span class="op mono">{{ w.operation }}</span>
@@ -61,44 +81,56 @@ const FIELDS = [
     <!-- The trip panel (route, wishlist, interests) is slotted in here. -->
     <slot />
 
-    <RouterLink class="edit small" to="/preferences">Edit my preferences →</RouterLink>
-  </aside>
+    <RouterLink class="edit small" to="/preferences">Edit my trip profile →</RouterLink>
+  </div>
 </template>
 
 <style scoped>
-aside { position: sticky; top: 20px; animation: fadeIn var(--dur-slow) var(--ease-out) both; }
-h3 { margin: 0 0 2px; font-size: 15px; }
-.sub { margin: 0 0 14px; }
+.context.panel { animation: fadeIn var(--dur-slow) var(--ease-out) both; }
 
-dl { display: grid; grid-template-columns: 88px 1fr; gap: 5px 10px; margin: 0; font-size: 13.5px; }
+.head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-2); }
+h3 { margin: 0 0 2px; font-size: var(--fs-h3); }
+.sub { margin: 0 0 var(--sp-4); }
+
+/* auto-fit label column: long labels do not force the value onto its own line,
+   short ones do not leave a gap. */
+dl {
+  display: grid;
+  grid-template-columns: minmax(72px, auto) 1fr;
+  gap: 6px var(--sp-3);
+  margin: 0;
+  font-size: 13.5px;
+  align-items: baseline;
+}
 dt { color: var(--muted); }
-dd { margin: 0; text-transform: capitalize; word-break: break-word; transition: color var(--dur) ease; }
-dd.unknown { color: var(--muted-2); font-style: italic; text-transform: none; }
-dd.deadline { color: var(--warn); text-transform: none; }
+dd { margin: 0; word-break: break-word; }
+dd.unknown { color: var(--muted-2); font-style: italic; }
+dd.deadline { color: var(--warn); }
 
-.section { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 14px; }
-h4 { margin: 0 0 8px; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.section { margin-top: var(--sp-5); border-top: 1px solid var(--line); padding-top: var(--sp-4); }
 
 ul { margin: 0; padding: 0; list-style: none; }
-.visited li { font-size: 13.5px; margin-bottom: 4px; }
-.country { text-transform: capitalize; }
 
 .writes li {
   display: flex;
   flex-direction: column;
   gap: 1px;
-  margin-bottom: 8px;
-  padding: 6px 8px;
+  margin-bottom: var(--sp-2);
+  padding: 7px 9px;
   border-radius: var(--radius-sm);
   background: var(--moss-soft);
+  border: 1px solid var(--moss-dim);
 }
-.op { font-size: 11px; color: var(--moss-bright); }
+.writes li:last-child { margin-bottom: 0; }
+.op { font-size: var(--fs-xs); color: var(--moss-bright); }
 
 .edit {
   display: inline-block;
-  margin-top: 16px;
+  margin-top: var(--sp-4);
+  padding: 10px 0;
   color: var(--accent);
   text-decoration: none;
+  font-weight: 550;
   transition: transform var(--dur-fast) ease, color var(--dur-fast) ease;
 }
 .edit:hover { color: var(--accent-bright); transform: translateX(2px); }

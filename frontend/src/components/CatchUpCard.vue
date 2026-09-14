@@ -7,7 +7,7 @@
 // no model call at all. Typing an answer is processed as an ordinary chat
 // turn (see ChatView), so it picks up visits/departures/wishlist/reviews for
 // free - it is not a second extraction path.
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 
 const props = defineProps({
   summary: { type: String, default: '' },
@@ -17,6 +17,11 @@ const props = defineProps({
 const emit = defineEmits(['update', 'dismiss'])
 
 const text = ref('')
+
+const heading = computed(() => {
+  if (!props.daysSince) return 'Welcome back'
+  return `Welcome back — it's been ${props.daysSince === 1 ? 'a day' : `${props.daysSince} days`}`
+})
 
 function submit() {
   if (!text.value.trim() || props.busy) return
@@ -28,7 +33,8 @@ function submit() {
 <template>
   <div class="catchup panel">
     <div class="head">
-      <h4>Welcome back{{ daysSince ? ` — it's been ${daysSince === 1 ? 'a day' : `${daysSince} days`}` : '' }}</h4>
+      <h4>{{ heading }}</h4>
+      <button class="icon-btn" aria-label="Dismiss" title="Dismiss" @click="emit('dismiss')">×</button>
     </div>
 
     <p v-if="summary" class="summary">{{ summary }}</p>
@@ -47,7 +53,7 @@ function submit() {
         {{ busy ? 'Updating…' : 'Update me' }}
       </button>
       <button class="ghost small" :disabled="busy" @click="emit('dismiss')">
-        Still here, nothing's changed
+        Nothing's changed
       </button>
     </div>
   </div>
@@ -55,13 +61,17 @@ function submit() {
 
 <style scoped>
 .catchup { border-color: var(--accent-dim); box-shadow: var(--glow-accent); }
-.head { margin-bottom: 8px; }
-h4 { margin: 0; font-size: 14px; }
 
-.summary { margin: 0 0 6px; font-size: 13.5px; }
-.prompt { margin: 0 0 10px; }
+.head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); margin-bottom: var(--sp-2); }
+h4 { margin: 0; font-size: var(--fs-h3); }
 
-textarea { margin-bottom: 10px; }
+.summary { margin: 0 0 var(--sp-1); font-size: 13.5px; }
+.prompt { margin: 0 0 var(--sp-3); }
 
-.actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+textarea { margin-bottom: var(--sp-3); }
+
+/* The two buttons sit side by side where there is room, and stack rather than
+   shrink the primary action to an unreadable width on a narrow phone. */
+.actions { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; }
+.actions button { flex: 1 1 auto; min-width: 140px; }
 </style>

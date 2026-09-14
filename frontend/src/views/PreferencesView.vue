@@ -1,23 +1,24 @@
 <script setup>
-// The trip profile, as three independent panels rather than one long form.
+// The trip profile, as three sections rather than one very long scroll.
 //
-// The old version was a single "Trip profile" form with everything in it, plus
-// two sidebar boxes, and the route and wishlist were not editable here at all -
-// they could only be seen in the chat sidebar and only changed by talking to an
-// agent. That is backwards: this is the user's own data.
+// The three sections map onto three genuinely different questions:
 //
-// The three panels map onto three genuinely different questions:
+//   Profile   - who you are and how you travel. A form: edit, then save.
+//   Route     - where you have been, and what you thought of it. The ratings
+//               here are read before every recommendation, which is why they
+//               are one tap and always editable.
+//   Wishlist  - where you want to go. Somewhere you have already been is
+//               allowed: wanting a second go at a place is a real preference.
 //
-//   About you  - who you are and how you travel. A form: edit, then save.
-//   History    - where you have been, and what you thought of it. The ratings
-//                here are read before every recommendation, which is why they
-//                are one tap and always editable.
-//   Wishlist   - where you want to go. Somewhere you have already been is
-//                allowed: wanting a second go at a place is a real preference.
+// They used to be stacked panels on one page, which on a phone meant scrolling
+// past the whole profile form and the entire route to reach the wishlist. Now
+// they are tabs, so each one is one tap and starts at the top.
 //
-// History and wishlist actions persist immediately, because each one is a
-// discrete action rather than an edit-in-progress. Only the About You form has a
-// Save button, because that is the only panel where you are mid-thought.
+// Route and wishlist actions persist immediately, because each one is a
+// discrete action rather than an edit-in-progress. Only the profile form has a
+// Save button, because that is the only section where you are mid-thought - and
+// it now announces itself in a sticky bar the moment something is unsaved,
+// rather than waiting at the bottom of a form you have to scroll back down.
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { api, session, tokens } from '../api'
@@ -29,6 +30,7 @@ import {
   TRAVEL_STYLES
 } from '../preferences'
 import ScalePicker from '../components/ScalePicker.vue'
+import SegmentedTabs from '../components/SegmentedTabs.vue'
 import StarRating from '../components/StarRating.vue'
 import TagInput from '../components/TagInput.vue'
 
@@ -39,7 +41,7 @@ const INTEREST_SUGGESTIONS = [
   'nightlife', 'culture', 'markets', 'wildlife', 'surfing', 'photography'
 ]
 
-const form = ref({
+const EMPTY = {
   passports: [],
   current_location: '',
   budget_band: '',
@@ -48,26 +50,42 @@ const form = ref({
   social_style: '',
   visa_deadline_date: '',
   visa_deadline_note: ''
-})
+}
+
+const form = ref({ ...EMPTY })
+// What the form looked like when it was last loaded or saved, so the save bar
+// can appear only when there is genuinely something to save.
+const clean = ref(JSON.stringify(EMPTY))
 
 const history = ref([])
 const wishlist = ref([])
 const interests = ref([])
-const writes = ref([])
 const visited = ref([])
 
 const newStop = ref({ location: '', country: '' })
 const newWish = ref({ location: '', priority: 2 })
 const departure = ref({ country: '', departure_date: '' })
 
+const tab = ref('profile')
 const busy = ref(false)
 const error = ref('')
 const saved = ref('')
-const showWrites = ref(false)
 
 // Newest first: the stop you just left is the one you are most likely to rate.
 const route = computed(() => [...history.value].slice().reverse())
 const rated = computed(() => history.value.filter((h) => h.rating).length)
+const dirty = computed(() => JSON.stringify(form.value) !== clean.value)
+
+// A country-level stop stores the same string as both location and country, so
+// printing both just repeats the place name back at you.
+const showCountry = (stop) =>
+  stop.country && stop.country.toLowerCase() !== stop.location.toLowerCase()
+
+const TABS = computed(() => [
+  { id: 'profile', label: 'Profile' },
+  { id: 'route', label: 'Route', count: history.value.length },
+  { id: 'wishlist', label: 'Wishlist', count: wishlist.value.length }
+])
 
 onMounted(async () => {
   await Promise.all([loadProfile(), loadTravel()])
@@ -96,10 +114,10 @@ async function loadTravel() {
 
 function applyProfile(res) {
   const profile = res.profile || {}
-  for (const key of Object.keys(form.value)) {
+  for (const key of Object.keys(EMPTY)) {
     form.value[key] = key === 'passports' ? [...(profile.passports || [])] : profile[key] ?? ''
   }
-  writes.value = res.recent_writes || []
+  clean.value = JSON.stringify(form.value)
   visited.value = res.visited_history || []
 }
 
@@ -109,7 +127,7 @@ function applyTravel(res) {
   if (res.interests) interests.value = res.interests
 }
 
-/** Run one mutating call, keeping the panels in sync and surfacing failures. */
+/** Run one mutating call, keeping the sections in sync and surfacing failures. */
 async function act(fn, message = '') {
   error.value = ''
   saved.value = ''
@@ -117,8 +135,8 @@ async function act(fn, message = '') {
   try {
     applyTravel(await fn())
     saved.value = message
-    // The audit log and the mirrored interests text live on the profile side, so
-    // a travel write has to refresh both or the two panels drift apart.
+    // The mirrored interests text and the departure log live on the profile
+    // side, so a travel write has to refresh both or the two drift apart.
     applyProfile(await api.getProfile())
   } catch (e) {
     error.value = e.message
@@ -127,13 +145,13 @@ async function act(fn, message = '') {
   }
 }
 
-// ---------------------------------------------------------------- about you
+// ------------------------------------------------------------------ profile
 async function saveProfile() {
   error.value = ''
   saved.value = ''
   busy.value = true
   try {
-    // This panel renders every field it can write, so an empty control genuinely
+    // This form renders every field it can write, so an empty control genuinely
     // means "I do not have one" rather than "this was not on screen" - which is
     // why it can safely ask for cleared fields to be blanked. `clear` names them
     // explicitly; the backend will not blank anything it was not told to.
@@ -152,12 +170,16 @@ async function saveProfile() {
   }
 }
 
+function revert() {
+  form.value = JSON.parse(clean.value)
+}
+
 async function saveInterests(next) {
   interests.value = next
   await act(() => api.setInterests(next), 'Interests updated.')
 }
 
-// ------------------------------------------------------------------ history
+// -------------------------------------------------------------------- route
 function addStop() {
   const location = newStop.value.location.trim()
   if (!location) return
@@ -165,7 +187,7 @@ function addStop() {
   newStop.value = { location: '', country: '' }
   return act(
     () => api.addVisit({ location, country: country || null }),
-    `${location} added to your history.`
+    `${location} added to your route.`
   )
 }
 
@@ -258,25 +280,26 @@ async function redoOnboarding() {
 </script>
 
 <template>
-  <div class="wrap">
-    <header class="top">
+  <div class="page">
+    <header class="page-head">
       <div>
-        <h1>Your trip profile</h1>
-        <p class="muted small intro">
+        <h1 class="grad-text">Your trip</h1>
+        <p class="muted small">
           Every agent reads this before it answers, so you never have to repeat
           yourself. Change anything here and the next recommendation reflects it.
         </p>
       </div>
-      <button class="ghost small redo" type="button" :disabled="busy" @click="redoOnboarding">
-        Redo the questions
-      </button>
     </header>
 
-    <div v-if="error" class="error">{{ error }}</div>
-    <div v-if="saved" class="notice">{{ saved }}</div>
+    <SegmentedTabs v-model="tab" :tabs="TABS" label="Trip sections" />
 
-    <!-- ================================================== 1. about you -->
-    <form class="panel hoverable" @submit.prevent="saveProfile">
+    <Transition name="fade-slide" mode="out-in">
+      <div v-if="error" key="err" class="error">{{ error }}</div>
+      <div v-else-if="saved" key="ok" class="notice">{{ saved }}</div>
+    </Transition>
+
+    <!-- ==================================================== 1. profile -->
+    <form v-show="tab === 'profile'" class="panel section" @submit.prevent="saveProfile">
       <div class="panel-head">
         <h2>About you</h2>
         <p class="muted small">Who you are and how you travel.</p>
@@ -286,7 +309,7 @@ async function redoOnboarding() {
         <TagInput
           v-model="form.passports"
           label="Nationality / passports"
-          hint="First one is your primary"
+          hint="First one is primary"
           placeholder="United Kingdom"
         />
         <div class="field">
@@ -301,30 +324,14 @@ async function redoOnboarding() {
       </p>
 
       <div class="scales">
-        <ScalePicker
-          v-model="form.budget_band"
-          label="Budget band"
-          :options="BUDGET_BANDS"
-        />
-        <ScalePicker
-          v-model="form.travel_style"
-          label="Travel pace"
-          :options="TRAVEL_STYLES"
-        />
-        <ScalePicker
-          v-model="form.climate_preference"
-          label="Climate preference"
-          :options="CLIMATE_PREFS"
-        />
-        <ScalePicker
-          v-model="form.social_style"
-          label="Travelling"
-          :options="SOCIAL_STYLES"
-        />
+        <ScalePicker v-model="form.budget_band" label="Budget band" :options="BUDGET_BANDS" />
+        <ScalePicker v-model="form.travel_style" label="Travel pace" :options="TRAVEL_STYLES" />
+        <ScalePicker v-model="form.climate_preference" label="Climate preference" :options="CLIMATE_PREFS" />
+        <ScalePicker v-model="form.social_style" label="Travelling" :options="SOCIAL_STYLES" />
       </div>
 
       <div class="sub">
-        <h3>Deadline</h3>
+        <p class="eyebrow">Deadline</p>
         <div class="two">
           <div class="field">
             <label for="vd">Visa / permit deadline</label>
@@ -342,7 +349,7 @@ async function redoOnboarding() {
       </div>
 
       <div class="sub">
-        <h3>What you are into</h3>
+        <p class="eyebrow">What you are into</p>
         <TagInput
           :model-value="interests"
           hint="Saves as you go"
@@ -352,246 +359,232 @@ async function redoOnboarding() {
         />
       </div>
 
-      <div class="row actions">
-        <button class="primary" :disabled="busy" type="submit">Save</button>
-        <button class="danger" type="button" :disabled="busy" @click="forgetAll">
-          Forget everything
-        </button>
+      <div class="sub danger-zone">
+        <p class="eyebrow">Start over</p>
+        <div class="cluster">
+          <button class="small" type="button" :disabled="busy" @click="redoOnboarding">
+            Redo the questions
+          </button>
+          <button class="danger small" type="button" :disabled="busy" @click="forgetAll">
+            Forget everything
+          </button>
+        </div>
       </div>
+
+      <!-- Sticky, and only while there is something to save. On a phone this is
+           what stops a long form ending in a button you have to hunt for. -->
+      <Transition name="fade-slide">
+        <div v-if="dirty" class="savebar">
+          <span class="muted small grow">Unsaved changes</span>
+          <button class="ghost small" type="button" :disabled="busy" @click="revert">Discard</button>
+          <button class="primary small" :disabled="busy" type="submit">Save</button>
+        </div>
+      </Transition>
     </form>
 
-    <div class="lists">
-      <!-- ================================================ 2. history -->
-      <section class="panel hoverable">
-        <div class="panel-head">
-          <h2>Where you have been</h2>
-          <p class="muted small">
-            Your route, and what you made of it.
-            <template v-if="history.length">
-              {{ rated }} of {{ history.length }} rated.
-            </template>
-          </p>
-        </div>
+    <!-- ====================================================== 2. route -->
+    <section v-show="tab === 'route'" class="panel section">
+      <div class="panel-head">
+        <h2>Where you have been</h2>
+        <p class="muted small">
+          Your route, and what you made of it.
+          <template v-if="history.length">{{ rated }} of {{ history.length }} rated.</template>
+        </p>
+      </div>
 
+      <p class="muted small aside">
+        Ratings do real work: somewhere similar to a place you rated 1–2 has to
+        justify itself before it gets recommended to you.
+      </p>
+
+      <form class="add" @submit.prevent="addStop">
+        <input v-model="newStop.location" placeholder="Add somewhere you have been" aria-label="Place" />
+        <input v-model="newStop.country" placeholder="Country" aria-label="Country" />
+        <button :disabled="busy || !newStop.location.trim()" type="submit">Add</button>
+      </form>
+
+      <TransitionGroup v-if="route.length" tag="ul" name="fade-slide" class="rows">
+        <li v-for="stop in route" :key="stop.location">
+          <div class="row-head">
+            <span class="place grow">{{ stop.location }}</span>
+            <span v-if="stop.source === 'tracked'" class="tag">auto</span>
+            <button
+              class="icon-btn destructive"
+              type="button"
+              :disabled="busy"
+              :title="`Remove ${stop.location}`"
+              :aria-label="`Remove ${stop.location}`"
+              @click="removeStop(stop.location)"
+            >×</button>
+          </div>
+          <p v-if="showCountry(stop)" class="muted small country">{{ stop.country }}</p>
+          <StarRating
+            :model-value="stop.rating"
+            :label="`How was ${stop.location}?`"
+            @update:model-value="(r) => rateStop(stop, r)"
+          />
+          <p v-if="stop.review_notes" class="muted small note">“{{ stop.review_notes }}”</p>
+        </li>
+      </TransitionGroup>
+      <div v-else class="empty-state">
+        <span class="glyph" aria-hidden="true">🧭</span>
+        <p>Nothing logged yet. Add a stop above, or just tell the chat where you have been.</p>
+      </div>
+
+      <details class="departures">
+        <summary class="muted small">Left a country for good?</summary>
         <p class="muted small aside">
-          Ratings do real work: somewhere similar to a place you rated 1–2 has to
-          justify itself before it gets recommended to you.
+          This moves a whole country out of active context and into your
+          country-level history — the “I am done with Thailand” case.
         </p>
-
-        <TransitionGroup v-if="route.length" tag="ul" name="fade-slide" class="stops">
-          <li v-for="stop in route" :key="stop.location">
-            <div class="stop-head">
-              <span class="place">{{ stop.location }}</span>
-              <span v-if="stop.country" class="muted small">{{ stop.country }}</span>
-              <span v-if="stop.source === 'tracked'" class="tag">auto-logged</span>
-              <button
-                class="ghost drop"
-                type="button"
-                :disabled="busy"
-                :title="`Remove ${stop.location}`"
-                @click="removeStop(stop.location)"
-              >×</button>
-            </div>
-            <StarRating
-              :model-value="stop.rating"
-              :label="`How was ${stop.location}?`"
-              @update:model-value="(r) => rateStop(stop, r)"
-            />
-            <p v-if="stop.review_notes" class="muted small note">“{{ stop.review_notes }}”</p>
-          </li>
-        </TransitionGroup>
-        <p v-else class="muted small">
-          Nothing logged yet. Add a stop below, or just tell the chat where you have been.
-        </p>
-
-        <form class="add" @submit.prevent="addStop">
-          <input v-model="newStop.location" placeholder="Add somewhere you have been" aria-label="Place" />
-          <input v-model="newStop.country" class="narrow" placeholder="Country" aria-label="Country" />
-          <button :disabled="busy || !newStop.location.trim()" type="submit">Add</button>
+        <form class="add" @submit.prevent="logDeparture">
+          <input v-model="departure.country" placeholder="Laos" aria-label="Country left" />
+          <input v-model="departure.departure_date" type="date" aria-label="Departure date" />
+          <button :disabled="busy || !departure.country.trim()" type="submit">Log</button>
         </form>
-
-        <details class="departures">
-          <summary class="muted small">Left a country for good?</summary>
-          <p class="muted small aside">
-            This moves a whole country out of active context and into your
-            country-level history — the “I am done with Thailand” case.
-          </p>
-          <form class="add" @submit.prevent="logDeparture">
-            <input v-model="departure.country" placeholder="Laos" aria-label="Country left" />
-            <input v-model="departure.departure_date" class="narrow" type="date" aria-label="Departure date" />
-            <button :disabled="busy || !departure.country.trim()" type="submit">Log</button>
-          </form>
-          <ul v-if="visited.length" class="visited">
-            <li v-for="(v, i) in visited" :key="i">
-              <span class="place">{{ v.country }}</span>
-              <span v-if="v.departure_date" class="muted small">left {{ v.departure_date }}</span>
-            </li>
-          </ul>
-        </details>
-      </section>
-
-      <!-- ================================================ 3. wishlist -->
-      <section class="panel hoverable">
-        <div class="panel-head">
-          <h2>Where you want to go</h2>
-          <p class="muted small">Anything you are aiming for — including somewhere you would go back to.</p>
-        </div>
-
-        <TransitionGroup v-if="wishlist.length" tag="ul" name="fade-slide" class="wishes">
-          <li v-for="item in wishlist" :key="item.location">
-            <div class="wish-head">
-              <span class="place">{{ item.location }}</span>
-              <span v-if="item.revisit" class="tag go" title="Somewhere you have already been">going back</span>
-              <button
-                class="ghost drop"
-                type="button"
-                :disabled="busy"
-                :title="`Remove ${item.location}`"
-                @click="dropWish(item.location)"
-              >×</button>
-            </div>
-            <div class="priority">
-              <button
-                v-for="p in PRIORITIES"
-                :key="p.value"
-                type="button"
-                class="pri"
-                :class="{ on: item.priority === p.value }"
-                :disabled="busy"
-                @click="setPriority(item, p.value)"
-              >{{ p.label }}</button>
-            </div>
-            <p v-if="item.note" class="muted small note">{{ item.note }}</p>
-          </li>
-        </TransitionGroup>
-        <p v-else class="muted small">
-          Nothing on the wishlist. Anything here gets prioritised when you ask
-          where to go next.
-        </p>
-
-        <form class="add" @submit.prevent="addWish">
-          <input v-model="newWish.location" placeholder="Add somewhere you want to go" aria-label="Place" />
-          <select v-model.number="newWish.priority" class="narrow" aria-label="How keen">
-            <option v-for="p in PRIORITIES" :key="p.value" :value="p.value">{{ p.label }}</option>
-          </select>
-          <button :disabled="busy || !newWish.location.trim()" type="submit">Add</button>
-        </form>
-      </section>
-    </div>
-
-    <!-- ============================================== memory audit trail -->
-    <section class="panel audit">
-      <button class="ghost small toggle" type="button" @click="showWrites = !showWrites">
-        {{ showWrites ? 'Hide' : 'Show' }} what has been written to memory
-        ({{ writes.length }})
-      </button>
-      <template v-if="showWrites">
-        <p class="muted small aside">
-          Every write to your profile, whether the assistant inferred it or you
-          typed it here.
-        </p>
-        <ul v-if="writes.length" class="writes">
-          <li v-for="(w, i) in writes" :key="i">
-            <div class="row">
-              <span class="mono op">{{ w.operation }}</span>
-              <span class="tag">{{ w.source }}</span>
-              <span class="muted small">{{ w.created_at }}</span>
-            </div>
-            <div class="muted small">
-              {{ Object.entries(w.payload).map(([k, v]) => `${k}=${v}`).join(', ') || '—' }}
-            </div>
+        <ul v-if="visited.length" class="visited">
+          <li v-for="(v, i) in visited" :key="i">
+            <span class="place">{{ v.country }}</span>
+            <span v-if="v.departure_date" class="muted small">left {{ v.departure_date }}</span>
           </li>
         </ul>
-        <p v-else class="muted small">No writes yet.</p>
-      </template>
+      </details>
+    </section>
+
+    <!-- =================================================== 3. wishlist -->
+    <section v-show="tab === 'wishlist'" class="panel section">
+      <div class="panel-head">
+        <h2>Where you want to go</h2>
+        <p class="muted small">Anything you are aiming for — including somewhere you would go back to.</p>
+      </div>
+
+      <form class="add" @submit.prevent="addWish">
+        <input v-model="newWish.location" placeholder="Add somewhere you want to go" aria-label="Place" />
+        <select v-model.number="newWish.priority" aria-label="How keen">
+          <option v-for="p in PRIORITIES" :key="p.value" :value="p.value">{{ p.label }}</option>
+        </select>
+        <button :disabled="busy || !newWish.location.trim()" type="submit">Add</button>
+      </form>
+
+      <TransitionGroup v-if="wishlist.length" tag="ul" name="fade-slide" class="rows">
+        <li v-for="item in wishlist" :key="item.location">
+          <div class="row-head">
+            <span class="place grow">{{ item.location }}</span>
+            <span v-if="item.revisit" class="tag go" title="Somewhere you have already been">going back</span>
+            <button
+              class="icon-btn destructive"
+              type="button"
+              :disabled="busy"
+              :title="`Remove ${item.location}`"
+              :aria-label="`Remove ${item.location}`"
+              @click="dropWish(item.location)"
+            >×</button>
+          </div>
+          <div class="priority" role="group" :aria-label="`How keen on ${item.location}`">
+            <button
+              v-for="p in PRIORITIES"
+              :key="p.value"
+              type="button"
+              class="pri"
+              :class="{ on: item.priority === p.value }"
+              :aria-pressed="item.priority === p.value"
+              :disabled="busy"
+              @click="setPriority(item, p.value)"
+            >{{ p.label }}</button>
+          </div>
+          <p v-if="item.note" class="muted small note">{{ item.note }}</p>
+        </li>
+      </TransitionGroup>
+      <div v-else class="empty-state">
+        <span class="glyph" aria-hidden="true">✦</span>
+        <p>Nothing on the wishlist. Anything here gets prioritised when you ask where to go next.</p>
+      </div>
     </section>
   </div>
 </template>
 
 <style scoped>
-.wrap { max-width: var(--container-wide); margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+.section { animation: fadeIn var(--dur) var(--ease-out) both; }
 
-.top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
-h1 {
-  margin: 0 0 4px;
-  font-size: 22px;
-  background: linear-gradient(90deg, var(--text), var(--accent-bright) 80%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  display: inline-block;
-}
-.intro { margin: 0; max-width: 620px; }
-.redo { color: var(--muted); text-decoration: none; flex: none; }
+.panel-head h2 { font-size: var(--fs-h2); }
 
-.panel-head { margin-bottom: 16px; }
-.panel-head h2 { margin: 0 0 3px; font-size: 16px; }
-.panel-head p { margin: 0; }
-
-h3 { margin: 0 0 12px; font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
-
-.two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 0 var(--sp-4); }
 @media (max-width: 700px) { .two { grid-template-columns: 1fr; } }
 
-.aside { margin: 0 0 16px; max-width: 640px; }
+.aside { margin: 0 0 var(--sp-4); max-width: 64ch; }
 
-.scales { display: grid; grid-template-columns: 1fr 1fr; gap: 0 26px; }
+.scales { display: grid; grid-template-columns: 1fr 1fr; gap: 0 var(--sp-7); }
 @media (max-width: 860px) { .scales { grid-template-columns: 1fr; } }
 
-.sub { border-top: 1px solid var(--line); padding-top: 16px; margin-top: 4px; }
-.actions { margin-top: 6px; }
+.sub { border-top: 1px solid var(--line); padding-top: var(--sp-4); margin-top: var(--sp-2); }
+.danger-zone { margin-top: var(--sp-5); }
 
-/* ------------------------------------------------------------ the two lists */
-.lists { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
-@media (max-width: 860px) { .lists { grid-template-columns: 1fr; } }
+/* ---------------------------------------------------------------- save bar */
+.savebar {
+  position: sticky;
+  /* Above the mobile tab bar; --tabbar-h is 0 on desktop. */
+  bottom: calc(var(--tabbar-h) + var(--safe-b) + var(--sp-2));
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: var(--sp-5) 0 0;
+  padding: var(--sp-3);
+  border: 1px solid var(--accent-dim);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--panel-2) 94%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: var(--shadow-md);
+}
 
-ul { margin: 0; padding: 0; list-style: none; }
+/* -------------------------------------------------------------- add a row
+   Three controls that must never be squeezed into one unusable line on a
+   phone: below 620px the name takes the full width and the qualifier sits
+   next to the button on a second row. */
+.add {
+  display: grid;
+  grid-template-columns: 1fr 150px auto;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-4);
+}
+.add button { flex: none; }
+@media (max-width: 620px) {
+  .add { grid-template-columns: 1fr auto; }
+  .add > :first-child { grid-column: 1 / -1; }
+}
 
-.stops li, .wishes li {
+/* ------------------------------------------------------------------- rows */
+.rows { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: var(--sp-2); }
+.rows li {
   border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 10px 12px;
-  margin-bottom: 8px;
+  border-radius: var(--radius-sm);
+  padding: var(--sp-3);
   background: var(--bg);
-  transition: border-color var(--dur) ease, transform var(--dur) ease;
+  transition: border-color var(--dur) ease;
 }
-.stops li:hover, .wishes li:hover { border-color: var(--stone-500); transform: translateX(2px); }
-.stop-head, .wish-head { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
-.place { font-size: 14px; text-transform: capitalize; }
-.stop-head .muted, .wish-head .muted { text-transform: capitalize; }
-.drop {
-  margin-left: auto;
-  border: none; background: none; color: var(--muted);
-  padding: 0 4px; font-size: 17px; line-height: 1;
-}
-.drop:hover:not(:disabled) { color: var(--bad); }
-.note { margin: 5px 0 0; font-style: italic; word-break: break-word; }
+.rows li:hover { border-color: var(--stone-600); }
 
-.priority { display: flex; gap: 5px; }
+.row-head { display: flex; align-items: center; gap: var(--sp-2); }
+.place { font-size: 14.5px; font-weight: 550; text-transform: capitalize; min-width: 0; overflow-wrap: anywhere; }
+.country { margin: 0 0 var(--sp-2); text-transform: capitalize; }
+.note { margin: var(--sp-2) 0 0; font-style: italic; word-break: break-word; }
+
+.priority { display: flex; flex-wrap: wrap; gap: 5px; margin-top: var(--sp-1); }
 .pri {
-  padding: 3px 10px;
-  font-size: 11.5px;
-  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 12px;
+  border-radius: var(--radius-pill);
   background: transparent;
   color: var(--muted);
 }
-.pri.on { background: var(--accent-dim); border-color: var(--accent); color: var(--text); }
+.pri.on { background: var(--accent-dim); border-color: var(--accent); color: var(--text); font-weight: 600; }
 
-.add { display: flex; gap: 8px; margin-top: 12px; }
-.add .narrow { max-width: 140px; }
-.add button { flex: none; }
-
-.departures { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; }
-.departures summary { cursor: pointer; }
-.departures .aside { margin-top: 10px; }
-.visited { margin-top: 10px; }
-.visited li { display: flex; gap: 8px; font-size: 13.5px; margin-bottom: 3px; }
-
-/* ------------------------------------------------------------------- audit */
-.audit { padding: 14px 18px; }
-.toggle { padding: 0; border: none; color: var(--muted); }
-.toggle:hover { color: var(--text); }
-.audit .aside { margin-top: 12px; }
-.writes li { margin-bottom: 11px; }
-.op { font-size: 12px; color: var(--accent); }
+/* ------------------------------------------------------------- departures */
+.departures { margin-top: var(--sp-5); border-top: 1px solid var(--line); padding-top: var(--sp-4); }
+.departures summary { cursor: pointer; padding: var(--sp-1) 0; }
+.departures .aside { margin-top: var(--sp-3); }
+.visited { margin: var(--sp-3) 0 0; padding: 0; list-style: none; }
+.visited li { display: flex; flex-wrap: wrap; gap: var(--sp-2); font-size: 13.5px; margin-bottom: 3px; }
+.visited .place { text-transform: capitalize; font-weight: 400; font-size: 13.5px; }
 </style>

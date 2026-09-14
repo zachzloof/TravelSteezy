@@ -2,7 +2,11 @@
 // Post-visit review prompt. Appears when the backend says a place is due one,
 // either because the traveller left it or because they have not mentioned it in
 // a few days. Answering it writes to travel_history and feeds the RAG store.
+//
+// The stars are StarRating rather than a second hand-rolled row, so tapping the
+// same star twice clears the rating here exactly like it does everywhere else.
 import { ref } from 'vue'
+import StarRating from './StarRating.vue'
 
 const props = defineProps({
   location: { type: String, required: true },
@@ -10,7 +14,7 @@ const props = defineProps({
 })
 const emit = defineEmits(['submit', 'dismiss'])
 
-const rating = ref(0)
+const rating = ref(null)
 const notes = ref('')
 const share = ref(true)
 
@@ -29,22 +33,16 @@ function submit() {
   <div class="review panel">
     <div class="head">
       <h4>How was {{ location }}?</h4>
-      <button class="ghost small" @click="emit('dismiss')">Not now</button>
+      <button class="icon-btn" aria-label="Not now" title="Not now" @click="emit('dismiss')">×</button>
     </div>
 
-    <div class="stars" role="radiogroup" :aria-label="`Rating for ${location}`">
-      <button
-        v-for="n in 5"
-        :key="n"
-        class="star"
-        :class="{ on: n <= rating }"
-        role="radio"
-        :aria-checked="n === rating"
-        :aria-label="`${n} out of 5`"
-        @click="rating = n"
-      >★</button>
-      <span v-if="rating" class="muted small">{{ rating }}/5</span>
-    </div>
+    <StarRating
+      v-model="rating"
+      size="lg"
+      :show-hint="false"
+      :label="`Rating for ${location}`"
+      class="stars"
+    />
 
     <textarea
       v-model="notes"
@@ -54,10 +52,10 @@ function submit() {
 
     <label class="share small">
       <input v-model="share" type="checkbox" />
-      Share anonymously to help other travellers
+      <span>Share anonymously to help other travellers</span>
     </label>
 
-    <button class="primary" :disabled="busy || (!rating && !notes.trim())" @click="submit">
+    <button class="primary full" :disabled="busy || (!rating && !notes.trim())" @click="submit">
       {{ busy ? 'Saving…' : 'Save review' }}
     </button>
   </div>
@@ -65,31 +63,21 @@ function submit() {
 
 <style scoped>
 .review { border-color: var(--accent-dim); box-shadow: var(--glow-accent); }
-.head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-h4 { margin: 0; font-size: 14px; text-transform: capitalize; }
 
-.stars { display: flex; align-items: center; gap: 3px; margin-bottom: 10px; }
-.star {
-  border: none;
-  background: none;
-  color: var(--line);
-  font-size: 22px;
-  padding: 0 2px;
-  line-height: 1;
-  transition: color var(--dur-fast) ease, transform var(--dur-fast) var(--ease-spring), filter var(--dur-fast) ease;
-}
-.star.on { color: var(--warn); filter: drop-shadow(0 0 6px rgba(215, 162, 63, .5)); }
-.star:hover { color: var(--warn); transform: scale(1.2); }
-.stars .small { margin-left: 8px; }
+.head { display: flex; justify-content: space-between; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-2); }
+h4 { margin: 0; font-size: var(--fs-h3); text-transform: capitalize; }
 
-textarea { margin-bottom: 10px; }
+.stars { margin-bottom: var(--sp-3); }
+
+textarea { margin-bottom: var(--sp-3); }
 
 .share {
   display: flex;
   align-items: center;
-  gap: 7px;
-  margin-bottom: 12px;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-4);
   color: var(--muted);
+  cursor: pointer;
 }
-.share input { width: auto; }
+.share input { width: 17px; height: 17px; flex: none; accent-color: var(--accent); }
 </style>

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, nextTick } from 'vue'
+import { computed, ref, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { api, tokens, lastTrace } from '../api'
 import DestinationCard from '../components/DestinationCard.vue'
@@ -8,6 +8,7 @@ import TripPanel from '../components/TripPanel.vue'
 import ReviewCard from '../components/ReviewCard.vue'
 import CatchUpCard from '../components/CatchUpCard.vue'
 import Markdown from '../components/Markdown.vue'
+import BottomSheet from '../components/BottomSheet.vue'
 
 const router = useRouter()
 
@@ -16,9 +17,9 @@ const draft = ref('')
 const busy = ref(false)
 const error = ref('')
 const profile = ref(null)
-const visited = ref([])
 const lastWrites = ref([])
 const scroller = ref(null)
+const composer = ref(null)
 
 const travelHistory = ref([])
 const wishlist = ref([])
@@ -29,14 +30,25 @@ const reviewBusy = ref(false)
 const catchup = ref(null)
 const catchupBusy = ref(false)
 
+// On a phone the trip context is a sheet rather than a column, so it needs
+// somewhere to be opened from.
+const sheetOpen = ref(false)
+
 // Onboarding is no longer part of this screen. A brand-new account is routed to
 // /welcome before it ever gets here, so the chat is only ever a chat.
-const SUGGESTIONS = [
-  "I'm in Thailand with 6 weeks left. Laos or Vietnam next?",
-  'Where should I go next from here?',
-  'Any good hostels here, and which area should I stay in?',
-  'What do you remember about my trip?'
-]
+
+// A one-line version of the sidebar for the mobile trigger: enough to show the
+// assistant is holding real context, and to make it obvious there is more
+// behind the tap.
+const contextSummary = computed(() => {
+  const parts = []
+  if (profile.value?.current_location) parts.push(`In ${profile.value.current_location}`)
+  if (travelHistory.value.length) {
+    parts.push(`${travelHistory.value.length} stop${travelHistory.value.length === 1 ? '' : 's'}`)
+  }
+  if (wishlist.value.length) parts.push(`${wishlist.value.length} on the list`)
+  return parts.join(' · ') || 'Nothing saved yet'
+})
 
 onMounted(async () => {
   await Promise.all([loadProfile(), loadTravel(), loadCatchup()])
@@ -73,21 +85,7 @@ async function updateCatchup(message) {
   await scrollDown()
   try {
     const res = await api.updateCatchup(message)
-    messages.value.push({
-      role: 'assistant',
-      text: res.reply,
-      comparison: res.comparison || [],
-      agents: res.agents_fired || [],
-      sources: res.retrieved_sources || [],
-      traceId: res.trace_id,
-      showDetail: false
-    })
-    lastTrace.id = res.trace_id || lastTrace.id
-    if (res.profile) profile.value = res.profile
-    if (res.visited_history) visited.value = res.visited_history
-    lastWrites.value = res.memory_writes || []
-    applyTravel(res)
-    if (res.review_prompt) reviewPrompt.value = res.review_prompt
+    pushReply(res)
     catchup.value = null
   } catch (e) {
     if (e.status === 401 || e.status === 403) {
@@ -101,6 +99,24 @@ async function updateCatchup(message) {
     catchupBusy.value = false
     await scrollDown()
   }
+}
+
+/** Everything that happens to the screen when a /chat response comes back. */
+function pushReply(res) {
+  messages.value.push({
+    role: 'assistant',
+    text: res.reply,
+    comparison: res.comparison || [],
+    agents: res.agents_fired || [],
+    sources: res.retrieved_sources || [],
+    traceId: res.trace_id,
+    showDetail: false
+  })
+  lastTrace.id = res.trace_id || lastTrace.id
+  if (res.profile) profile.value = res.profile
+  lastWrites.value = res.memory_writes || []
+  applyTravel(res)
+  if (res.review_prompt) reviewPrompt.value = res.review_prompt
 }
 
 async function loadTravel() {
@@ -151,7 +167,6 @@ async function loadProfile() {
   try {
     const res = await api.getProfile()
     profile.value = res.profile
-    visited.value = res.visited_history
   } catch (e) {
     if (e.status === 401 || e.status === 403) {
       tokens.clearUser()
@@ -162,33 +177,19 @@ async function loadProfile() {
   }
 }
 
-async function send(text) {
-  const message = (text ?? draft.value).trim()
+async function send() {
+  const message = draft.value.trim()
   if (!message || busy.value) return
 
   error.value = ''
   draft.value = ''
+  resizeComposer()
   messages.value.push({ role: 'user', text: message })
   busy.value = true
   await scrollDown()
 
   try {
-    const res = await api.chat(message)
-    messages.value.push({
-      role: 'assistant',
-      text: res.reply,
-      comparison: res.comparison || [],
-      agents: res.agents_fired || [],
-      sources: res.retrieved_sources || [],
-      traceId: res.trace_id,
-      showDetail: false
-    })
-    lastTrace.id = res.trace_id || lastTrace.id
-    if (res.profile) profile.value = res.profile
-    if (res.visited_history) visited.value = res.visited_history
-    lastWrites.value = res.memory_writes || []
-    applyTravel(res)
-    if (res.review_prompt) reviewPrompt.value = res.review_prompt
+    pushReply(await api.chat(message))
   } catch (e) {
     if (e.status === 401 || e.status === 403) {
       tokens.clearUser()
@@ -203,135 +204,166 @@ async function send(text) {
   }
 }
 
+// The composer grows with the message instead of scrolling a one-line box.
+// Capped, so a long paste cannot eat the conversation above it.
+function resizeComposer() {
+  const el = composer.value
+  if (!el) return
+  el.style.height = 'auto'
+  el.style.height = `${Math.min(el.scrollHeight, 132)}px`
+}
+
+function onComposerKey(event) {
+  // Enter sends; Shift+Enter is a newline. On a touch keyboard the return key
+  // inserts a newline as usual, because there is no Enter to intercept.
+  if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
+    event.preventDefault()
+    send()
+  }
+}
+
 async function scrollDown() {
   await nextTick()
   const el = scroller.value
-  if (el) el.scrollTop = el.scrollHeight
+  if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
 }
 </script>
 
 <template>
   <div class="layout">
-    <section class="chat panel">
+    <section class="chat">
+      <!-- Mobile only: the sidebar's headline, and the way into the rest of it. -->
+      <button class="context-bar only-narrow" @click="sheetOpen = true">
+        <span class="ctx-label">Your trip</span>
+        <span class="ctx-summary">{{ contextSummary }}</span>
+        <span class="ctx-chev" aria-hidden="true">›</span>
+      </button>
+
       <div ref="scroller" class="stream">
-        <div v-if="!messages.length" class="empty fade-in-up">
-          <h2>Where next?</h2>
-          <p class="muted">
-            I already know what is in your profile on the right — where you have been,
-            what you rated it, and how you travel. Ask me about two or three places and
-            I will weigh season, visas, routes and cost against all of it.
+        <div v-if="!messages.length" class="intro fade-in-up">
+          <span class="intro-mark" aria-hidden="true">◈</span>
+          <h2 class="grad-text">Where next?</h2>
+          <p>
+            I already know your trip — where you have been, what you rated it, your
+            passport, budget and pace. Name a couple of places, or just ask, and I
+            will weigh season, visas, routes and cost against all of it.
           </p>
-          <div class="suggestions">
-            <button
-              v-for="(s, i) in SUGGESTIONS"
-              :key="s"
-              class="ghost small suggestion"
-              :style="{ animationDelay: `${i * 70}ms` }"
-              @click="send(s)"
-            >
-              {{ s }}
-            </button>
-          </div>
         </div>
 
         <TransitionGroup name="fade-slide" tag="div" class="stream-inner">
-        <div v-for="(m, i) in messages" :key="i" class="msg" :class="m.role">
-          <div v-if="m.role === 'user'" class="bubble user">{{ m.text }}</div>
+          <div v-for="(m, i) in messages" :key="i" class="msg" :class="m.role">
+            <div v-if="m.role === 'user'" class="bubble user">{{ m.text }}</div>
 
-          <div v-else-if="m.role === 'error'" class="error">{{ m.text }}</div>
+            <div v-else-if="m.role === 'error'" class="error">{{ m.text }}</div>
 
-          <div v-else class="assistant-block">
-            <div class="bubble assistant"><Markdown :text="m.text" /></div>
+            <div v-else class="assistant-block">
+              <div class="bubble assistant"><Markdown :text="m.text" /></div>
 
-            <div v-if="m.comparison.length" class="cards">
-              <DestinationCard
-                v-for="(c, ci) in m.comparison"
-                :key="c.destination"
-                :card="c"
-                :style="{ animationDelay: `${ci * 80}ms` }"
-                class="pop-in"
-              />
+              <div v-if="m.comparison.length" class="cards auto-grid">
+                <DestinationCard
+                  v-for="(c, ci) in m.comparison"
+                  :key="c.destination"
+                  :card="c"
+                  :style="{ animationDelay: `${ci * 80}ms` }"
+                  class="pop-in"
+                />
+              </div>
+
+              <button class="ghost small detail-toggle" @click="m.showDetail = !m.showDetail">
+                <span class="chev" :class="{ open: m.showDetail }" aria-hidden="true">›</span>
+                {{ m.agents.length }} steps · {{ m.sources.length }} passages
+              </button>
+
+              <Transition name="fade-slide">
+                <div v-if="m.showDetail" class="detail">
+                  <p class="eyebrow">Agents and tools</p>
+                  <ul>
+                    <li v-for="(a, j) in m.agents" :key="j">
+                      <span class="mono">{{ a.name }}</span>
+                      <span class="tag" :class="a.status === 'ok' ? 'go' : 'avoid'">{{ a.status }}</span>
+                      <span v-if="a.duration_ms != null" class="muted small">{{ a.duration_ms }}ms</span>
+                      <div v-if="a.summary" class="muted small summary">{{ a.summary }}</div>
+                    </li>
+                  </ul>
+
+                  <p class="eyebrow">Retrieved passages</p>
+                  <ul v-if="m.sources.length">
+                    <li v-for="(s, j) in m.sources" :key="j">
+                      <span class="mono">{{ s.id }}</span>
+                      <span class="muted small">{{ s.namespace }} · {{ s.score }}</span>
+                    </li>
+                  </ul>
+                  <p v-else class="muted small">No passages retrieved on this turn.</p>
+
+                  <p v-if="m.traceId" class="muted small mono trace">trace {{ m.traceId }}</p>
+                </div>
+              </Transition>
             </div>
-
-            <button class="ghost small detail-toggle" @click="m.showDetail = !m.showDetail">
-              {{ m.showDetail ? 'Hide' : 'Show' }} what ran
-              ({{ m.agents.length }} steps, {{ m.sources.length }} passages)
-            </button>
-
-            <Transition name="fade-slide">
-            <div v-if="m.showDetail" class="detail">
-              <h5>Agents and tools</h5>
-              <ul>
-                <li v-for="(a, j) in m.agents" :key="j">
-                  <span class="mono">{{ a.name }}</span>
-                  <span class="tag" :class="a.status === 'ok' ? 'go' : 'avoid'">{{ a.status }}</span>
-                  <span v-if="a.duration_ms != null" class="muted small">{{ a.duration_ms }}ms</span>
-                  <div v-if="a.summary" class="muted small summary">{{ a.summary }}</div>
-                </li>
-              </ul>
-
-              <h5>Retrieved passages</h5>
-              <ul v-if="m.sources.length">
-                <li v-for="(s, j) in m.sources" :key="j">
-                  <span class="mono">{{ s.id }}</span>
-                  <span class="muted small">{{ s.namespace }} · {{ s.score }}</span>
-                </li>
-              </ul>
-              <p v-else class="muted small">No passages retrieved on this turn.</p>
-
-              <p v-if="m.traceId" class="muted small mono trace">trace {{ m.traceId }}</p>
-            </div>
-            </Transition>
           </div>
-        </div>
         </TransitionGroup>
 
         <Transition name="fade-slide">
-        <div v-if="busy" class="thinking">
-          <span class="typing"><i /><i /><i /></span>
-          <span class="muted small">Running the specialists…</span>
-        </div>
+          <div v-if="busy" class="thinking">
+            <span class="typing"><i /><i /><i /></span>
+            <span class="muted small">Running the specialists…</span>
+          </div>
         </Transition>
       </div>
 
-      <Transition name="pop">
-      <CatchUpCard
-        v-if="catchup"
-        class="review-slot"
-        :summary="catchup.summary"
-        :days-since="catchup.days_since"
-        :busy="catchupBusy"
-        @update="updateCatchup"
-        @dismiss="dismissCatchup"
-      />
-      </Transition>
+      <!-- Prompts and the composer share one footer so they scroll together as
+           a block and never overlap the conversation. -->
+      <div class="foot">
+        <Transition name="pop">
+          <CatchUpCard
+            v-if="catchup"
+            :summary="catchup.summary"
+            :days-since="catchup.days_since"
+            :busy="catchupBusy"
+            @update="updateCatchup"
+            @dismiss="dismissCatchup"
+          />
+        </Transition>
 
-      <Transition name="pop">
-      <ReviewCard
-        v-if="reviewPrompt"
-        class="review-slot"
-        :location="reviewPrompt.location"
-        :busy="reviewBusy"
-        @submit="submitReview"
-        @dismiss="reviewPrompt = null"
-      />
-      </Transition>
+        <Transition name="pop">
+          <ReviewCard
+            v-if="reviewPrompt"
+            :location="reviewPrompt.location"
+            :busy="reviewBusy"
+            @submit="submitReview"
+            @dismiss="reviewPrompt = null"
+          />
+        </Transition>
 
-      <div v-if="error" class="error compose-error">{{ error }}</div>
+        <div v-if="error" class="error">{{ error }}</div>
 
-      <form class="compose" @submit.prevent="send()">
-        <input
-          v-model="draft"
-          :disabled="busy"
-          placeholder="Where should I go next?"
-          aria-label="Message"
-        />
-        <button class="primary" :disabled="busy || !draft.trim()" type="submit">Send</button>
-      </form>
+        <form class="compose" @submit.prevent="send()">
+          <textarea
+            ref="composer"
+            v-model="draft"
+            rows="1"
+            :disabled="busy"
+            placeholder="Where should I go next?"
+            aria-label="Message"
+            @input="resizeComposer"
+            @keydown="onComposerKey"
+          />
+          <button
+            class="primary send"
+            :disabled="busy || !draft.trim()"
+            type="submit"
+            aria-label="Send"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M4.5 12h13M12 5.5l6 6.5-6 6.5" />
+            </svg>
+          </button>
+        </form>
+      </div>
     </section>
 
-    <div class="sidebar">
-      <MemorySidebar :profile="profile" :visited="visited" :writes="lastWrites">
+    <!-- Desktop: a persistent rail. -->
+    <aside class="rail hide-narrow">
+      <MemorySidebar :profile="profile" :writes="lastWrites">
         <TripPanel
           :history="travelHistory"
           :wishlist="wishlist"
@@ -339,78 +371,195 @@ async function scrollDown() {
           @drop-wishlist="dropWishlistItem"
         />
       </MemorySidebar>
-    </div>
+    </aside>
+
+    <!-- Mobile: the same content, one tap away. -->
+    <BottomSheet :open="sheetOpen" title="Your trip" @close="sheetOpen = false">
+      <MemorySidebar :profile="profile" :writes="lastWrites" flat>
+        <TripPanel
+          :history="travelHistory"
+          :wishlist="wishlist"
+          :interests="interests"
+          @drop-wishlist="dropWishlistItem"
+        />
+      </MemorySidebar>
+    </BottomSheet>
   </div>
 </template>
 
 <style scoped>
 .layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
-  gap: 20px;
+  grid-template-columns: minmax(0, 1fr) minmax(290px, 350px);
+  gap: var(--sp-5);
+  width: 100%;
   max-width: var(--container-wide);
   margin: 0 auto;
   align-items: start;
 }
+
+.chat {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: calc(var(--view-h) - 2 * var(--gutter));
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+/* On a phone the conversation takes the whole screen between the header and
+   the tab bar: the page gutter is cancelled with negative margins so the chat
+   runs edge to edge, which is both more room and more familiar. */
 @media (max-width: 900px) {
-  .layout { grid-template-columns: 1fr; max-width: var(--container); }
+  .layout { grid-template-columns: 1fr; gap: 0; }
+  .chat {
+    height: var(--view-h);
+    margin: calc(-1 * var(--gutter)) calc(-1 * max(var(--gutter), var(--safe-l))) calc(-1 * var(--gutter));
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    border-top: none;
+    box-shadow: none;
+  }
 }
 
-.chat { display: flex; flex-direction: column; height: calc(100vh - var(--header-h) - 2 * clamp(16px, 3vw, 32px)); padding: 0; }
-
-.stream { flex: 1; overflow-y: auto; padding: clamp(14px, 2vw, 24px); display: flex; flex-direction: column; gap: 16px; }
-.stream-inner { display: flex; flex-direction: column; gap: 16px; }
-
-.empty { margin: auto 0; text-align: center; padding: 20px; }
-.empty h2 {
-  margin: 0 0 8px;
-  font-size: 22px;
-  background: linear-gradient(90deg, var(--text), var(--accent-bright) 70%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  display: inline-block;
+/* -------------------------------------------------------- mobile context bar */
+.context-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex: none;
+  width: 100%;
+  text-align: left;
+  padding: 10px max(var(--sp-4), var(--safe-l));
+  border: none;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: color-mix(in srgb, var(--panel-2) 60%, transparent);
 }
-.empty p { max-width: 480px; margin: 0 auto 18px; font-size: 14px; }
-.suggestions { display: flex; flex-direction: column; gap: 8px; align-items: center; }
-.suggestion { max-width: 440px; opacity: 0; animation: fadeInUp var(--dur-slow) var(--ease-out) both; }
-.suggestion:hover { border-color: var(--accent-dim); background: var(--accent-soft); color: var(--accent-bright); }
+.context-bar:hover:not(:disabled) { transform: none; background: var(--panel-2); }
+.ctx-label {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--accent-bright);
+  flex: none;
+}
+.ctx-summary {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--fs-sm);
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ctx-chev { color: var(--muted); font-size: 18px; line-height: 1; flex: none; }
 
+/* -------------------------------------------------------------- the stream */
+.stream {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding: var(--sp-5) clamp(var(--sp-3), 2.4vw, var(--sp-6));
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+.stream-inner { display: flex; flex-direction: column; gap: var(--sp-4); }
+
+/* --------------------------------------------------------------- the intro */
+.intro {
+  margin: auto 0;
+  text-align: center;
+  padding: var(--sp-5) var(--sp-2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.intro-mark {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius);
+  font-size: 24px;
+  color: var(--on-accent);
+  background: var(--accent-grad);
+  box-shadow: var(--glow-accent);
+  margin-bottom: var(--sp-2);
+}
+.intro h2 { margin: 0; font-size: clamp(20px, 5vw, 25px); }
+.intro p { margin: 0; max-width: 46ch; font-size: 14.5px; color: var(--muted); }
+
+/* -------------------------------------------------------------- the bubbles */
 .msg.user { display: flex; justify-content: flex-end; }
 
-.bubble { padding: 11px 15px; border-radius: var(--radius); max-width: min(88%, 70ch); transition: box-shadow var(--dur) ease; }
+.bubble {
+  padding: 11px 15px;
+  border-radius: var(--radius);
+  max-width: min(90%, 68ch);
+}
 /* The user's own typed message stays literal plain text - pre-wrap so their own
    line breaks survive, and no markdown rendering (it is not the LLM's output). */
-.bubble.user { background: var(--moss-grad); color: var(--text); border-bottom-right-radius: 4px; white-space: pre-wrap; box-shadow: var(--glow-moss); }
+.bubble.user {
+  background: var(--moss-grad);
+  color: var(--text);
+  border-bottom-right-radius: var(--radius-xs);
+  white-space: pre-wrap;
+  box-shadow: var(--glow-moss);
+}
 /* The assistant bubble renders real markdown (see components/Markdown.vue), so
    spacing comes from its own paragraph/list styles rather than pre-wrap. */
-.bubble.assistant { background: var(--panel-2); border: 1px solid var(--line); border-bottom-left-radius: 4px; }
-
-.assistant-block { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; width: 100%; }
-
-.cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 12px;
-  width: 100%;
+.bubble.assistant {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-bottom-left-radius: var(--radius-xs);
 }
 
-.detail-toggle { align-self: flex-start; }
+.assistant-block { display: flex; flex-direction: column; gap: var(--sp-3); align-items: flex-start; width: 100%; }
+
+.cards { --min: 250px; width: 100%; gap: var(--sp-3); }
+
+/* ------------------------------------------------------------- the detail */
+.detail-toggle {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 12.5px;
+  padding: 5px 11px;
+  border-radius: var(--radius-pill);
+  border-color: var(--line);
+}
+.detail-toggle:hover:not(:disabled) { color: var(--text); }
+.chev { display: inline-block; transition: transform var(--dur) var(--ease-out); font-size: 14px; line-height: 1; }
+.chev.open { transform: rotate(90deg); }
+
 .detail {
   width: 100%;
   background: var(--bg);
   border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  padding: var(--sp-3) var(--sp-4);
 }
-.detail h5 { margin: 10px 0 6px; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
-.detail h5:first-child { margin-top: 0; }
+.detail .eyebrow { margin-top: var(--sp-3); }
+.detail .eyebrow:first-child { margin-top: 0; }
 .detail ul { margin: 0; padding: 0; list-style: none; }
-.detail li { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 5px; font-size: 13px; }
+.detail li { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; margin-bottom: 5px; font-size: var(--fs-sm); }
 .summary { flex-basis: 100%; }
-.trace { margin: 12px 0 0; }
+.trace { margin: var(--sp-3) 0 0; }
 
-.thinking { padding: 4px 2px; display: flex; align-items: center; gap: 10px; }
+/* ------------------------------------------------------------- the thinking */
+.thinking { padding: 2px; display: flex; align-items: center; gap: 10px; }
 .typing { display: inline-flex; gap: 3px; }
 .typing i {
   display: inline-block;
@@ -422,9 +571,39 @@ async function scrollDown() {
 .typing i:nth-child(2) { animation-delay: .15s; }
 .typing i:nth-child(3) { animation-delay: .3s; }
 
-.review-slot { margin: 0 18px 14px; }
-.sidebar { min-width: 0; }
+/* ---------------------------------------------------------------- the foot */
+.foot {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-3) clamp(var(--sp-3), 2.4vw, var(--sp-5));
+  border-top: 1px solid var(--line);
+  background: color-mix(in srgb, var(--panel) 90%, transparent);
+}
 
-.compose { display: flex; gap: 10px; padding: 14px 18px; border-top: 1px solid var(--line); }
-.compose-error { margin: 0 18px; }
+.compose { display: flex; gap: var(--sp-2); align-items: flex-end; }
+.compose textarea {
+  flex: 1;
+  min-height: 46px;
+  max-height: 132px;
+  resize: none;
+  overflow-y: auto;
+  border-radius: var(--radius-lg);
+  padding: 12px 16px;
+  line-height: 1.45;
+}
+.send {
+  flex: none;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+}
+.send svg { width: 20px; height: 20px; }
+
+/* ---------------------------------------------------------------- the rail */
+.rail { min-width: 0; position: sticky; top: calc(var(--header-h) + var(--gutter)); }
 </style>

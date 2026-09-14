@@ -13,6 +13,10 @@
 //     away is what makes that acceptable rather than alarming.
 //  3. It ends on a review screen where every captured field is editable by hand.
 //     Nothing here is a one-way door.
+//
+// On a phone the captured panel sits below the question rather than beside it,
+// which is the right order: you answer, then you scroll a little and see what
+// was taken from the answer.
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api, tokens } from '../api'
@@ -44,7 +48,7 @@ const progress = computed(() =>
   questions.value.length ? Math.round((answered.value.length / questions.value.length) * 100) : 0
 )
 
-// Something worth showing on the right-hand panel: until the first answer lands
+// Something worth showing on the captured panel: until the first answer lands
 // there is nothing to display, and an empty panel reads as a broken one.
 const hasCapture = computed(
   () => history.value.length || wishlist.value.length || interests.value.length ||
@@ -83,7 +87,9 @@ function apply(res) {
 
 async function focusBox() {
   await nextTick()
-  box.value?.focus()
+  // Autofocus pops the keyboard the instant the page opens on a phone, which
+  // hides the question you are meant to be reading. Pointer devices only.
+  if (window.matchMedia('(pointer: fine)').matches) box.value?.focus()
 }
 
 watch(stepId, () => {
@@ -107,11 +113,7 @@ async function submit(skipped = false) {
     answered.value = res.state?.answered || [...answered.value, current]
     justCaptured.value = skipped ? [] : res.captured || []
     note.value = res.note || ''
-    if (res.next_step) {
-      stepId.value = res.next_step
-    } else {
-      stepId.value = null
-    }
+    stepId.value = res.next_step || null
   } catch (e) {
     error.value = e.message
   } finally {
@@ -155,6 +157,24 @@ async function skipAll() {
   }
 }
 
+const WRITE_LABELS = {
+  add_travel_history: 'Been there',
+  add_wishlist: 'Want to go',
+  set_passports: 'Passport',
+  set_interests: 'Into',
+  set_social_style: 'Travelling',
+  update_profile: 'Noted'
+}
+
+const FIELD_LABELS = {
+  budget_band: 'Budget',
+  travel_style: 'Pace',
+  climate_preference: 'Climate',
+  current_location: 'Currently in',
+  visa_deadline_date: 'Deadline',
+  visa_deadline_note: 'What expires'
+}
+
 function describe(write) {
   const p = write.payload || {}
   switch (write.operation) {
@@ -176,33 +196,15 @@ function describe(write) {
       return JSON.stringify(p)
   }
 }
-
-const WRITE_LABELS = {
-  add_travel_history: 'Been there',
-  add_wishlist: 'Want to go',
-  set_passports: 'Passport',
-  set_interests: 'Into',
-  set_social_style: 'Travelling',
-  update_profile: 'Noted'
-}
-
-const FIELD_LABELS = {
-  budget_band: 'Budget',
-  travel_style: 'Pace',
-  climate_preference: 'Climate',
-  current_location: 'Currently in',
-  visa_deadline_date: 'Deadline',
-  visa_deadline_note: 'What expires'
-}
 </script>
 
 <template>
-  <div class="welcome">
+  <div class="page">
     <div v-if="loading" class="panel loading muted">Getting things ready…</div>
 
     <template v-else>
       <header class="intro">
-        <h1>Welcome to Travel Steezy</h1>
+        <h1 class="grad-text">Welcome to Travel Steezy</h1>
         <p class="muted">
           Five questions, answered however you like — full sentences, a scribbled list,
           whatever comes out. I will turn it into a profile you can edit, and then I
@@ -210,6 +212,7 @@ const FIELD_LABELS = {
         </p>
       </header>
 
+      <!-- ------------------------------------------------------- progress -->
       <div class="rail">
         <div class="bar"><div class="fill" :style="{ width: `${progress}%` }" /></div>
         <ol class="steps">
@@ -219,7 +222,7 @@ const FIELD_LABELS = {
             :class="{
               done: answered.includes(q.id),
               current: q.id === stepId,
-              clickable: answered.includes(q.id) || q.id === stepId
+              clickable: answered.includes(q.id)
             }"
             @click="answered.includes(q.id) && jumpTo(q.id)"
           >
@@ -231,74 +234,74 @@ const FIELD_LABELS = {
 
       <div class="cols">
         <Transition name="fade-slide" mode="out-in">
-        <!-- ---------------------------------------------- the question -->
-        <section v-if="question" :key="stepId" class="panel ask">
-          <p class="step muted small">Question {{ position }} of {{ questions.length }}</p>
-          <h2>{{ question.title }}</h2>
-          <p class="prompt">{{ question.prompt }}</p>
-          <p class="muted small hint">{{ question.hint }}</p>
+          <!-- -------------------------------------------- the question -->
+          <section v-if="question" :key="stepId" class="panel ask">
+            <p class="step">Question {{ position }} of {{ questions.length }}</p>
+            <h2>{{ question.title }}</h2>
+            <p class="prompt">{{ question.prompt }}</p>
+            <p class="muted small hint">{{ question.hint }}</p>
 
-          <textarea
-            ref="box"
-            v-model="answer"
-            rows="6"
-            :placeholder="question.placeholder"
-            :disabled="busy"
-            :aria-label="question.title"
-            @keydown="onKeydown"
-          />
+            <textarea
+              ref="box"
+              v-model="answer"
+              rows="5"
+              :placeholder="question.placeholder"
+              :disabled="busy"
+              :aria-label="question.title"
+              @keydown="onKeydown"
+            />
 
-          <div class="actions">
-            <button class="primary" :disabled="busy || !answer.trim()" @click="submit()">
-              {{ busy ? 'Reading that…' : 'Next' }}
+            <div class="actions">
+              <button class="primary" :disabled="busy || !answer.trim()" @click="submit()">
+                {{ busy ? 'Reading that…' : 'Next' }}
+              </button>
+              <button class="ghost small" :disabled="busy" @click="submit(true)">
+                {{ question.optional ? 'Skip — not relevant' : "Skip, I'll add it later" }}
+              </button>
+              <span class="muted small shortcut hide-narrow">Ctrl + Enter</span>
+            </div>
+
+            <p v-if="note" class="notice soft">{{ note }}</p>
+            <div v-if="error" class="error soft">{{ error }}</div>
+
+            <button class="ghost small bail" :disabled="busy" @click="skipAll">
+              Skip all of this and go straight to the chat
             </button>
-            <button class="ghost small" :disabled="busy" @click="submit(true)">
-              {{ question.optional ? 'Skip — not relevant' : "Skip, I'll add it later" }}
-            </button>
-            <span class="muted small shortcut hide-narrow">Ctrl + Enter</span>
-          </div>
+          </section>
 
-          <p v-if="note" class="notice soft">{{ note }}</p>
-          <div v-if="error" class="error">{{ error }}</div>
-
-          <button class="ghost small bail" :disabled="busy" @click="skipAll">
-            Skip all of this and go straight to the chat
-          </button>
-        </section>
-
-        <!-- ---------------------------------------------- the review step -->
-        <section v-else key="done" class="panel ask done-panel">
-          <h2>That is your profile built</h2>
-          <p class="muted">
-            Everything below is stored against your account and read before every
-            answer you get. Check it over — anything that came out wrong is fixable
-            now, and any time after, in My Preferences.
-          </p>
-          <div v-if="error" class="error">{{ error }}</div>
-          <div class="actions">
-            <button class="primary" :disabled="busy" @click="finish">Start exploring</button>
-            <RouterLink class="ghost small link" to="/preferences">Edit it in full first</RouterLink>
-          </div>
-          <p class="muted small revisit">
-            Want to redo an answer? Click any completed step above.
-          </p>
-        </section>
+          <!-- ------------------------------------------ the review step -->
+          <section v-else key="done" class="panel ask done-panel">
+            <h2>That is your profile built</h2>
+            <p class="muted">
+              Everything below is stored against your account and read before every
+              answer you get. Check it over — anything that came out wrong is fixable
+              now, and any time after, on the Trip page.
+            </p>
+            <div v-if="error" class="error soft">{{ error }}</div>
+            <div class="actions">
+              <button class="primary" :disabled="busy" @click="finish">Start exploring</button>
+              <RouterLink class="link small" to="/preferences">Edit it in full first</RouterLink>
+            </div>
+            <p class="muted small revisit">
+              Want to redo an answer? Tap any completed step above.
+            </p>
+          </section>
         </Transition>
 
-        <!-- ---------------------------------------------- what was captured -->
+        <!-- ------------------------------------------ what was captured -->
         <aside class="panel captured">
           <h3>What I have so far</h3>
 
           <Transition name="pop">
-          <div v-if="justCaptured.length" class="just">
-            <h4>From that answer</h4>
-            <ul>
-              <li v-for="(w, i) in justCaptured" :key="i">
-                <span class="op">{{ WRITE_LABELS[w.operation] || w.operation }}</span>
-                <span class="what">{{ describe(w) }}</span>
-              </li>
-            </ul>
-          </div>
+            <div v-if="justCaptured.length" class="just">
+              <p class="eyebrow fresh">From that answer</p>
+              <ul>
+                <li v-for="(w, i) in justCaptured" :key="i">
+                  <span class="op">{{ WRITE_LABELS[w.operation] || w.operation }}</span>
+                  <span class="what">{{ describe(w) }}</span>
+                </li>
+              </ul>
+            </div>
           </Transition>
 
           <p v-if="!hasCapture" class="muted small empty">
@@ -307,20 +310,20 @@ const FIELD_LABELS = {
 
           <template v-else>
             <div v-if="history.length" class="group">
-              <h4>Been to</h4>
+              <p class="eyebrow">Been to</p>
               <ul class="places">
                 <li v-for="stop in history" :key="stop.location">
-                  <span class="place">{{ stop.location }}</span>
+                  <span class="place grow">{{ stop.location }}</span>
                   <StarRating v-if="stop.rating" :model-value="stop.rating" readonly />
                 </li>
               </ul>
             </div>
 
             <div v-if="wishlist.length" class="group">
-              <h4>Want to go</h4>
+              <p class="eyebrow">Want to go</p>
               <ul class="places">
                 <li v-for="item in wishlist" :key="item.location">
-                  <span class="place">{{ item.location }}</span>
+                  <span class="place grow">{{ item.location }}</span>
                   <span class="tag" :class="{ go: item.priority === 1 }">
                     {{ item.revisit ? 'again' : priorityLabel(item.priority) }}
                   </span>
@@ -329,14 +332,17 @@ const FIELD_LABELS = {
             </div>
 
             <div v-if="(profile.passports || []).length" class="group">
-              <h4>Passport{{ profile.passports.length > 1 ? 's' : '' }}</h4>
+              <p class="eyebrow">Passport{{ profile.passports.length > 1 ? 's' : '' }}</p>
               <div class="chips">
                 <span v-for="p in profile.passports" :key="p" class="tag">{{ p }}</span>
               </div>
             </div>
 
-            <div v-if="profile.budget_band || profile.travel_style || profile.climate_preference || profile.social_style" class="group">
-              <h4>How you travel</h4>
+            <div
+              v-if="profile.budget_band || profile.travel_style || profile.climate_preference || profile.social_style || profile.current_location"
+              class="group"
+            >
+              <p class="eyebrow">How you travel</p>
               <dl>
                 <template v-if="profile.budget_band"><dt>Budget</dt><dd>{{ labelFor(profile.budget_band) }}</dd></template>
                 <template v-if="profile.travel_style"><dt>Pace</dt><dd>{{ labelFor(profile.travel_style) }}</dd></template>
@@ -348,7 +354,7 @@ const FIELD_LABELS = {
             </div>
 
             <div v-if="interests.length" class="group">
-              <h4>Into</h4>
+              <p class="eyebrow">Into</p>
               <div class="chips">
                 <span v-for="i in interests" :key="i" class="tag">{{ i }}</span>
               </div>
@@ -361,29 +367,20 @@ const FIELD_LABELS = {
 </template>
 
 <style scoped>
-.welcome { max-width: var(--container); margin: 0 auto; }
-.loading { text-align: center; padding: 60px 20px; }
+.loading { text-align: center; padding: var(--sp-10) var(--sp-5); }
 
-.intro { text-align: center; margin-bottom: 22px; animation: fadeInUp var(--dur-slow) var(--ease-out) both; }
-.intro h1 {
-  margin: 0 0 6px;
-  font-size: 25px;
-  background: linear-gradient(90deg, var(--text), var(--accent-bright));
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  display: inline-block;
-}
-.intro p { margin: 0 auto; max-width: 560px; font-size: 14px; }
+.intro { text-align: center; animation: fadeInUp var(--dur-slow) var(--ease-out) both; }
+.intro h1 { margin: 0 0 var(--sp-2); font-size: var(--fs-h1); }
+.intro p { margin: 0 auto; max-width: 58ch; font-size: 14px; }
 
 /* ---------------------------------------------------------------- progress */
-.rail { margin-bottom: 18px; }
-.bar { height: 4px; background: var(--line); border-radius: 999px; overflow: hidden; }
+.rail { margin-top: calc(-1 * var(--sp-1)); }
+.bar { height: 4px; background: var(--line); border-radius: var(--radius-pill); overflow: hidden; }
 .fill {
   height: 100%;
   background: var(--accent-grad);
   background-size: 200% 100%;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   transition: width var(--dur-slow) var(--ease-out);
   animation: shimmer 2.5s linear infinite;
 }
@@ -391,106 +388,120 @@ const FIELD_LABELS = {
 .steps {
   display: flex;
   justify-content: space-between;
-  gap: 6px;
+  gap: var(--sp-2);
   list-style: none;
-  margin: 12px 0 0;
+  margin: var(--sp-3) 0 0;
   padding: 0;
 }
-.steps li { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--muted); min-width: 0; transition: color var(--dur) ease; }
+.steps li {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 12.5px; color: var(--muted); min-width: 0;
+  transition: color var(--dur) ease;
+}
 .steps li.clickable { cursor: pointer; }
-.steps li.done .pip { background: var(--accent); border-color: var(--accent); color: var(--on-accent); animation: popIn var(--dur) var(--ease-spring) both; }
+.steps li.done .pip { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .steps li.current { color: var(--text); }
 .steps li.current .pip { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
-.steps li.done:hover .name { color: var(--text); }
-.steps li.done:hover .pip, .steps li.current:hover .pip { transform: scale(1.1); }
 .pip {
   display: grid;
   place-items: center;
   flex: none;
-  width: 20px; height: 20px;
+  width: 22px; height: 22px;
   border: 1px solid var(--line);
   border-radius: 50%;
   font-size: 11px;
+  font-weight: 600;
   transition: transform var(--dur-fast) var(--ease-spring), box-shadow var(--dur) ease;
 }
+@media (hover: hover) {
+  .steps li.clickable:hover .name { color: var(--text); }
+  .steps li.clickable:hover .pip { transform: scale(1.12); }
+}
 .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-@media (max-width: 760px) { .steps .name { display: none; } .steps { justify-content: center; gap: 10px; } }
+
+/* On a phone the step names cannot all fit, so the rail becomes pips only -
+   still showing where you are and what is left, without five truncated words. */
+@media (max-width: 760px) {
+  .steps { justify-content: center; gap: var(--sp-3); }
+  .steps .name { display: none; }
+  .steps li.clickable .pip { width: 30px; height: 30px; font-size: 12px; }
+  .steps li .pip { width: 30px; height: 30px; font-size: 12px; }
+}
 
 /* ------------------------------------------------------------------ layout */
 .cols {
   display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
-  gap: 18px;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: var(--sp-4);
   align-items: start;
 }
-@media (max-width: 860px) { .cols { grid-template-columns: 1fr; } }
+@media (max-width: 900px) { .cols { grid-template-columns: 1fr; } }
 
 /* ---------------------------------------------------------------- question */
-.step { margin: 0 0 4px; letter-spacing: .04em; text-transform: uppercase; font-size: 11px; }
-.ask h2 { margin: 0 0 6px; font-size: 20px; }
-.prompt { margin: 0 0 4px; font-size: 14.5px; }
-.hint { margin: 0 0 14px; }
-
-textarea {
-  resize: vertical;
-  min-height: 120px;
-  line-height: 1.55;
+.step {
+  margin: 0 0 var(--sp-1);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  font-size: var(--fs-xs);
+  font-weight: 650;
+  color: var(--accent-bright);
 }
-textarea::placeholder { color: var(--muted-2); }
+.ask h2 { margin: 0 0 var(--sp-2); font-size: var(--fs-h2); }
+.prompt { margin: 0 0 var(--sp-1); font-size: 14.5px; }
+.hint { margin: 0 0 var(--sp-4); }
 
-.actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 14px; }
+textarea { min-height: 118px; }
+
+.actions { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; margin-top: var(--sp-4); }
+.actions > button:first-child { flex: 1 1 auto; min-width: 130px; }
 .shortcut { margin-left: auto; }
-.link { color: var(--accent); text-decoration: none; font-size: 13px; }
+.link { color: var(--accent); text-decoration: none; font-weight: 550; }
 
-.soft { margin: 14px 0 0; }
+.soft { margin: var(--sp-4) 0 0; }
 .bail {
   display: block;
-  margin: 18px auto 0;
+  width: 100%;
+  margin: var(--sp-5) 0 0;
   color: var(--muted);
   border: none;
   font-size: 12.5px;
 }
 .bail:hover { color: var(--text); }
 
-.done-panel h2 { margin-bottom: 8px; }
+.done-panel h2 { margin-bottom: var(--sp-2); }
 .done-panel p { font-size: 14px; }
-.revisit { margin: 14px 0 0; }
+.revisit { margin: var(--sp-4) 0 0; }
 
 /* ---------------------------------------------------------------- captured */
-.captured { position: sticky; top: 20px; }
-.captured h3 { margin: 0 0 12px; font-size: 15px; }
-h4 {
-  margin: 0 0 7px;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: .05em;
-  color: var(--muted);
-}
+.captured { position: sticky; top: calc(var(--header-h) + var(--gutter)); }
+@media (max-width: 900px) { .captured { position: static; } }
+.captured h3 { margin: 0 0 var(--sp-3); font-size: var(--fs-h3); }
 
 .just {
   background: var(--moss-soft);
   border: 1px solid var(--moss-dim);
   border-radius: var(--radius-sm);
-  padding: 11px 12px;
-  margin-bottom: 16px;
+  padding: var(--sp-3);
+  margin-bottom: var(--sp-4);
   box-shadow: var(--glow-moss);
 }
+.eyebrow.fresh { color: var(--moss-bright); }
 .just ul { margin: 0; padding: 0; list-style: none; }
-.just li { display: flex; gap: 8px; font-size: 13px; margin-bottom: 4px; }
+.just li { display: flex; gap: var(--sp-2); font-size: var(--fs-sm); margin-bottom: var(--sp-1); }
 .just li:last-child { margin-bottom: 0; }
-.op { flex: none; color: var(--moss-bright); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; padding-top: 2px; }
+.op { flex: none; color: var(--moss-bright); font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .04em; padding-top: 2px; }
 .what { color: var(--text); word-break: break-word; }
 
-.group { margin-bottom: 16px; }
+.group { margin-bottom: var(--sp-4); }
 .group:last-child { margin-bottom: 0; }
 
 .places { list-style: none; margin: 0; padding: 0; }
-.places li { display: flex; align-items: center; gap: 8px; font-size: 13.5px; margin-bottom: 5px; }
-.place { text-transform: capitalize; }
+.places li { display: flex; align-items: center; gap: var(--sp-2); font-size: 13.5px; margin-bottom: 5px; }
+.place { text-transform: capitalize; min-width: 0; }
 
 .chips { display: flex; flex-wrap: wrap; gap: 5px; }
 
-dl { display: grid; grid-template-columns: 88px 1fr; gap: 4px 10px; margin: 0; font-size: 13.5px; }
+dl { display: grid; grid-template-columns: minmax(72px, auto) 1fr; gap: var(--sp-1) var(--sp-3); margin: 0; font-size: 13.5px; }
 dt { color: var(--muted); }
 dd { margin: 0; word-break: break-word; }
 dd.deadline { color: var(--warn); }
