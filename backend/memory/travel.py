@@ -25,6 +25,14 @@ VALID_INTERESTS = {
 }
 SOCIAL_STYLES = {"solo", "couple", "group"}
 
+# How many interests a traveller can mark as "key" - few enough that they stay a
+# genuine top-priority signal rather than becoming a second copy of the full
+# list. 3-5 is the sweet spot: enough to cover someone with a couple of real
+# priorities, not so many that every recommendation surface has to treat the
+# whole list as equally important, which is the failure mode this exists to
+# avoid.
+MAX_KEY_INTERESTS = 5
+
 
 def _norm(value: str | None) -> str:
     return (value or "").strip()
@@ -289,6 +297,58 @@ def resolve_wishlist(
 # --------------------------------------------------------------------------- #
 # interests / preferences
 # --------------------------------------------------------------------------- #
+def format_interests_display(
+    key_interests: list[str] | None, other_interests: list[str] | None
+) -> str:
+    """Render interests for a prompt, making the KEY tier impossible to miss.
+
+    This is the single formatting rule every prompt surface that shows interests
+    goes through - the recommendations, local guide and discovery agent
+    instructions, the decision-weigher's memory block, and the trip_profile
+    mirror column all render this same string, so a key interest cannot show up
+    weighted in one place and as a flat, un-prioritised word in another.
+
+    With no key interests set (the default for every account until someone
+    explicitly picks some in My Preferences) this degrades to a plain
+    comma-separated list, identical to the format used before key interests
+    existed.
+    """
+    key_interests = [k for k in (key_interests or []) if k]
+    other_interests = [o for o in (other_interests or []) if o]
+    if not key_interests and not other_interests:
+        return ""
+    if not key_interests:
+        return ", ".join(other_interests)
+    label = "interest" if len(key_interests) == 1 else "interests"
+    text = (
+        f"{', '.join(key_interests)} (KEY {label} - weight these heavily. "
+        f"Actively look for and surface matching activities, areas or "
+        f"destinations, not just when convenient)"
+    )
+    if other_interests:
+        text += f"; also into: {', '.join(other_interests)}"
+    return text
+
+
+def _sync_interests_mirror(user_id: int) -> None:
+    """Rewrite the trip_profile.interests free-text mirror from the structured
+    rows. Every write path below (set/remove/set-key) calls this, so the mirror
+    - the ONE thing an older, un-tiered agent prompt or the debug page's raw
+    profile row reads - can never drift from what is actually stored, and never
+    reflects a raw, un-tiered string clobbering the KEY framing (see
+    runner._apply_memory_writes and evals.run_evals._seed_profile, the two
+    other places that used to write trip_profile.interests directly).
+    """
+    text = format_interests_display(get_key_interests(user_id), get_other_interests(user_id))
+    ensure_profile(user_id)
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE trip_profile SET interests = ?, updated_at = datetime('now') "
+            "WHERE user_id = ?",
+            (text or None, user_id),
+        )
+
+
 def set_interests(
     user_id: int, interests: list[str], source: str = "agent", replace: bool = False
 ) -> list[str]:
@@ -305,49 +365,107 @@ def set_interests(
             cleaned.append(text)
 
     with get_conn() as conn:
+        # A replace has to carry forward which of the surviving interests were
+        # marked KEY - without this, editing the plain interest list in My
+        # Preferences (a full replace) would silently un-key everything, even
+        # though nothing about "which ones matter most" changed.
+        preserved_key: set[str] = set()
         if replace:
+            preserved_key = {
+                r["interest"] for r in conn.execute(
+                    "SELECT interest FROM user_interests WHERE user_id = ? AND is_key = 1",
+                    (user_id,),
+                ).fetchall()
+            }
             conn.execute("DELETE FROM user_interests WHERE user_id = ?", (user_id,))
         for interest in cleaned:
             conn.execute(
-                "INSERT INTO user_interests (user_id, interest) VALUES (?,?) "
+                "INSERT INTO user_interests (user_id, interest, is_key) VALUES (?,?,?) "
                 "ON CONFLICT(user_id, interest) DO UPDATE SET weight = user_interests.weight + 1",
-                (user_id, interest),
+                (user_id, interest, 1 if interest in preserved_key else 0),
             )
         if cleaned:
             _record_write(conn, user_id, "set_interests", {"interests": cleaned}, source)
 
-    # Mirror into the free-text column so existing prompt rendering keeps working.
-    all_interests = get_interests(user_id)
-    if all_interests:
-        ensure_profile(user_id)
-        with get_conn() as conn:
-            conn.execute(
-                "UPDATE trip_profile SET interests = ?, updated_at = datetime('now') "
-                "WHERE user_id = ?",
-                (", ".join(all_interests), user_id),
-            )
-    return all_interests
+    _sync_interests_mirror(user_id)
+    return get_interests(user_id)
 
 
 def get_interests(user_id: int) -> list[str]:
+    """Every interest, key ones first (then most-mentioned, then alphabetical)."""
     with get_conn() as conn:
         rows = conn.execute(
             "SELECT interest FROM user_interests WHERE user_id = ? "
+            "ORDER BY is_key DESC, weight DESC, interest ASC",
+            (user_id,),
+        ).fetchall()
+    return [r["interest"] for r in rows]
+
+
+def get_key_interests(user_id: int) -> list[str]:
+    """The traveller's declared top priorities - up to MAX_KEY_INTERESTS."""
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT interest FROM user_interests WHERE user_id = ? AND is_key = 1 "
             "ORDER BY weight DESC, interest ASC",
             (user_id,),
         ).fetchall()
     return [r["interest"] for r in rows]
 
 
-def get_interests_with_weight(user_id: int) -> list[dict[str, Any]]:
-    """The raw rows, weight included - the memory debug page's own view."""
+def get_other_interests(user_id: int) -> list[str]:
+    """Everything they are into that is not marked as a key interest."""
     with get_conn() as conn:
         rows = conn.execute(
-            "SELECT interest, weight, added_at FROM user_interests WHERE user_id = ? "
+            "SELECT interest FROM user_interests WHERE user_id = ? AND is_key = 0 "
             "ORDER BY weight DESC, interest ASC",
             (user_id,),
         ).fetchall()
-    return [dict(r) for r in rows]
+    return [r["interest"] for r in rows]
+
+
+def set_key_interests(
+    user_id: int, interests: list[str], source: str = "user_edit"
+) -> list[str]:
+    """Declare which interests matter most, capped at MAX_KEY_INTERESTS.
+
+    This REPLACES the key set (it is "these are my top few", not "add one more
+    key interest") - clearing is_key on everything else is deliberate. Any name
+    not already in the interest list is added, weight 1, rather than silently
+    ignored: a traveller picking a key interest is a strong enough signal to be
+    worth storing even if it was not mentioned before.
+    """
+    cleaned: list[str] = []
+    for item in interests or []:
+        text = _key(item)
+        if text and text not in cleaned:
+            cleaned.append(text)
+    cleaned = cleaned[:MAX_KEY_INTERESTS]
+
+    with get_conn() as conn:
+        conn.execute("UPDATE user_interests SET is_key = 0 WHERE user_id = ?", (user_id,))
+        for interest in cleaned:
+            conn.execute(
+                "INSERT INTO user_interests (user_id, interest, is_key) VALUES (?,?,1) "
+                "ON CONFLICT(user_id, interest) DO UPDATE SET is_key = 1",
+                (user_id, interest),
+            )
+        _record_write(conn, user_id, "set_key_interests", {"interests": cleaned}, source)
+
+    _sync_interests_mirror(user_id)
+    return get_key_interests(user_id)
+
+
+def get_interests_with_weight(user_id: int) -> list[dict[str, Any]]:
+    """The raw rows, weight and key status included - the memory debug page's
+    own view."""
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT interest, weight, is_key, added_at FROM user_interests "
+            "WHERE user_id = ? ORDER BY is_key DESC, weight DESC, interest ASC",
+            (user_id,),
+        ).fetchall()
+    return [{**dict(r), "is_key": bool(r["is_key"])} for r in rows]
 
 
 def remove_interest(user_id: int, interest: str, source: str = "user_edit") -> bool:
@@ -363,15 +481,7 @@ def remove_interest(user_id: int, interest: str, source: str = "user_edit") -> b
         if removed:
             _record_write(conn, user_id, "remove_interest", {"interest": interest}, source)
     if removed:
-        # Keep the mirrored free-text column (read by every agent prompt) in
-        # sync, the same way set_interests does.
-        remaining = get_interests(user_id)
-        with get_conn() as conn:
-            conn.execute(
-                "UPDATE trip_profile SET interests = ?, updated_at = datetime('now') "
-                "WHERE user_id = ?",
-                (", ".join(remaining) if remaining else None, user_id),
-            )
+        _sync_interests_mirror(user_id)
     return bool(removed)
 
 
@@ -626,6 +736,8 @@ def get_travel_snapshot(user_id: int) -> dict[str, Any]:
         "travel_history": get_travel_history(user_id),
         "wishlist": get_wishlist(user_id),
         "interests": get_interests(user_id),
+        "key_interests": get_key_interests(user_id),
+        "other_interests": get_other_interests(user_id),
         "pending_reviews": get_pending_reviews(user_id),
         "onboarding": get_onboarding(user_id),
     }
@@ -635,7 +747,13 @@ def format_travel_for_prompt(snapshot: dict[str, Any]) -> str:
     """Render the structured travel memory for injection into agent prompts."""
     history = snapshot.get("travel_history") or []
     wishlist = snapshot.get("wishlist") or []
-    interests = snapshot.get("interests") or []
+    # Fall back to the flat "interests" list (all "other") for any caller that
+    # has not been updated to pass the tiered snapshot - degrades gracefully
+    # rather than dropping interests from the prompt entirely.
+    key_interests = snapshot.get("key_interests") or []
+    other_interests = snapshot.get("other_interests")
+    if other_interests is None:
+        other_interests = [i for i in (snapshot.get("interests") or []) if i not in key_interests]
 
     lines: list[str] = []
     if history:
@@ -680,8 +798,9 @@ def format_travel_for_prompt(snapshot: dict[str, Any]) -> str:
     else:
         lines.append("- Wants to go: (nothing on the wishlist)")
 
-    if interests:
-        lines.append(f"- Interests: {', '.join(interests)}")
+    interests_display = format_interests_display(key_interests, other_interests)
+    if interests_display:
+        lines.append(f"- Interests: {interests_display}")
     return "\n".join(lines)
 
 

@@ -12,11 +12,19 @@ import StarRating from './StarRating.vue'
 const props = defineProps({
   history: { type: Array, default: () => [] },
   wishlist: { type: Array, default: () => [] },
-  interests: { type: Array, default: () => [] }
+  interests: { type: Array, default: () => [] },
+  keyInterests: { type: Array, default: () => [] }
 })
 const emit = defineEmits(['drop-wishlist'])
 
 const PRIORITY = { 1: 'high', 2: 'medium', 3: 'low' }
+
+// The full interest list already comes back key-first from the backend, but
+// splitting it here is what lets the two groups get their own heading and
+// chip styling instead of one flat row a reader has to scan for stars.
+const otherInterests = computed(() =>
+  props.interests.filter((i) => !props.keyInterests.includes(i))
+)
 
 // A country-level stop stores the same string in both fields, which rendered as
 // "Vietnam" with "Vietnam" underneath it.
@@ -77,8 +85,11 @@ const route = computed(() => [...props.history].reverse())
 
     <div v-if="interests.length" class="group">
       <p class="eyebrow">Interests</p>
-      <div class="chips">
-        <span v-for="i in interests" :key="i" class="tag">{{ i }}</span>
+      <div v-if="keyInterests.length" class="chips key-chips">
+        <span v-for="i in keyInterests" :key="i" class="tag key" title="Key interest - weighted heavily in recommendations">★ {{ i }}</span>
+      </div>
+      <div v-if="otherInterests.length" class="chips">
+        <span v-for="i in otherInterests" :key="i" class="tag">{{ i }}</span>
       </div>
     </div>
   </section>
@@ -135,5 +146,7 @@ const route = computed(() => [...props.history].reverse())
 }
 .wish .place { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.chips { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 6px; }
+.chips:last-child { margin-bottom: 0; }
+.tag.key { border-color: var(--accent); background: var(--accent-soft); color: var(--text); font-weight: 600; }
 </style>

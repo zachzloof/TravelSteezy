@@ -23,6 +23,7 @@ const composer = ref(null)
 const travelHistory = ref([])
 const wishlist = ref([])
 const interests = ref([])
+const keyInterests = ref([])
 const reviewPrompt = ref(null)
 const reviewBusy = ref(false)
 
@@ -142,6 +143,7 @@ function applyTravel(res) {
   if (res.travel_history) travelHistory.value = res.travel_history
   if (res.wishlist) wishlist.value = res.wishlist
   if (res.interests) interests.value = res.interests
+  keyInterests.value = res.key_interests || []
 }
 
 async function submitReview(payload) {
@@ -404,6 +406,7 @@ async function scrollDown() {
           :history="travelHistory"
           :wishlist="wishlist"
           :interests="interests"
+          :key-interests="keyInterests"
           @drop-wishlist="dropWishlistItem"
         />
       </MemorySidebar>
@@ -416,6 +419,7 @@ async function scrollDown() {
           :history="travelHistory"
           :wishlist="wishlist"
           :interests="interests"
+          :key-interests="keyInterests"
           @drop-wishlist="dropWishlistItem"
         />
       </MemorySidebar>

@@ -619,7 +619,12 @@ def format_profile_for_prompt(snapshot: dict[str, Any]) -> str:
         line("travel_style", "Travel pace"),
         line("climate_preference", "Climate preference"),
         line("social_style", "Travelling"),
-        line("interests", "Interests"),
+        # Interests are NOT rendered here even though trip_profile.interests
+        # mirrors them: travel_block (travel.format_travel_for_prompt, appended
+        # right after this block via MEMORY_BLOCK) renders the same data from
+        # the structured, tiered source - key interests first, explicitly
+        # marked. Rendering both used to show every interest twice, and only
+        # travel_block's version carries the KEY framing.
     ]
     if visited:
         been = ", ".join(

@@ -126,6 +126,8 @@ export const api = {
   saveReview: (payload) => request('/travel/me/reviews', { method: 'POST', body: payload }),
   setInterests: (interests) =>
     request('/travel/me/interests', { method: 'POST', body: interests }),
+  setKeyInterests: (interests) =>
+    request('/travel/me/interests/key', { method: 'POST', body: interests }),
   pendingReviews: () => request('/travel/me/pending-reviews'),
 
   // route editing: rate a stop, or drop one that was logged wrongly

@@ -46,6 +46,8 @@ def _snapshot(user_id: int) -> TravelSnapshotResponse:
         travel_history=[TravelEntry(**h) for h in snapshot["travel_history"]],
         wishlist=[WishlistEntry(**w) for w in snapshot["wishlist"]],
         interests=snapshot["interests"],
+        key_interests=snapshot["key_interests"],
+        other_interests=snapshot["other_interests"],
         pending_reviews=[p["location"] for p in snapshot["pending_reviews"]],
         onboarding=OnboardingState(**snapshot["onboarding"], missing=gaps["missing"]),
     )
@@ -133,6 +135,20 @@ def set_interests(
     return _snapshot(user["id"])
 
 
+@router.post("/me/interests/key", response_model=TravelSnapshotResponse)
+def set_key_interests(
+    interests: list[str], user: dict = Depends(current_user)
+) -> TravelSnapshotResponse:
+    """Declare the 3-5 interests that matter most.
+
+    Replaces the whole key set - "these are my top few now" - rather than
+    adding one at a time. Capped server-side at travel.MAX_KEY_INTERESTS even if
+    the caller sends more.
+    """
+    travel_store.set_key_interests(user["id"], interests, source="user_edit")
+    return _snapshot(user["id"])
+
+
 # --------------------------------------------------------------------------- #
 # onboarding
 #
@@ -172,6 +188,8 @@ def start_onboarding(user: dict = Depends(current_user)) -> OnboardingStartRespo
         travel_history=snapshot.travel_history,
         wishlist=snapshot.wishlist,
         interests=snapshot.interests,
+        key_interests=snapshot.key_interests,
+        other_interests=snapshot.other_interests,
     )
 
 
@@ -216,6 +234,8 @@ async def answer_onboarding(
         travel_history=snapshot.travel_history,
         wishlist=snapshot.wishlist,
         interests=snapshot.interests,
+        key_interests=snapshot.key_interests,
+        other_interests=snapshot.other_interests,
     )
 
 

@@ -252,6 +252,10 @@ LATE_COLUMNS: tuple[tuple[str, str, str], ...] = (
     # prompt's own gate check. Comparing it to today's date is how the "you're
     # back after a gap" catch-up session decides whether one is due.
     ("trip_profile", "last_active_date", "TEXT"),
+    # Marks up to travel.MAX_KEY_INTERESTS interests as the traveller's declared
+    # top priorities, distinct from `weight` (a mention counter). Set explicitly
+    # via My Preferences / POST /travel/me/interests/key, never inferred.
+    ("user_interests", "is_key", "INTEGER NOT NULL DEFAULT 0"),
 )
 
 

@@ -124,7 +124,11 @@ class ProfilePatch(BaseModel):
     # string, so a partial form can still never wipe a field it did not show.
     clear: list[str] = []
     current_location: Optional[str] = None
-    interests: Optional[str] = None
+    # No "interests" field here on purpose: interests are structured rows
+    # (backend.memory.travel), not a trip_profile column a generic PATCH can
+    # write. Writing a raw string here would blow away the KEY/other tiering
+    # that travel.set_interests maintains - see POST /travel/me/interests and
+    # POST /travel/me/interests/key for the real write paths.
 
 
 class DepartureRequest(BaseModel):
@@ -233,7 +237,12 @@ class OnboardingState(BaseModel):
 class TravelSnapshotResponse(BaseModel):
     travel_history: list[TravelEntry] = []
     wishlist: list[WishlistEntry] = []
+    # Every interest, key ones first - kept for callers that only want one list.
     interests: list[str] = []
+    # The same list, split: 3-5 declared top priorities, and everything else.
+    # Recommendations and country comparisons weight key_interests heavily.
+    key_interests: list[str] = []
+    other_interests: list[str] = []
     pending_reviews: list[str] = []
     onboarding: OnboardingState = OnboardingState()
 
@@ -276,6 +285,8 @@ class OnboardingStartResponse(BaseModel):
     travel_history: list[TravelEntry] = []
     wishlist: list[WishlistEntry] = []
     interests: list[str] = []
+    key_interests: list[str] = []
+    other_interests: list[str] = []
 
 
 class OnboardingAnswerRequest(BaseModel):
@@ -297,6 +308,8 @@ class OnboardingAnswerResponse(BaseModel):
     travel_history: list[TravelEntry] = []
     wishlist: list[WishlistEntry] = []
     interests: list[str] = []
+    key_interests: list[str] = []
+    other_interests: list[str] = []
 
 
 class RatingRequest(BaseModel):

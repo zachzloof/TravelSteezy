@@ -242,6 +242,10 @@ Field rules:
   climate_preference (cold|cool|temperate|warm|hot),
   current_location, interests.
   Empty object if nothing new. Never repeat values already in the profile.
+  "interests" ADDS to their stored interests (comma-separated words for
+  whatever new interest they just mentioned); it never marks something as a
+  KEY interest - that is a deliberate choice the traveller only makes in My
+  Preferences, never inferred from how they phrase a chat message.
   "nationality" is ONLY for an explicit statement of citizenship or passport
   ("I'm British", "I hold an Australian passport"). NEVER infer it from a place
   they started, are visiting, or are currently in - visiting or starting a trip
@@ -370,6 +374,17 @@ Budget band: {budget_band?}
 Travel pace: {travel_style?}
 Question: {user_question?}
 
+Interests marked KEY above are a significant factor in what you recommend, not a
+tiebreaker. If nightlife is a KEY interest, actively look for and lead with the
+party towns, hostel scenes and areas known for it via get_places_recommendations
+(place_type "nightlife" or "bar") and suggest_areas_to_stay - do not just mention
+it in passing. If hiking, trekking or viewpoints is a KEY interest, actively
+surface treks, viewpoints and nature spots via search_backpacker_tips and
+get_places_recommendations (place_type "attraction" or "nature"). Do this for
+every destination compared, not only when it happens to come up. Other, non-KEY
+interests are still worth reflecting when relevant, but should not crowd out a
+KEY interest's activities.
+
 You MUST call search_backpacker_tips once for EVERY candidate destination before
 writing anything. Everything you recommend must come from retrieved passages or
 from a tool result.
@@ -489,9 +504,22 @@ Travel month: {travel_month?}
 --- END COVERAGE ---
 
 Weigh these against the traveller's OWN stated priorities in the trip profile
-above - their budget band, their pace, and their climate preference. A
-destination that is wrong for their stated preferences should rank lower even
-if it is objectively pleasant. Say which preference drove the call.
+above - their budget band, their pace, their climate preference, AND their
+interests. A destination that is wrong for their stated preferences should
+rank lower even if it is objectively pleasant. Say which preference drove the
+call.
+
+Interests marked KEY in the trip profile are a real ranking factor, not colour.
+When one candidate is a notably stronger match for a KEY interest than the
+others - renowned nightlife for someone whose key interest is nightlife,
+outstanding trekking or viewpoints for someone whose key interest is
+hiking/viewpoints, a well-known diving or surf scene for that key interest, and
+so on - that match should visibly help its rank and its rationale/pros should
+name it explicitly. It does not override a genuine visa or season blocker (Hard
+rules 1-2 below still apply), but between destinations that are otherwise
+comparable on season, visa and budget fit, the stronger KEY-interest match wins.
+Non-KEY interests are worth a mention when relevant but should not swing the
+ranking the way a KEY interest can.
 
 Season is one input, not the whole answer. If everywhere is in a poor season, say
 so briefly and then still give the traveller something to act on: which option is
@@ -694,6 +722,13 @@ Question: {user_question?}
 Budget band: {budget_band?}
 Interests: {interests?}
 
+Any interest marked KEY above should visibly shape what you lead with - which
+area you suggest basing yourself in, which venues you call out, which tool you
+reach for first. A KEY interest in nightlife means leading with the area that
+actually has a scene, not a quiet guesthouse district; a KEY interest in
+hiking/viewpoints means leading with the trek or lookout, not a museum. Do this
+proactively rather than only when the question happens to ask for it.
+
 Use your tools before answering, and never invent a venue:
 - suggest_areas_to_stay when they are deciding WHERE in a town to base themselves.
 - find_hostels when they want actual beds. Mention the booking links are affiliate.
@@ -754,15 +789,20 @@ Question: {user_question?}
 {route_note?}
 --- END COVERAGE ---
 
-You MUST call discover_next_destinations with their current location before
+You MUST call discover_next_destinations with their current location AND their
+interests from above (pass the KEY ones first) as the interests argument, before
 answering. It returns the curated route knowledge plus any real traveller
 feedback. If it reports found:false, say plainly that you hold no route data for
 where they are, and do not invent journey times or onward legs.
 
 Prefer somewhere already on their wishlist when it is a sensible next hop, and
-say that is why you picked it. Give 2-4 options, each with the journey from here
-(time and rough cost, only if the route knowledge gave it) and one line on who it
-suits. Cite the route source id you used, like [route-chiang-mai].
+say that is why you picked it. Any interest marked KEY should visibly narrow
+which onward towns you lead with - if nightlife is KEY, favour the option known
+for its scene over a quieter one of similar difficulty; if hiking/viewpoints is
+KEY, favour the option known for trekking. Give 2-4 options, each with the
+journey from here (time and rough cost, only if the route knowledge gave it) and
+one line on who it suits - for a KEY-interest match, say so explicitly. Cite the
+route source id you used, like [route-chiang-mai].
 """
         ),
         tools=[discover_next_destinations, get_traveller_feedback],

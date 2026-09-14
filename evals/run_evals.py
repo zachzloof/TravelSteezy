@@ -139,6 +139,29 @@ def ensure_eval_accounts() -> dict[str, int]:
     return ids
 
 
+def _seed_profile(user_id: int, profile: dict[str, Any] | None, source: str = "seed") -> None:
+    """Seed trip_profile fields, routing "interests" through the structured,
+    KEY-aware store instead of the generic column writer.
+
+    A raw comma-string "interests" value in a case's setup used to go straight
+    into store.update_profile, which writes trip_profile.interests directly -
+    bypassing the user_interests table entirely, so travel_store.get_interests()
+    never saw it and it could never carry a KEY tag. Popping it out and seeding
+    it through travel_store.set_interests keeps eval setup consistent with every
+    real write path (My Preferences, onboarding, mid-chat mentions).
+    """
+    profile = dict(profile or {})
+    interests_text = profile.pop("interests", None)
+    if profile:
+        store.update_profile(user_id, profile, source=source)
+    if interests_text:
+        from backend.memory import travel as travel_store
+
+        parsed = [t.strip() for t in re.split(r"[,;]", str(interests_text)) if t.strip()]
+        if parsed:
+            travel_store.set_interests(user_id, parsed, source=source, replace=True)
+
+
 def apply_setup(user_id: int, setup: dict[str, Any]) -> None:
     store.forget_account_memory(user_id)
     # Also clear the structured travel tables. Without this, a wishlist or route
@@ -146,8 +169,7 @@ def apply_setup(user_id: int, setup: dict[str, Any]) -> None:
     # which is exactly what made memory-recall-accurate start failing.
     reset_travel_state(user_id)
     set_onboarded(user_id)
-    if setup.get("profile"):
-        store.update_profile(user_id, setup["profile"], source="seed")
+    _seed_profile(user_id, setup.get("profile"))
     for entry in setup.get("visited", []) or []:
         store.log_departure(
             user_id,
@@ -696,8 +718,7 @@ async def run_onboarding_case(case: dict[str, Any], account_ids: dict[str, int])
 
     store.forget_account_memory(user_id)
     reset_travel_state(user_id)
-    if case.get("setup", {}).get("profile"):
-        store.update_profile(user_id, case["setup"]["profile"], source="seed")
+    _seed_profile(user_id, case.get("setup", {}).get("profile"))
     apply_travel_setup(user_id, case.get("setup", {}))
 
     started = time.perf_counter()
@@ -751,8 +772,7 @@ async def run_travel_case(case: dict[str, Any], account_ids: dict[str, int]) -> 
     reset_travel_state(user_id)
     if case.get("scenario") != "onboarding":
         set_onboarded(user_id)
-    if case.get("setup", {}).get("profile"):
-        store.update_profile(user_id, case["setup"]["profile"], source="seed")
+    _seed_profile(user_id, case.get("setup", {}).get("profile"))
     apply_travel_setup(user_id, case.get("setup", {}))
 
     started = time.perf_counter()

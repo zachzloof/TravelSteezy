@@ -128,10 +128,29 @@ def _apply_memory_writes(user_id: int, parse: dict[str, Any]) -> list[dict[str, 
     """THE WRITE PATH. Explicit calls, one per thing the user told us."""
     writes: list[dict[str, Any]] = []
 
-    updates = parse.get("profile_updates") or {}
-    if isinstance(updates, dict) and updates:
-        store.update_profile(user_id, updates, source="agent")
-        writes.append({"operation": "update_profile", "payload": updates, "source": "agent"})
+    raw_updates = parse.get("profile_updates")
+    updates = dict(raw_updates) if isinstance(raw_updates, dict) else {}
+    if updates:
+        # "interests" is turn_parser's one free-text field that is NOT a
+        # trip_profile column: it has to go through travel.set_interests (the
+        # structured, weighted, KEY-aware store), never store.update_profile,
+        # which would overwrite the trip_profile.interests mirror with a raw
+        # string and silently blow away whichever interests are marked KEY.
+        # Merge, not replace: a mid-chat mention adds to what is already known,
+        # it does not restate the whole list.
+        interests_text = str(updates.pop("interests", "") or "").strip()
+        if interests_text:
+            mentioned = [
+                t.strip() for t in re.split(r"[,;]|\band\b", interests_text) if t.strip()
+            ]
+            if mentioned:
+                travel.set_interests(user_id, mentioned, source="agent")
+                writes.append(
+                    {"operation": "set_interests", "payload": {"interests": mentioned}, "source": "agent"}
+                )
+        if updates:
+            store.update_profile(user_id, updates, source="agent")
+            writes.append({"operation": "update_profile", "payload": updates, "source": "agent"})
 
     for departure in parse.get("departures") or []:
         if not isinstance(departure, dict):
@@ -396,7 +415,12 @@ async def run_turn(user_id: int, message: str, username: str = "") -> dict[str, 
             "current_location": profile.get("current_location") or "(unknown)",
             "budget_band": profile.get("budget_band") or "(unknown)",
             "travel_style": profile.get("travel_style") or "(unknown)",
-            "interests": profile.get("interests") or "(unknown)",
+            # Read straight from the structured, tiered store rather than the
+            # trip_profile.interests mirror, so this can never lag behind a
+            # just-applied write in step 3 above within the same turn.
+            "interests": travel.format_interests_display(
+                travel.get_key_interests(user_id), travel.get_other_interests(user_id)
+            ) or "(unknown)",
             # Deterministic guard computed in code, not left to the model.
             "coverage_note": coverage.coverage_note(candidates),
             "route_note": coverage.route_note(profile.get("current_location")),

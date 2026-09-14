@@ -303,13 +303,18 @@ const onboardingRows = computed(() => {
           <section class="panel">
             <div class="panel-head">
               <h2>Interests (with weight)</h2>
-              <p class="muted small">Weight increments each time onboarding or chat mentions it again.</p>
+              <p class="muted small">
+                Weight increments each time onboarding or chat mentions it again.
+                "key" is set on the Trip page and is what recommendations weight
+                heavily - it is independent of weight.
+              </p>
             </div>
             <table v-if="data.interests.length" class="raw">
-              <thead><tr><th>interest</th><th>weight</th><th></th></tr></thead>
+              <thead><tr><th>interest</th><th>key</th><th>weight</th><th></th></tr></thead>
               <tbody>
                 <tr v-for="i in data.interests" :key="i.interest">
                   <td data-label="interest">{{ i.interest }}</td>
+                  <td data-label="key">{{ i.is_key ? '★ key' : '—' }}</td>
                   <td data-label="weight">{{ i.weight }}</td>
                   <td class="op"><button class="ghost small" :disabled="busy" @click="removeInterest(i.interest)">delete</button></td>
                 </tr>

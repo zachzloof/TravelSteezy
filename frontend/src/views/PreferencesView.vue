@@ -41,6 +41,11 @@ const INTEREST_SUGGESTIONS = [
   'nightlife', 'culture', 'markets', 'wildlife', 'surfing', 'photography'
 ]
 
+// Keep in sync with backend.memory.travel.MAX_KEY_INTERESTS - the backend caps
+// it too, but showing the same number here means the button just disables
+// instead of failing on save.
+const MAX_KEY_INTERESTS = 5
+
 const EMPTY = {
   passports: [],
   current_location: '',
@@ -58,6 +63,7 @@ const clean = ref(JSON.stringify(EMPTY))
 const history = ref([])
 const wishlist = ref([])
 const interests = ref([])
+const keyInterests = ref([])
 const visited = ref([])
 
 const newStop = ref({ location: '', country: '' })
@@ -123,6 +129,7 @@ function applyTravel(res) {
   if (res.travel_history) history.value = res.travel_history
   if (res.wishlist) wishlist.value = res.wishlist
   if (res.interests) interests.value = res.interests
+  keyInterests.value = res.key_interests || []
 }
 
 /** Run one mutating call, keeping the sections in sync and surfacing failures. */
@@ -175,6 +182,23 @@ function revert() {
 async function saveInterests(next) {
   interests.value = next
   await act(() => api.setInterests(next), 'Interests updated.')
+}
+
+// A key interest has to already be a plain interest - toggling it off never
+// removes it from the interest list, only from the "weight this heavily" set.
+function isKeyInterest(name) {
+  return keyInterests.value.includes(name)
+}
+
+async function toggleKeyInterest(name) {
+  if (busy.value) return
+  const on = isKeyInterest(name)
+  if (!on && keyInterests.value.length >= MAX_KEY_INTERESTS) return
+  const next = on
+    ? keyInterests.value.filter((i) => i !== name)
+    : [...keyInterests.value, name]
+  keyInterests.value = next
+  await act(() => api.setKeyInterests(next), 'Key interests updated.')
 }
 
 // -------------------------------------------------------------------- route
@@ -337,6 +361,33 @@ async function redoOnboarding() {
           :suggestions="INTEREST_SUGGESTIONS"
           @update:model-value="saveInterests"
         />
+
+        <template v-if="interests.length">
+          <p class="eyebrow key-head">
+            Your key interests
+            <span class="muted small">pick {{ MAX_KEY_INTERESTS }} at most - these carry real weight</span>
+          </p>
+          <p class="muted small aside">
+            Starred interests are treated as a strong signal, not just a nice-to-have -
+            recommended countries, towns and activities actively favour these over the
+            rest of the list below.
+          </p>
+          <div class="key-picker">
+            <button
+              v-for="i in interests"
+              :key="i"
+              type="button"
+              class="key-chip"
+              :class="{ on: isKeyInterest(i) }"
+              :disabled="busy || (!isKeyInterest(i) && keyInterests.length >= MAX_KEY_INTERESTS)"
+              :aria-pressed="isKeyInterest(i)"
+              @click="toggleKeyInterest(i)"
+            >
+              <span class="star" aria-hidden="true">{{ isKeyInterest(i) ? '★' : '☆' }}</span>
+              {{ i }}
+            </button>
+          </div>
+        </template>
       </div>
 
       <div class="sub danger-zone">
@@ -498,6 +549,32 @@ async function redoOnboarding() {
 
 .sub { border-top: 1px solid var(--line); padding-top: var(--sp-4); margin-top: var(--sp-2); }
 .danger-zone { margin-top: var(--sp-5); }
+
+/* -------------------------------------------------------- key interests */
+.key-head { margin-top: var(--sp-4); display: flex; align-items: baseline; gap: var(--sp-2); flex-wrap: wrap; }
+.key-picker { display: flex; flex-wrap: wrap; gap: 6px; }
+.key-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  text-transform: capitalize;
+  transition: border-color var(--dur-fast) ease, color var(--dur-fast) ease, background var(--dur-fast) ease;
+}
+.key-chip .star { font-size: 13px; line-height: 1; }
+.key-chip.on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--text);
+  font-weight: 600;
+}
+.key-chip:hover:not(:disabled):not(.on) { border-color: var(--accent-dim); color: var(--text); }
+.key-chip:disabled:not(.on) { opacity: .5; }
 
 /* ---------------------------------------------------------------- save bar */
 .savebar {
