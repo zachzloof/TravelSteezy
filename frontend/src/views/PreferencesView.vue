@@ -47,9 +47,7 @@ const EMPTY = {
   budget_band: '',
   travel_style: '',
   climate_preference: '',
-  social_style: '',
-  visa_deadline_date: '',
-  visa_deadline_note: ''
+  social_style: ''
 }
 
 const form = ref({ ...EMPTY })
@@ -328,24 +326,6 @@ async function redoOnboarding() {
         <ScalePicker v-model="form.travel_style" label="Travel pace" :options="TRAVEL_STYLES" />
         <ScalePicker v-model="form.climate_preference" label="Climate preference" :options="CLIMATE_PREFS" />
         <ScalePicker v-model="form.social_style" label="Travelling" :options="SOCIAL_STYLES" />
-      </div>
-
-      <div class="sub">
-        <p class="eyebrow">Deadline</p>
-        <div class="two">
-          <div class="field">
-            <label for="vd">Visa / permit deadline</label>
-            <input id="vd" v-model="form.visa_deadline_date" type="date" />
-          </div>
-          <div class="field">
-            <label for="vn">What expires</label>
-            <input id="vn" v-model="form.visa_deadline_note" placeholder="Thai visa exemption" />
-          </div>
-        </div>
-        <p class="muted small aside">
-          A deadline is checked against every option you are given, and named in the
-          answer. It is the one field that can rule a country out on its own.
-        </p>
       </div>
 
       <div class="sub">

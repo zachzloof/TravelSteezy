@@ -104,9 +104,6 @@ as non-negotiable blocks:
   checked against the climate table and the RAG corpus. Anything outside both is
   named as unsupported, and the weigher may not rank it first or state specifics
   for it. This stopped the assistant inventing visa rules for Mongolia.
-- **Deadline guard** (same module). If the profile holds a visa or permit expiry,
-  the date is injected with an instruction to state it explicitly and check every
-  option against it.
 
 ### Why not `ParallelAgent`
 
@@ -137,7 +134,7 @@ run:
    (`_apply_memory_writes`, `tracking.apply_tracking`), not a model-authored
    side effect.
 4. **Re-read memory** and compute the code-side guards (`coverage_note`,
-   `deadline_note`, `route_note`) so the specialists see what was just learned.
+   `route_note`) so the specialists see what was just learned.
 5. **Route by intent** — `compare | discover | local | memory | review`. One
    override matters more than the classifier: any message naming two or more
    destinations is forced into `compare`, because that is the only path with
@@ -205,7 +202,7 @@ distinct things:
 
 | Table | Role |
 |---|---|
-| `trip_profile` | **Active context**, one row per account: budget band, travel pace, climate preference, current location, trip dates, visa deadline, interests. |
+| `trip_profile` | **Active context**, one row per account: budget band, travel pace, climate preference, current location, interests. |
 | `passports` | Every passport held, primary first. `trip_profile.nationality` mirrors the primary, so everything written against that single field still works. |
 | `visited_history` | **Append-only log**: country, arrival/departure dates, notes. |
 | `conversation_turns` | Chat scrollback, capped at `WORKING_MEMORY_TURNS` (default 20). |
@@ -455,7 +452,7 @@ facts about the run, not opinions about prose. Only four genuinely qualitative
 cases use an LLM judge, each with its own rubric and pass threshold.
 
 Covered failure modes: recommending a destination in monsoon or hazard season;
-ignoring a visa deadline or lead time; giving generic tourist advice instead of
+ignoring a visa lead time; giving generic tourist advice instead of
 backpacker advice (asserted on retrieval actually firing, not on plausible-
 sounding text); failing to use the stored profile; cross-account leakage; and
 memory surviving a fresh session.

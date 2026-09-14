@@ -76,36 +76,6 @@ QUESTIONS: list[dict[str, Any]] = [
         ),
     },
     {
-        "id": "timing",
-        "title": "Is anything about to expire?",
-        "prompt": "Any visa, permit or booking with a hard deadline coming up?",
-        "hint": (
-            "A visa or permit deadline matters more than almost anything else here - it "
-            "can rule a whole country out on lead time alone. No fixed trip end date? "
-            "That's normal - only the deadline actually matters."
-        ),
-        "placeholder": "My Thai visa exemption runs out on the 3rd of next month.",
-        "captures": ["visa_deadline"],
-        "optional": True,
-        # This question is not about where they have been or who they are - but a
-        # real answer here almost always restates their current location ("I'm in
-        # Chiang Mai, nothing expiring soon"), and a generic extractor reliably
-        # (6/6 in testing) turned that restatement into a phantom travel_history
-        # entry. Because add_travel_history's order_index is assigned per
-        # extractor call, that phantom entry collided with the route question's
-        # own numbering and was inserted in the MIDDLE of the route rather than
-        # the end - "Melbourne, Thailand, Sydney, Cairns..." instead of the
-        # traveller's actual order. Restricting scope here is the real fix;
-        # apply_capture (below) also enforces this as a hard code-level gate so a
-        # prompt regression cannot bring the bug back.
-        "rules": (
-            "This question is ONLY about deadlines. Leave \"travel_history\", "
-            "\"wishlist\" and \"passports\" empty even if a place name or "
-            "nationality is mentioned in passing - that is not what this "
-            "question is for, and it has already been asked elsewhere."
-        ),
-    },
-    {
         "id": "passports",
         "title": "Which passport do you travel on?",
         "prompt": "Tell me every passport you hold - if you have two, that changes the answer.",
@@ -222,8 +192,6 @@ class OnboardingCapture(BaseModel):
     climate_preference: Optional[str] = None
     social_style: Optional[str] = None
     current_location: Optional[str] = None
-    visa_deadline_date: Optional[str] = None
-    visa_deadline_note: Optional[str] = None
     nothing_to_extract: bool = False
 
 
@@ -306,12 +274,8 @@ Other fields
 - "interests" are lowercase single words where possible: nature, food, nightlife,
   trekking, diving, history, beaches, surfing, culture, photography, wildlife,
   markets, climbing, yoga, festivals.
-- "visa_deadline_date" is the next hard expiry - a visa, a permit, a flight they
-  must be on. ISO yyyy-mm-dd, resolved against today's date; if they give a
-  month with no year, use the nearest future occurrence; if you cannot work it
-  out confidently, use null rather than guessing. "visa_deadline_note" says what
-  expires, in a few words. There is no trip start or end date field - do not
-  invent one even if they mention dates.
+- There is no trip start or end date field - do not invent one even if they
+  mention dates.
 
 THE TRAVELLER'S ANSWER IS THE MESSAGE YOU HAVE BEEN GIVEN."""
 
@@ -439,11 +403,11 @@ def apply_capture(
 
     ``step_id`` is a hard, code-level scope gate on top of whatever the extractor
     returned - not just what the prompt asked it to look for. This exists because
-    of a real, reproduced bug: the "timing" question ("is anything about to
-    expire?") reliably produced a phantom travel_history entry (6/6 in testing)
-    whenever the answer restated the traveller's current location in passing, as
-    real answers to that question naturally do ("nothing expiring soon, I'm in
-    Chiang Mai"). A prompt instruction reduces that; only a code-level gate
+    of a real, reproduced bug on a now-removed question that was not about
+    travel history: its answers reliably produced a phantom travel_history
+    entry (6/6 in testing) whenever the answer restated the traveller's current
+    location in passing, as such answers naturally do ("nothing to report, I'm
+    in Chiang Mai"). A prompt instruction reduces that; only a code-level gate
     removes the class of bug entirely, which matters because a model regression
     or a future question wording change could otherwise silently reopen it.
     """
@@ -582,9 +546,8 @@ def apply_capture(
             banded = store.normalise_band(key, captured[key])
             if banded:
                 profile_updates[key] = banded
-    for key in ("current_location", "visa_deadline_date", "visa_deadline_note"):
-        if captured.get(key):
-            profile_updates[key] = str(captured[key]).strip()
+    if captured.get("current_location"):
+        profile_updates["current_location"] = str(captured["current_location"]).strip()
     if profile_updates.get("current_location"):
         location, _, _ = normalise_place(profile_updates["current_location"])
         if location:

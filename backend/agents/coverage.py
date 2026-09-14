@@ -120,26 +120,6 @@ def coverage_note(candidates: list[str], live_sourced: Iterable[str] | None = No
     )
 
 
-def deadline_note(profile: dict[str, Any]) -> str:
-    """The hard-deadline block injected into the Decision-Weigher's prompt.
-
-    Shipped after eval case ``visa-deadline-surfaced`` failed: the deadline was
-    present in the trip profile, but the weigher summarised it away and never told
-    the traveller the date. Surfacing it as its own non-negotiable prompt block,
-    computed in code, makes it much harder to drop.
-    """
-    date = (profile or {}).get("visa_deadline_date")
-    if not date:
-        return "No hard deadline recorded for this traveller."
-    note = (profile or {}).get("visa_deadline_note") or "visa/permit expiry"
-    return (
-        f"HARD DEADLINE: {date} ({note}). "
-        f"State this date explicitly in your reply, and say whether your top "
-        f"recommendation fits inside it. Anything that cannot be done before "
-        f"{date} must be flagged in visa_flag and cannot be ranked first."
-    )
-
-
 def route_note(current_location: str | None) -> str:
     """Guard for the discovery agent: do we hold onward-route data for here?
 

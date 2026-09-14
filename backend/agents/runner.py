@@ -63,7 +63,7 @@ STATE_KEYS = (
     "memory_block", "user_question", "candidates", "travel_month", "today",
     "nationality", "current_location", "budget_band", "travel_style", "interests",
     "weather_assessment", "logistics_assessment", "recommendations",
-    "turn_parse", "decision", "concierge_reply", "coverage_note", "deadline_note",
+    "turn_parse", "decision", "concierge_reply", "coverage_note",
     "travel_block", "pending_reviews", "focus_location", "route_note",
     "local_guide_reply", "discovery_reply", "passports",
 )
@@ -399,7 +399,6 @@ async def run_turn(user_id: int, message: str, username: str = "") -> dict[str, 
             "interests": profile.get("interests") or "(unknown)",
             # Deterministic guard computed in code, not left to the model.
             "coverage_note": coverage.coverage_note(candidates),
-            "deadline_note": coverage.deadline_note(profile),
             "route_note": coverage.route_note(profile.get("current_location")),
             "travel_block": travel.format_travel_for_prompt(travel.get_travel_snapshot(user_id)),
             "focus_location": parse.get("focus_location") or profile.get("current_location") or "",
@@ -421,8 +420,7 @@ async def run_turn(user_id: int, message: str, username: str = "") -> dict[str, 
 
         # Town-level discovery needs a town. If we only know the country, fall back
         # to the country-level comparison path rather than stalling the turn to ask
-        # which town they are in - that dead end lost the traveller their answer
-        # AND suppressed the hard-deadline warning they needed.
+        # which town they are in - that dead end lost the traveller their answer.
         if intent == "discover":
             from backend.agents import climate, routes
             from backend.rag.route_data import ROUTE_GRAPH, resolve_country

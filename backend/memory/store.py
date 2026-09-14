@@ -27,21 +27,19 @@ from backend.db import get_conn
 # Columns a caller may write to trip_profile. Anything else is ignored, so an LLM
 # tool call cannot invent columns or smuggle SQL in through a field name.
 #
-# trip_start_date/trip_end_date were removed from this list deliberately: they
-# added little (a backpacker's "end date" is usually a soft flight-out guess, not
-# a hard fact) and the turn parser kept inventing values for them from vague
-# mentions of duration. The visa/permit deadline - a genuinely hard date - is
-# unaffected and still tracked via visa_deadline_date/visa_deadline_note. The
-# columns still exist in the database for any account that has old data in them,
-# but nothing in the app reads, writes, or displays them any more.
+# trip_start_date/trip_end_date/visa_deadline_date/visa_deadline_note were
+# removed from this list deliberately: trip dates added little (a backpacker's
+# "end date" is usually a soft flight-out guess, not a hard fact) and the turn
+# parser kept inventing values for them from vague mentions of duration, and the
+# "hard deadline" feature built on visa_deadline turned out to nag rather than
+# help. The columns still exist in the database for any account that has old
+# data in them, but nothing in the app reads, writes, or displays them any more.
 PROFILE_FIELDS: tuple[str, ...] = (
     "nationality",
     "budget_band",
     "travel_style",
     "climate_preference",
     "current_location",
-    "visa_deadline_date",
-    "visa_deadline_note",
     "interests",
 )
 
@@ -623,9 +621,6 @@ def format_profile_for_prompt(snapshot: dict[str, Any]) -> str:
         line("social_style", "Travelling"),
         line("interests", "Interests"),
     ]
-    if profile.get("visa_deadline_date"):
-        note = profile.get("visa_deadline_note") or "visa/permit expiry"
-        lines.append(f"- HARD DEADLINE: {profile['visa_deadline_date']} ({note})")
     if visited:
         been = ", ".join(
             v["country"] + (f" (left {v['departure_date']})" if v.get("departure_date") else "")

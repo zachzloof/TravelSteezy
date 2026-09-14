@@ -261,7 +261,7 @@ point. That stopped being a neutral default once the reliability bugs traced
 through most of `notes/03-rag-and-retrieval.md`'s later follow-ups turned out
 to concentrate in one place: `decision_weigher`. It is the single most complex
 reasoning step in the graph - synthesise three specialist reports, hold five
-hard rules simultaneously (season, visa/deadline, no-invented-facts, coverage,
+hard rules simultaneously (season, visa lead time, no-invented-facts, coverage,
 verdict-consistency), stay internally consistent across candidates, and emit
 valid JSON - and it was where the actual bugs showed up: a verdict spread
 manufactured across ranked candidates with no data behind it, needing up to

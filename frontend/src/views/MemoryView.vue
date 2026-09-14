@@ -100,8 +100,9 @@ async function forgetEverything() {
 }
 
 // Profile fields worth a row and a clear button. Deprecated columns
-// (trip_start_date/trip_end_date) are shown too, greyed, so "is this really
-// dead" is answered by looking rather than trusting a claim.
+// (trip_start_date/trip_end_date/visa_deadline_date/visa_deadline_note) are
+// shown too, greyed, so "is this really dead" is answered by looking rather
+// than trusting a claim.
 const PROFILE_ROWS = [
   ['nationality', 'nationality (mirrors primary passport)'],
   ['current_location', 'current_location'],
@@ -109,8 +110,6 @@ const PROFILE_ROWS = [
   ['travel_style', 'travel_style'],
   ['climate_preference', 'climate_preference'],
   ['social_style', 'social_style'],
-  ['visa_deadline_date', 'visa_deadline_date'],
-  ['visa_deadline_note', 'visa_deadline_note'],
   ['interests', 'interests (free-text mirror)'],
   ['onboarded', 'onboarded'],
   ['updated_at', 'updated_at'],
@@ -118,6 +117,8 @@ const PROFILE_ROWS = [
 const DEPRECATED_ROWS = [
   ['trip_start_date', 'trip_start_date'],
   ['trip_end_date', 'trip_end_date'],
+  ['visa_deadline_date', 'visa_deadline_date'],
+  ['visa_deadline_note', 'visa_deadline_note'],
 ]
 
 const onboardingRows = computed(() => {

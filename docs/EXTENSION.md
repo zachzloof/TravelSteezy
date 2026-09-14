@@ -110,12 +110,11 @@ plain-English answer into structured fields.
 | Question | Captures |
 |---|---|
 | Where have you been so far? | route in order, ratings, current location |
-| How long have you got? | trip dates, visa/permit deadline |
 | Which passport do you travel on? | passports (plural) |
 | Where do you want to get to? | wishlist, including revisits |
 | How do you travel? | budget, pace, climate, company, interests |
 
-Two are marked optional and say so on screen.
+One is marked optional and says so on screen.
 
 **Each question gets its own extractor**, built with the question embedded in
 its instruction plus any question-specific rules. This is not decoration: which
@@ -335,14 +334,13 @@ entirely.
 
 ## 7. Guards computed in code
 
-The pattern from the base app extended to three more places. Each is Python that
+The pattern from the base app extended to two more places. Each is Python that
 runs before an agent and is injected as a non-negotiable prompt block, and each
 exists because an eval case caught the model getting it wrong.
 
 | Guard | Catches |
 |---|---|
 | `coverage_note` | Inventing visa rules and prices for destinations outside the corpus. |
-| `deadline_note` | Silently planning past a visa expiry. |
 | `route_note` | Inventing onward hops from a town with no route data. |
 | intent override | A two-destination question routed to an agent with no visa tool. |
 
@@ -399,7 +397,7 @@ All scoped to the authenticated account; `user_id` comes from the signed token.
 
 ## 9. Frontend
 
-- **Welcome page** (`/welcome`) is where a new account lands. Five questions, one
+- **Welcome page** (`/welcome`) is where a new account lands. Four questions, one
   at a time, each answered in a plain textarea, with a panel beside it filling in
   with what has been captured so far. A router gate sends any account that has
   not finished or skipped onboarding here before it can reach the chat.
@@ -407,7 +405,7 @@ All scoped to the authenticated account; `user_id` comes from the signed token.
 
   | Panel | Holds |
   |---|---|
-  | About you | Passports (a list), currently in, the three five-point scales, deadline and interests |
+  | About you | Passports (a list), currently in, the three five-point scales, and interests |
   | Where you have been | The route, each stop star-rated inline, removable |
   | Where you want to go | The wishlist, with priority, and a "going back" badge on a revisit |
 

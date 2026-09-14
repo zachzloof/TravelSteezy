@@ -69,13 +69,6 @@ const filled = computed(() => rows.value.filter((r) => r.value).length)
             <dt>{{ row.label }}</dt>
             <dd :class="{ unknown: !row.value }">{{ row.value || 'not set' }}</dd>
           </template>
-          <template v-if="profile?.visa_deadline_date">
-            <dt>Deadline</dt>
-            <dd class="deadline">
-              {{ profile.visa_deadline_date }}
-              <span v-if="profile.visa_deadline_note" class="muted">— {{ profile.visa_deadline_note }}</span>
-            </dd>
-          </template>
         </dl>
 
         <!-- The trip panel (route, wishlist, interests) is slotted in here. -->
@@ -144,7 +137,6 @@ dl {
 dt { color: var(--muted); }
 dd { margin: 0; word-break: break-word; }
 dd.unknown { color: var(--muted-2); font-style: italic; }
-dd.deadline { color: var(--warn); }
 
 .edit {
   display: inline-block;

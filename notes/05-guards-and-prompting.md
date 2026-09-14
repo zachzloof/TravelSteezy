@@ -7,8 +7,7 @@ shape explicitly because it's the single most repeated pattern in the whole
 agent design:
 
 1. A plain Python function computes a fact the model must not be allowed to get
-   wrong (what's covered, what isn't, what the deadline is, what's already
-   known).
+   wrong (what's covered, what isn't, what's already known).
 2. That fact is rendered as a block of text and injected into the relevant
    agent's prompt via ADK's state templating (`{block_name?}`), framed as
    **non-negotiable** — the prompt literally says "(computed in code, not
@@ -57,23 +56,6 @@ that even a hedged, plausible-sounding number counts as the violation.
 to be the actual source of confabulated figures the weigher then passed
 through) and the decision-weigher.
 
-## `deadline_note`
-
-**What it catches:** silently planning past a hard visa/permit expiry stored
-in the trip profile.
-
-**The eval case:** `visa-deadline-surfaced` — profile has `visa_deadline_date`
-set two days out; the weigher's reply talked about destinations and budgets
-without ever mentioning the deadline explicitly by date, even though it should
-have been the single most important constraint on the answer.
-
-**How it works:** if `trip_profile.visa_deadline_date` is set,
-`deadline_note(profile)` returns a block stating the exact date and instructing
-the model to state it explicitly in its reply and check every recommendation
-against it. Injected into the weigher and the discovery agent (the latter
-added after `discovery-honest-about-unknown-origin`-adjacent testing showed
-"where next" answers could also quietly ignore a deadline).
-
 ## `route_note`
 
 **What it catches:** inventing onward destinations, journey times, and
@@ -108,9 +90,8 @@ unknown) exists because the two-way version (known vs unknown) caused a
 regression: a traveller whose profile said `current_location: "Thailand"`
 (country-level, common for someone who just finished onboarding) got routed
 into the "no data" branch and the discovery agent asked a clarifying question
-instead of answering — which lost the traveller their answer *and* suppressed
-an otherwise-correct hard-deadline warning that should have fired in the same
-turn. The runner now has an explicit fallback for this case (see below).
+instead of answering — which lost the traveller their answer for no reason.
+The runner now has an explicit fallback for this case (see below).
 
 ## The country-level-origin routing fallback
 
@@ -156,7 +137,7 @@ to be upstream, at dispatch time.
 Worth being explicit: none of these guards can stop a model from getting
 something wrong within its permitted scope — a guard only fires when the model
 is about to step *outside* what it has verified data for, or ignore a
-structural fact (a deadline, a route boundary) that's supposed to be
+structural fact (a coverage gap, a route boundary) that's supposed to be
 non-negotiable. They don't replace the underlying eval suite; they're the
 concrete artifact that eval failures produced. Every guard in this file exists
 because a specific eval case failed first, was diagnosed, and the guard was the

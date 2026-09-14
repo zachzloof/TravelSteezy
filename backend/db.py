@@ -35,8 +35,8 @@ CREATE TABLE IF NOT EXISTS trip_profile (
     current_location    TEXT,
     trip_start_date     TEXT,      -- DEPRECATED: kept only so an old row does not
     trip_end_date       TEXT,      -- error; nothing reads or writes these any more
-    visa_deadline_date  TEXT,      -- next hard visa/permit expiry
-    visa_deadline_note  TEXT,
+    visa_deadline_date  TEXT,      -- DEPRECATED: same as above, the "hard deadline"
+    visa_deadline_note  TEXT,      -- feature was removed; nothing reads or writes these
     interests           TEXT,      -- free text, comma separated
     updated_at          TEXT NOT NULL DEFAULT (datetime('now'))
 );

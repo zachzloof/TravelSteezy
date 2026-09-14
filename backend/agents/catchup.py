@@ -108,8 +108,4 @@ def _summary(user_id: int, days_since: int) -> str:
     if wishlist:
         parts.append(f"{wishlist[0]['location']} was next on your wishlist.")
 
-    if profile.get("visa_deadline_date"):
-        note = profile.get("visa_deadline_note") or "a deadline"
-        parts.append(f"You had {note} on {profile['visa_deadline_date']}.")
-
     return " ".join(parts)

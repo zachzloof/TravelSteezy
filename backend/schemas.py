@@ -77,8 +77,6 @@ class TripProfile(BaseModel):
     travel_style: Optional[str] = None
     climate_preference: Optional[str] = None
     current_location: Optional[str] = None
-    visa_deadline_date: Optional[str] = None
-    visa_deadline_note: Optional[str] = None
     interests: Optional[str] = None
     updated_at: Optional[str] = None
 
@@ -126,8 +124,6 @@ class ProfilePatch(BaseModel):
     # string, so a partial form can still never wipe a field it did not show.
     clear: list[str] = []
     current_location: Optional[str] = None
-    visa_deadline_date: Optional[str] = None
-    visa_deadline_note: Optional[str] = None
     interests: Optional[str] = None
 
 

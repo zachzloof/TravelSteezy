@@ -170,9 +170,7 @@ const FIELD_LABELS = {
   budget_band: 'Budget',
   travel_style: 'Pace',
   climate_preference: 'Climate',
-  current_location: 'Currently in',
-  visa_deadline_date: 'Deadline',
-  visa_deadline_note: 'What expires'
+  current_location: 'Currently in'
 }
 
 function describe(write) {
@@ -349,7 +347,6 @@ function describe(write) {
                 <template v-if="profile.climate_preference"><dt>Climate</dt><dd>{{ labelFor(profile.climate_preference) }}</dd></template>
                 <template v-if="profile.social_style"><dt>Company</dt><dd>{{ labelFor(profile.social_style) }}</dd></template>
                 <template v-if="profile.current_location"><dt>Currently in</dt><dd>{{ profile.current_location }}</dd></template>
-                <template v-if="profile.visa_deadline_date"><dt>Deadline</dt><dd class="deadline">{{ profile.visa_deadline_date }}</dd></template>
               </dl>
             </div>
 
@@ -504,7 +501,6 @@ textarea { min-height: 118px; }
 dl { display: grid; grid-template-columns: minmax(72px, auto) 1fr; gap: var(--sp-1) var(--sp-3); margin: 0; font-size: 13.5px; }
 dt { color: var(--muted); }
 dd { margin: 0; word-break: break-word; }
-dd.deadline { color: var(--warn); }
 
 .empty { margin: 0; }
 </style>

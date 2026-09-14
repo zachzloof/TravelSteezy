@@ -169,8 +169,6 @@ class ProfileUpdates(BaseModel):
     travel_style: Optional[str] = None
     climate_preference: Optional[str] = None
     current_location: Optional[str] = None
-    visa_deadline_date: Optional[str] = None
-    visa_deadline_note: Optional[str] = None
     interests: Optional[str] = None
 
 
@@ -242,7 +240,7 @@ Field rules:
   nationality, budget_band (shoestring|budget|mid|comfortable|luxury),
   travel_style (very_slow|slow|balanced|fast|very_fast),
   climate_preference (cold|cool|temperate|warm|hot),
-  current_location, visa_deadline_date (YYYY-MM-DD), visa_deadline_note, interests.
+  current_location, interests.
   Empty object if nothing new. Never repeat values already in the profile.
   "nationality" is ONLY for an explicit statement of citizenship or passport
   ("I'm British", "I hold an Australian passport"). NEVER infer it from a place
@@ -356,9 +354,6 @@ Report per destination:
 - Route: overland option with hours and cost, flight option with hours and cost,
   and which is actually the better call given their budget band and pace.
 - Border notes and scams worth knowing.
-
-If the trip profile shows a HARD DEADLINE (a visa or permit expiry), check every
-recommendation against it explicitly and say whether it fits.
 """
 )
 
@@ -493,14 +488,10 @@ Travel month: {travel_month?}
 {coverage_note?}
 --- END COVERAGE ---
 
---- HARD DEADLINE (computed in code, not negotiable) ---
-{deadline_note?}
---- END DEADLINE ---
-
 Weigh these against the traveller's OWN stated priorities in the trip profile
-above - their budget band, their pace, their climate preference and any hard
-deadline. A destination that is wrong for their stated preferences should rank
-lower even if it is objectively pleasant. Say which preference drove the call.
+above - their budget band, their pace, and their climate preference. A
+destination that is wrong for their stated preferences should rank lower even
+if it is objectively pleasant. Say which preference drove the call.
 
 Season is one input, not the whole answer. If everywhere is in a poor season, say
 so briefly and then still give the traveller something to act on: which option is
@@ -512,8 +503,8 @@ Hard rules:
 1. A destination the weather specialist rated "avoid" CANNOT be ranked first
    unless the user has explicitly said they accept that season. Put the seasonal
    problem in its cons and in season_flag.
-2. A destination that cannot be reached in time because of a visa lead time or a
-   hard deadline in the profile CANNOT be ranked first. Put it in visa_flag.
+2. A destination that cannot be reached in time because of a visa lead time
+   CANNOT be ranked first. Put it in visa_flag.
 3. Never invent a fact the specialists did not report.
 4. A destination in a "COVERAGE WARNING - NO DATA HELD" block CANNOT be ranked
    first and CANNOT be given specifics. Set its verdict to "unknown" and say in
@@ -523,10 +514,7 @@ Hard rules:
    look unofficial." If the specialists reported real numbers for a
    destination (a visa type, a flight time, a daily budget), it is not
    "unknown" - use go/maybe/avoid, whichever your genuine judgment says.
-5. If the HARD DEADLINE block names a date, you MUST state that date explicitly in
-   your reply and say whether your top recommendation fits inside it. Do not
-   silently plan past a deadline the traveller is under.
-6. "verdict" is your genuine, holistic judgment of that ONE destination on its
+5. "verdict" is your genuine, holistic judgment of that ONE destination on its
    own merits - is this actually a good idea right now, all things considered
    (season, visa, cost, fit with their stated priorities). It is NOT a slot to
    fill in so the cards look varied, and it is NOT mechanically tied to season
@@ -542,7 +530,7 @@ Hard rules:
        destination is clearly your best realistic option overall. "go" means
        "this is a good recommendation," not "the weather is flawless" - your
        actual top pick, ranked 1st for good reason, should normally BE a
-       "go" unless something concrete (a real visa/deadline problem, a
+       "go" unless something concrete (a real visa problem, a
        genuinely bad season, a poor fit with their stated budget or pace)
        argues against it. A real, nameable reason justifies a lower verdict;
        rank position alone never does.
@@ -569,7 +557,7 @@ Return ONLY a raw JSON object, no code fences:
       "pros": ["specific, concrete"],
       "cons": ["specific, concrete"],
       "season_flag": "null, or the seasonal warning",
-      "visa_flag": "null, or the visa/deadline warning",
+      "visa_flag": "null, or the visa warning",
       "est_cost_note": "indicative daily budget and cost to get there",
       "backpacker_notes": ["3-4 concrete specifics lifted from the Recommendations and Logistics specialists for THIS destination. Cover all of: (a) a cost with its number - dorm price, daily budget or an entry fee; (b) a named thing to do that a backpacker actually does, with the place name; (c) how you get there or get around - the bus, train, slow boat or flight with its hours or price; (d) a scam, safety or ethical warning. Keep the specialists' actual figures and place names. Empty list only if that destination has no retrieved content."],
       "source_ids": ["the source ids the Recommendations specialist cited for this destination, e.g. tips-vietnam"]
@@ -766,18 +754,10 @@ Question: {user_question?}
 {route_note?}
 --- END COVERAGE ---
 
---- HARD DEADLINE (computed in code, not negotiable) ---
-{deadline_note?}
---- END DEADLINE ---
-
 You MUST call discover_next_destinations with their current location before
 answering. It returns the curated route knowledge plus any real traveller
 feedback. If it reports found:false, say plainly that you hold no route data for
 where they are, and do not invent journey times or onward legs.
-
-If the HARD DEADLINE block names a date, state that date explicitly in your reply
-and say whether each option fits inside it. Never quietly plan past a deadline
-the traveller is under.
 
 Prefer somewhere already on their wishlist when it is a sensible next hop, and
 say that is why you picked it. Give 2-4 options, each with the journey from here
