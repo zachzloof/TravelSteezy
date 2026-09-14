@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 from datetime import date
 from typing import Any
 
@@ -653,6 +654,34 @@ async def _run_concierge(
     return text.strip() or "I'm not sure how to help with that yet.", [], ["concierge"]
 
 
+_RATE_LIMIT_WAIT_RE = re.compile(r"try again in ([\d.]+)\s*s", re.IGNORECASE)
+
+
+def _rate_limit_backoff_seconds(exc: Exception, attempt: int) -> float | None:
+    """How long to wait before retrying ``exc``, or None if it is not a
+    rate-limit error at all - a non-rate-limit failure retrying immediately,
+    as these loops already did, is fine; it is usually a transient blip, not
+    quota that needs time to actually recover.
+
+    Reproduced live: the specialists and the Decision-Weigher share this
+    org's real gpt-4o rate limit (30,000 tokens/minute, the OpenAI default
+    starting tier - see notes/01-agent-architecture.md's "Model selection"
+    section), and a comparison turn's concurrent specialist calls plus the
+    weigher can trip a 429 in one burst. Retrying instantly into a limit that
+    has not cleared yet just burns every retry attempt on the same failure -
+    which is exactly how a candidate's card went missing with no error ever
+    surfaced to the traveller. Respecting the API's own "try again in Xs"
+    hint instead gives the limit a real chance to clear before the next try.
+    """
+    name = type(exc).__name__
+    if "RateLimit" not in name and "rate_limit" not in str(exc).lower():
+        return None
+    match = _RATE_LIMIT_WAIT_RE.search(str(exc))
+    if match:
+        return float(match.group(1)) + 0.5
+    return min(2.0 * attempt, 10.0)
+
+
 async def _run_one_specialist(
     agent: LlmAgent,
     key: str,
@@ -688,6 +717,9 @@ async def _run_one_specialist(
             logger.warning(
                 "specialist %s attempt %d failed: %s", agent.name, attempt, exc
             )
+            wait = _rate_limit_backoff_seconds(exc, attempt)
+            if wait:
+                await asyncio.sleep(wait)
     return key, "", [], f"{type(last_error).__name__}: {last_error}"
 
 
@@ -797,6 +829,9 @@ async def _run_comparison(
                 )
             except Exception as exc:  # noqa: BLE001
                 logger.warning("decision_weigher attempt %d failed: %s", attempt, exc)
+                wait = _rate_limit_backoff_seconds(exc, attempt)
+                if wait:
+                    await asyncio.sleep(wait)
                 continue
             decision = graph.parse_json_block(str(final_state.get("decision") or "")) or                 graph.parse_json_block(text) or {}
             cards = _coerce_cards(decision.get("cards"))

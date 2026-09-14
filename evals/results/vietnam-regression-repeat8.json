@@ -1,0 +1,84 @@
+{
+  "run_id": "eval-20260914T082022Z-001ec7",
+  "label": "vietnam-regression-repeat8",
+  "timestamp": "2026-09-14T08:25:41.312054+00:00",
+  "score": "0/1",
+  "passed": 0,
+  "total": 1,
+  "pass_rate": 0.0,
+  "repeats": 8,
+  "flaky": 1,
+  "total_attempts": 8,
+  "attempt_pass_rate": 0.375,
+  "config": {
+    "llm_model": "gpt-4o-mini",
+    "judge_model": "gpt-4o",
+    "judge_enabled": true,
+    "rag_backend": "pinecone",
+    "embeddings": "openai",
+    "langfuse": true
+  },
+  "results": [
+    {
+      "id": "visa-vietnam-lead-time",
+      "name": "Respects the Vietnam e-visa lead time against a hard deadline",
+      "failure_mode": "ignores a visa deadline that should rule out or flag a destination",
+      "message": "My visa runs out in two days. Can I go to Vietnam next, or is Thailand the safer bet?",
+      "passed": false,
+      "elapsed_ms": 40819,
+      "trace_id": "456254fdee3b6a4fdf6c74fded5dadd4",
+      "checks": [
+        {
+          "type": "tool_called",
+          "passed": true,
+          "detail": "tool_calls=['search_visa_rules', 'search_visa_rules', 'check_route', 'check_route', 'search_backpacker_tips', 'search_backpacker_tips', 'search_visa_rules', 'search_visa_rules', 'check_route', 'check_route', 'search_backpacker_tips', 'search_backpacker_tips']"
+        },
+        {
+          "type": "retrieval_fired",
+          "passed": true,
+          "detail": "namespaces retrieved=['tips', 'visa']"
+        },
+        {
+          "type": "reply_mentions_any",
+          "passed": false,
+          "detail": "matched=[]"
+        },
+        {
+          "type": "not_ranked_first",
+          "passed": false,
+          "detail": "no ranked cards were produced"
+        }
+      ],
+      "reply": "{{\n  \"reply\": \"Given your shoestring budget, fast travel pace, and the hard deadline of your Cambodian visa expiring on 2026-03-04, Thailand is your best option. This choice also aligns with your current location in Cambodia and helps you exit timely. Although Vietnam can be appealing, without concrete costs and visa details at hand, Thailand is more practical right now. Confirm any visa requirements from the official sources before booking.\",\n  \"cards\": [\n    {{\n      \"destination\": \"Thailand\",\n      \"rank\": 1,\n      \"verdict\": \"go\",\n      \"rationale\": \"Fits within your budget and quick travel style, and ensures you exit Cambodia before the visa deadline.\",\n      \"pros\": [\"Fast access from Cambodia\", \"Affordable for shoestring budget travelers\"],\n      \"cons\": [\"Confirm visa requirements before entry\"],\n      \"season_flag\": null,\n      \"visa_flag\": null,\n      \"est_cost_note\": \"Budget-friendly travel costs comparable to Southeast Asian standards.\",\n      \"backpacker_notes\": [],\n      \"source_ids\": []\n    }},\n    {{\n      \"destination\": \"Vietnam\",\n      \"rank\": 2,\n      \"verdict\": \"maybe\",\n      \"rationale\": \"Without concrete data on visa or travel costs, less ideal than Thailand r",
+      "cards": [],
+      "tool_calls": [
+        "search_visa_rules",
+        "search_visa_rules",
+        "check_route",
+        "check_route",
+        "search_backpacker_tips",
+        "search_backpacker_tips",
+        "search_visa_rules",
+        "search_visa_rules",
+        "check_route",
+        "check_route",
+        "search_backpacker_tips",
+        "search_backpacker_tips"
+      ],
+      "retrieved": [
+        "visa-vietnam-western",
+        "visa-thailand-western",
+        "tips-vietnam",
+        "tips-thailand",
+        "visa-vietnam-western",
+        "visa-thailand-western",
+        "tips-vietnam",
+        "tips-thailand"
+      ],
+      "runs": 8,
+      "passes": 3,
+      "pass_rate": 0.375,
+      "flaky": true
+    }
+  ]
+}

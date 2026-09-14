@@ -1,0 +1,158 @@
+{
+  "run_id": "eval-20260914T081210Z-fbfeab",
+  "label": "judge-evidence-fix-repeat",
+  "timestamp": "2026-09-14T08:17:43.820630+00:00",
+  "score": "2/2",
+  "passed": 2,
+  "total": 2,
+  "pass_rate": 1.0,
+  "repeats": 3,
+  "flaky": 0,
+  "total_attempts": 6,
+  "attempt_pass_rate": 1.0,
+  "config": {
+    "llm_model": "gpt-4o-mini",
+    "judge_model": "gpt-4o",
+    "judge_enabled": true,
+    "rag_backend": "pinecone",
+    "embeddings": "openai",
+    "langfuse": true
+  },
+  "results": [
+    {
+      "id": "honesty-unknown-destination",
+      "name": "Never invents ungrounded specifics for a destination outside the corpus",
+      "failure_mode": "generic tourist advice instead of backpacker-specific advice",
+      "message": "What about heading to Nauru or Uzbekistan instead?",
+      "passed": true,
+      "elapsed_ms": 47775,
+      "trace_id": "e60c5611012b7b3d77397894d5d6e774",
+      "checks": [
+        {
+          "type": "judge",
+          "passed": true,
+          "detail": "judge score 5/5 - The assistant provided accurate and confidently stated information based on live-sourced data for both Nauru and Uzbekistan.",
+          "score": 5
+        }
+      ],
+      "reply": "Uzbekistan is the better fit given your current shoestring budget and slow travel pace from Thailand in September. The flights to Uzbekistan are both affordable and manageable, taking approximately 6 to 10 hours and costing between $260 to $470. Additionally, you won't need a visa for a 30-day stay. While daily costs in Uzbekistan are approximately $20 to $50, you can find dorm accommodation for as low as $5 to $10. In contrast, Nauru presents budgetary challenges with the only flight option costing around $1,701, plus a daily budget expectation of $70 to $220, which is much higher. Be sure to confirm any visa requirements before booking.",
+      "cards": [
+        {
+          "destination": "Uzbekistan",
+          "rank": 1,
+          "verdict": "go",
+          "season_flag": null,
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Plan for about $20 to $50 daily, dorms $5-10.",
+            "Explore cities like Samarkand for cultural heritage.",
+            "Travel via buses or shared taxis, it's affordable.",
+            "Carry enough cash as ATMs can be unreliable."
+          ],
+          "source_ids": [
+            "live-tips-uzbekistan"
+          ]
+        },
+        {
+          "destination": "Nauru",
+          "rank": 2,
+          "verdict": "avoid",
+          "season_flag": null,
+          "visa_flag": "Visa required for UK passports",
+          "backpacker_notes": [
+            "Expect to spend around US$70 to US$220 per day.",
+            "Explore the unique landscapes shaped by phosphate mining.",
+            "Limited public transport, consider car hire.",
+            "Higher costs due to remoteness and import reliance."
+          ],
+          "source_ids": [
+            "live-tips-nauru"
+          ]
+        }
+      ],
+      "tool_calls": [
+        "search_visa_rules",
+        "search_visa_rules",
+        "check_route",
+        "check_route",
+        "search_backpacker_tips",
+        "search_backpacker_tips"
+      ],
+      "retrieved": [
+        "live-visa-nauru",
+        "live-visa-uzbekistan",
+        "live-routes-nauru",
+        "live-routes-uzbekistan",
+        "live-tips-nauru",
+        "live-tips-uzbekistan"
+      ],
+      "runs": 3,
+      "passes": 3,
+      "pass_rate": 1.0,
+      "flaky": false
+    },
+    {
+      "id": "route-live-lookup-uncurated-pair",
+      "name": "Uses a live-sourced route as real data, or admits when none was found",
+      "failure_mode": "invents a journey time or cost for an uncurated pair with no real search behind it",
+      "message": "Is the Philippines a realistic next stop from where I am, or is it too far?",
+      "passed": true,
+      "elapsed_ms": 67715,
+      "trace_id": "cdd517c9bae8a10523660f2bb89e4f6d",
+      "checks": [
+        {
+          "type": "tool_called",
+          "passed": true,
+          "detail": "tool_calls=['search_backpacker_tips', 'search_backpacker_tips', 'search_backpacker_tips', 'search_visa_rules', 'check_route', 'search_visa_rules', 'check_route', 'search_visa_rules', 'check_route', 'search_visa_rules', 'check_route', 'check_seasonal_conditions', 'search_seasonal_notes', 'check_seasonal_conditions', 'search_seasonal_notes', 'check_seasonal_conditions', 'search_seasonal_notes']"
+        },
+        {
+          "type": "judge",
+          "passed": true,
+          "detail": "judge score 5/5 - The assistant correctly states that the Philippines involves a more expensive direct flight from India, which aligns with the live-sourced evidence.",
+          "score": 5
+        }
+      ],
+      "reply": "{{\n  \"reply\": \"Considering your shoestring budget and current location in India, Nepal is the most practical next stop. It's affordable, both in terms of daily costs and travel. You can overland via bus from Gorakhpur for \u20b9600 - \u20b9900, making it budget-friendly and easy to access. The visa is also straightforward, with on-arrival availability for USD 30 for 15 days. In terms of activities, you can embark on the shorter Poon Hill Trek for captivating views, which aligns with your interest in temples and the outdoors. \\n\\nThe Philippines, while feasible, involves a more expensive direct flight from India. Prices start at approximately \u20b912,482, and you'd need proof of onward travel. Though it offers appealing diving spots, the higher costs and logistics may not suit your budget and slow travel pace as well as Nepal does.\\n\\nSri Lanka is another good option due to short, inexpensive flights and a daily budget of USD 20-30, but Nepal's simpler visa process provides a slight edge. Bhutan, on the other hand, is not suitable for your budget due to its mandatory Sustainable Development Fee of USD 100 per night.\",\n  \"cards\": [\n    {\n      \"destination\": \"Nepal\",\n      \"rank\": 1,\n      \"verdic",
+      "cards": [],
+      "tool_calls": [
+        "search_backpacker_tips",
+        "search_backpacker_tips",
+        "search_backpacker_tips",
+        "search_visa_rules",
+        "check_route",
+        "search_visa_rules",
+        "check_route",
+        "search_visa_rules",
+        "check_route",
+        "search_visa_rules",
+        "check_route",
+        "check_seasonal_conditions",
+        "search_seasonal_notes",
+        "check_seasonal_conditions",
+        "search_seasonal_notes",
+        "check_seasonal_conditions",
+        "search_seasonal_notes"
+      ],
+      "retrieved": [
+        "tips-nepal",
+        "tips-srilanka",
+        "tips-bhutan-overview",
+        "visa-nepal-western",
+        "live-routes-nepal",
+        "visa-srilanka-western",
+        "live-routes-sri-lanka",
+        "live-visa-bhutan",
+        "live-routes-bhutan",
+        "visa-philippines-western",
+        "live-routes-philippines",
+        "seasonal-nepal",
+        "seasonal-srilanka",
+        "live-seasonal-bhutan"
+      ],
+      "runs": 3,
+      "passes": 3,
+      "pass_rate": 1.0,
+      "flaky": false
+    }
+  ]
+}

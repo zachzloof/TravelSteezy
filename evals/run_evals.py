@@ -174,6 +174,20 @@ THE TRAVELLER ASKED:
 THE ASSISTANT REPLIED:
 {reply}
 
+RETRIEVAL EVIDENCE FROM THIS TURN (ground truth, not shown to the traveller -
+this is here so you can check whether a real search actually found something
+for a destination, not whether the reply SAYS it did):
+{evidence}
+
+This app deliberately does NOT label live-sourced data as "unconfirmed" or
+"live-sourced" any more - a live web search that passed a two-pass grounding
+check is treated exactly like curated data, stated with the same confidence
+and no visible disclaimer. So: a destination that appears anywhere in the
+evidence list above being stated confidently, with NO hedge word in the
+reply, is CORRECT, not a violation - that is the intended design, not a gap.
+Only treat a destination's figures as ungrounded/invented if that destination
+does NOT appear anywhere in the evidence list at all.
+
 Score 1 to 5 against the rubric alone. Be strict and concrete; do not reward
 fluent writing that misses what the rubric asks for.
 
@@ -187,7 +201,28 @@ Reply with ONLY raw JSON:
 {{"score": <1-5>, "reason": "<one sentence>", "quote": "<exact words, or empty>"}}"""
 
 
-def judge(rubric: str, question: str, reply: str) -> dict[str, Any]:
+def _format_judge_evidence(retrieved_sources: list[dict[str, Any]]) -> str:
+    """One line per retrieved passage: what destination, what kind of data,
+    curated or live - the objective signal the judge needs to tell "grounded
+    but undisclosed" (correct, since disclosure was deliberately removed)
+    apart from "actually invented" (still the real failure to catch)."""
+    if not retrieved_sources:
+        return "(nothing was retrieved this turn - any stated figure is ungrounded)"
+    lines = []
+    seen = set()
+    for source in retrieved_sources:
+        key = (source.get("destination"), source.get("namespace"), source.get("origin"))
+        if key in seen:
+            continue
+        seen.add(key)
+        origin = source.get("origin") or "curated"
+        lines.append(f"- {source.get('destination')}: {source.get('namespace')} ({origin})")
+    return "\n".join(lines)
+
+
+def judge(
+    rubric: str, question: str, reply: str, retrieved_sources: list[dict[str, Any]] | None = None
+) -> dict[str, Any]:
     if not settings.llm_enabled:
         return {"score": 0, "reason": "judge unavailable: OPENAI_API_KEY not set"}
     try:
@@ -201,7 +236,10 @@ def judge(rubric: str, question: str, reply: str) -> dict[str, Any]:
                 {
                     "role": "user",
                     "content": JUDGE_PROMPT.format(
-                        rubric=rubric, question=question, reply=reply
+                        rubric=rubric,
+                        question=question,
+                        reply=reply,
+                        evidence=_format_judge_evidence(retrieved_sources or []),
                     ),
                 }
             ],
@@ -386,7 +424,12 @@ def run_check(check: dict[str, Any], ctx: dict[str, Any]) -> dict[str, Any]:
         }
 
     if kind == "judge":
-        verdict = judge(check["rubric"], ctx.get("message", ""), full_answer(result))
+        verdict = judge(
+            check["rubric"],
+            ctx.get("message", ""),
+            full_answer(result),
+            result.get("retrieved_sources"),
+        )
         return {
             "passed": verdict["score"] >= check.get("pass_score", 4),
             "detail": f"judge score {verdict['score']}/5 - {verdict['reason']}",

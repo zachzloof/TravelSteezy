@@ -289,12 +289,45 @@ alone), so this was deliberately deferred pending actual measurement of how
 often the skip happens, rather than upgraded on a guess.
 
 **Upgraded anyway, on explicit instruction** rather than after that
-measurement: `settings.specialist_model` (default `gpt-4o`) now backs all
-three specialists too. The cost tradeoff named above is real and un-measured
-- this was a judgment call to accept it now rather than wait, not a finding
-that the skip rate turned out to be high. If it later turns out unnecessary,
-the fix is a one-line env var change (`SPECIALIST_MODEL=gpt-4o-mini`), not a
-code change.
+measurement: `settings.specialist_model` (default `gpt-4o`) backed all three
+specialists too, briefly. The cost tradeoff named above is real and was
+un-measured - this was a judgment call to accept it now rather than wait, not
+a finding that the skip rate turned out to be high. Noted at the time: if it
+later turns out unnecessary, the fix is a one-line env var change, not a code
+change - which is exactly what happened next.
+
+**Rolled back the next day, for a reason nobody had measured yet:** this
+org's actual OpenAI rate limit for `gpt-4o` is 30,000 tokens/minute - the
+standard low starting tier, much lower than `gpt-4o-mini`'s. Putting four
+agents on `gpt-4o` per comparison turn (three specialists firing concurrently
+via `asyncio.gather`, plus the weigher) reliably tripped that limit under
+completely ordinary load, not just heavy testing - reproduced directly via
+captured `litellm.RateLimitError` tracebacks ("Limit 30000, Used 29425,
+Requested 2122") and an 8x repeat run of one eval case: 62% of attempts
+degraded (5/8), either losing a candidate's card silently or returning no
+comparison at all. This is what caused a real regression in the previously-
+reliable `visa-vietnam-lead-time` eval case: the rate limit hit a specialist
+mid-turn, that specialist's report came back empty, and the weigher had
+nothing to build Vietnam's card from - not a reasoning or prompt failure, a
+straightforward capacity mismatch between what was asked for and what the
+account could sustain.
+
+`specialist_model`'s default reverted to `gpt-4o-mini` (`SPECIALIST_MODEL` in
+`.env`/`.env.example` likewise) - back to exactly one `gpt-4o` call per turn
+(the weigher), not four. The setting itself was kept, not deleted, precisely
+for this: raising it again is a one-line change once this org's `gpt-4o` TPM
+limit is confirmed higher, with no code change needed either way. Paired with
+this: `runner.py`'s specialist and Decision-Weigher retry loops previously
+retried ANY failure instantly with no backoff at all. `_rate_limit_backoff_seconds()`
+now detects a rate-limit error specifically (by exception name or message
+text, since ADK's error wrapping means the type reaching this code cannot be
+relied on to always be the exact `litellm.exceptions.RateLimitError` class)
+and sleeps for the API's own "try again in Xs" hint (or a small capped
+default if that hint is absent) before the next attempt - so a transient 429
+gets a real chance to clear instead of every retry burning itself on the same
+still-active limit. This is a general robustness fix, independent of which
+model tier is in use, and stays useful even at `gpt-4o-mini`'s much higher
+ceiling.
 
 **`judge_model` (`evals/run_evals.py`) was also decoupled from `llm_model` and
 upgraded to `gpt-4o`**, independent of the weigher change above and for a

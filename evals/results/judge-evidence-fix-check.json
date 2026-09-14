@@ -1,0 +1,115 @@
+{
+  "run_id": "eval-20260914T080920Z-6705e8",
+  "label": "judge-evidence-fix-check",
+  "timestamp": "2026-09-14T08:12:01.764210+00:00",
+  "score": "2/2",
+  "passed": 2,
+  "total": 2,
+  "pass_rate": 1.0,
+  "repeats": 1,
+  "flaky": 0,
+  "total_attempts": 2,
+  "attempt_pass_rate": 1.0,
+  "config": {
+    "llm_model": "gpt-4o-mini",
+    "judge_model": "gpt-4o",
+    "judge_enabled": true,
+    "rag_backend": "pinecone",
+    "embeddings": "openai",
+    "langfuse": true
+  },
+  "results": [
+    {
+      "id": "honesty-unknown-destination",
+      "name": "Never invents ungrounded specifics for a destination outside the corpus",
+      "failure_mode": "generic tourist advice instead of backpacker-specific advice",
+      "message": "What about heading to Nauru or Uzbekistan instead?",
+      "passed": true,
+      "elapsed_ms": 43173,
+      "trace_id": "7f7f5ab939f60c3a0881951458a4bdc5",
+      "checks": [
+        {
+          "type": "judge",
+          "passed": true,
+          "detail": "judge score 5/5 - The assistant correctly stated it had no verified tips for Nauru and provided accurate seasonal information for Uzbekistan based on live search.",
+          "score": 5
+        }
+      ],
+      "reply": "{{\n  \"reply\": \"For your shoestring budget and slow pace, Uzbekistan in September is the top recommendation. The weather will be mild and pleasant, perfect for exploring its rich historical sites without the summer heat. Your slow travel style suits Uzbekistan as it offers extensive sightseeing opportunities. Currently in Thailand, flights to Uzbekistan are generally affordable, and dorm prices can be budget-friendly. Be sure to double-check the visa requirements as they change, but UK passport holders can benefit from visa-free entry for up to 30 days. Unfortunately, I don't have verified tips for Nauru, making it harder to tailor the advice to your current profile.\",\n  \"cards\": [\n    {{\n      \"destination\": \"Uzbekistan\",\n      \"rank\": 1,\n      \"verdict\": \"go\",\n      \"rationale\": \"The combination of pleasant weather, affordable travel options, and historical exploration opportunities makes it suitable for a budget backpacker.\",\n      \"pros\": [\"Pleasant weather in September\", \"Visa-free entry for up to 30 days for UK citizens\"],\n      \"cons\": [\"None reported\"],\n      \"season_flag\": \"null\",\n      \"visa_flag\": \"null\",\n      \"est_cost_note\": \"Accessible from Thailand with affordable fl",
+      "cards": [],
+      "tool_calls": [
+        "check_seasonal_conditions",
+        "search_seasonal_notes",
+        "check_seasonal_conditions",
+        "search_seasonal_notes"
+      ],
+      "retrieved": [
+        "live-seasonal-nauru",
+        "live-seasonal-uzbekistan"
+      ],
+      "runs": 1,
+      "passes": 1,
+      "pass_rate": 1.0,
+      "flaky": false
+    },
+    {
+      "id": "route-live-lookup-uncurated-pair",
+      "name": "Uses a live-sourced route as real data, or admits when none was found",
+      "failure_mode": "invents a journey time or cost for an uncurated pair with no real search behind it",
+      "message": "Is the Philippines a realistic next stop from where I am, or is it too far?",
+      "passed": true,
+      "elapsed_ms": 112072,
+      "trace_id": "7d2c704e5330a2e0fe92b1bb7daaa58e",
+      "checks": [
+        {
+          "type": "tool_called",
+          "passed": true,
+          "detail": "tool_calls=['search_backpacker_tips', 'search_backpacker_tips', 'search_backpacker_tips', 'check_seasonal_conditions', 'search_seasonal_notes', 'check_seasonal_conditions', 'search_seasonal_notes', 'check_seasonal_conditions', 'search_seasonal_notes', 'search_visa_rules', 'search_visa_rules', 'search_visa_rules', 'check_route', 'check_route', 'check_route']"
+        },
+        {
+          "type": "judge",
+          "passed": true,
+          "detail": "judge score 5/5 - The assistant correctly avoided providing specific journey details for the India-Philippines route, which is not backed by curated or live-sourced data.",
+          "score": 5
+        }
+      ],
+      "reply": "{{\n  \"reply\": \"Considering your shoestring budget and current location in India, I recommend exploring Sri Lanka as your next stop. It's more cost-effective and accessible compared to the Philippines. Flights from India to Sri Lanka typically take 1 to 3.5 hours and costs start from around \u20b97,000 ($84), while a daily budget there ranges between USD 20-30. This aligns well with your travel pace in September, especially if you're focusing on the east coast, which sees better weather during this time. On the other hand, while the Philippines offers great diving opportunities, the journey could be more expensive and longer due to the need for additional flights. Keep in mind to confirm your visa requirements through official sources before booking any travel.\",\n  \"cards\": [\n    {\n      \"destination\": \"Sri Lanka\",\n      \"rank\": 1,\n      \"verdict\": \"go\",\n      \"rationale\": \"Best suited for current budget and location with favorable east coast weather.\",\n      \"pros\": [\"Affordable flights from India starting at \u20b97,000\", \"Daily budget of USD 20-30\"],\n      \"cons\": [\"Southwest monsoon may affect west and south coasts\"],\n      \"season_flag\": \"null\",\n      \"visa_flag\": \"null\",\n      \"est_cost",
+      "cards": [],
+      "tool_calls": [
+        "search_backpacker_tips",
+        "search_backpacker_tips",
+        "search_backpacker_tips",
+        "check_seasonal_conditions",
+        "search_seasonal_notes",
+        "check_seasonal_conditions",
+        "search_seasonal_notes",
+        "check_seasonal_conditions",
+        "search_seasonal_notes",
+        "search_visa_rules",
+        "search_visa_rules",
+        "search_visa_rules",
+        "check_route",
+        "check_route",
+        "check_route"
+      ],
+      "retrieved": [
+        "tips-nepal",
+        "tips-srilanka",
+        "tips-bhutan-overview",
+        "seasonal-nepal",
+        "seasonal-srilanka",
+        "live-seasonal-bhutan",
+        "visa-nepal-western",
+        "visa-srilanka-western",
+        "live-visa-bhutan",
+        "live-routes-nepal",
+        "live-routes-sri-lanka",
+        "live-routes-bhutan"
+      ],
+      "runs": 1,
+      "passes": 1,
+      "pass_rate": 1.0,
+      "flaky": false
+    }
+  ]
+}

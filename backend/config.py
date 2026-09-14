@@ -64,17 +64,20 @@ class Settings:
         # manufacturing a verdict spread across ranked candidates, needing
         # multiple attempts because it answered in prose instead of JSON.
         self.weigher_model: str = os.getenv("WEIGHER_MODEL", "gpt-4o")
-        # The three specialists (weather/logistics/recommendations) also moved
-        # to this tier - a real, live-reproduced case had the Weather
-        # specialist skip its required tool calls entirely for a turn, and
-        # each one is instructed to hold multiple MUST-call-this-tool rules
-        # plus the coverage/disclosure guard simultaneously, the same shape of
-        # multi-constraint prompt that caused trouble for the weigher. This
-        # triples the cost of the upgrade (three calls per turn instead of
-        # one) versus WEIGHER_MODEL alone - a real tradeoff, made deliberately
-        # rather than by default. See notes/01-agent-architecture.md's "Model
-        # selection" section.
-        self.specialist_model: str = os.getenv("SPECIALIST_MODEL", "gpt-4o")
+        # The three specialists (weather/logistics/recommendations) were
+        # briefly moved to this tier too, then rolled back: this org's real
+        # gpt-4o rate limit is 30,000 tokens/minute (OpenAI's default starting
+        # tier), and putting four agents on gpt-4o per comparison turn (three
+        # concurrent specialists plus the weigher) reliably tripped it under
+        # completely ordinary load - reproduced at a 62% failure rate (5/8),
+        # manifesting as a candidate's card silently disappearing or the whole
+        # comparison coming back empty. Defaults back to LLM_MODEL's tier
+        # (gpt-4o-mini) so the specialists share the weigher's rate-limit
+        # budget for exactly one call per turn, not four. Still its own
+        # separate setting, not deleted - if this org's gpt-4o limit is raised
+        # later, opting back in is a one-line env var change, no code change.
+        # See notes/01-agent-architecture.md's "Model selection" section.
+        self.specialist_model: str = os.getenv("SPECIALIST_MODEL", "gpt-4o-mini")
         # Deliberately different from llm_model by default: a model grading
         # output from its own model family shares its blind spots, so the
         # judge is less likely to catch the exact class of mistake it would

@@ -1,0 +1,97 @@
+{
+  "run_id": "eval-20260914T091822Z-ebb967",
+  "label": "vietnam-postfix-repeat8",
+  "timestamp": "2026-09-14T09:21:29.794974+00:00",
+  "score": "0/1",
+  "passed": 0,
+  "total": 1,
+  "pass_rate": 0.0,
+  "repeats": 8,
+  "flaky": 1,
+  "total_attempts": 8,
+  "attempt_pass_rate": 0.75,
+  "config": {
+    "llm_model": "gpt-4o-mini",
+    "judge_model": "gpt-4o",
+    "judge_enabled": true,
+    "rag_backend": "pinecone",
+    "embeddings": "openai",
+    "langfuse": true
+  },
+  "results": [
+    {
+      "id": "visa-vietnam-lead-time",
+      "name": "Respects the Vietnam e-visa lead time against a hard deadline",
+      "failure_mode": "ignores a visa deadline that should rule out or flag a destination",
+      "message": "My visa runs out in two days. Can I go to Vietnam next, or is Thailand the safer bet?",
+      "passed": false,
+      "elapsed_ms": 16854,
+      "trace_id": "3ffccca46f3fad336ecc0ea520e86b40",
+      "checks": [
+        {
+          "type": "tool_called",
+          "passed": true,
+          "detail": "tool_calls=['search_backpacker_tips', 'search_backpacker_tips', 'search_visa_rules', 'search_visa_rules', 'check_route', 'check_route', 'check_seasonal_conditions', 'check_seasonal_conditions', 'search_seasonal_notes', 'search_seasonal_notes']"
+        },
+        {
+          "type": "retrieval_fired",
+          "passed": true,
+          "detail": "namespaces retrieved=['seasonal', 'tips', 'visa']"
+        },
+        {
+          "type": "reply_mentions_any",
+          "passed": true,
+          "detail": "matched=['e-visa', '3-5', 'working days']"
+        },
+        {
+          "type": "not_ranked_first",
+          "passed": true,
+          "detail": "rank 1 = 'thailand'"
+        }
+      ],
+      "reply": "Given your hard deadline of March 4, 2026, Thailand is the safer and more practical choice for your next destination. Since obtaining a Vietnam e-visa takes 3-5 working days, you won't meet this timeline. Entering Thailand is visa-free for 60 days, which fits perfectly with your fast pace and shoestring budget. The overland route from Cambodia to Thailand via Siem Reap and Bangkok takes 8-9 hours and costs USD 12-25.\n\nFor Thailand, your daily expenses will be around USD 20-28, with dorms costing 200-400 THB in Chiang Mai. You can explore temples like Doi Suthep using local transport, and be wary of scams like the 'Grand Palace is closed today' tuk-tuk ruse around tourist spots. The country's climate is hot in March, with potential air quality issues in the north. So while it's not the perfect season, it's manageable.\n\nI've based this on your shoestring budget, fast travel pace, current location leaving Cambodia by March 4, 2026, and interests.\n\nBy the way - how was Cambodia? Give it a score out of 5 and a line on what it was actually like, and I'll remember it for next time (and it helps other travellers too).",
+      "cards": [
+        {
+          "destination": "Thailand",
+          "rank": 1,
+          "verdict": "go",
+          "season_flag": "mixed",
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Daily expenses around USD 20-28",
+            "Explore temples like Doi Suthep",
+            "Overnight trains from Bangkok to Chiang Mai cost around 800-1,000 THB",
+            "Beware of the 'Grand Palace is closed today' scam"
+          ],
+          "source_ids": [
+            "tips-thailand"
+          ]
+        }
+      ],
+      "tool_calls": [
+        "search_backpacker_tips",
+        "search_backpacker_tips",
+        "search_visa_rules",
+        "search_visa_rules",
+        "check_route",
+        "check_route",
+        "check_seasonal_conditions",
+        "check_seasonal_conditions",
+        "search_seasonal_notes",
+        "search_seasonal_notes"
+      ],
+      "retrieved": [
+        "tips-vietnam",
+        "tips-thailand",
+        "visa-vietnam-western",
+        "visa-thailand-western",
+        "seasonal-vietnam",
+        "seasonal-thailand"
+      ],
+      "runs": 8,
+      "passes": 6,
+      "pass_rate": 0.75,
+      "flaky": true
+    }
+  ]
+}
