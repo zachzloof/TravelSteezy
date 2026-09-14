@@ -17,7 +17,6 @@ const draft = ref('')
 const busy = ref(false)
 const error = ref('')
 const profile = ref(null)
-const lastWrites = ref([])
 const scroller = ref(null)
 const composer = ref(null)
 
@@ -33,6 +32,10 @@ const catchupBusy = ref(false)
 // On a phone the trip context is a sheet rather than a column, so it needs
 // somewhere to be opened from.
 const sheetOpen = ref(false)
+
+// Desktop only: the rail can be collapsed to give the chat column the width
+// back. Mobile never renders this — it uses the sheet above instead.
+const railOpen = ref(true)
 
 // Opening the bug dialog the app shell owns. Sitting in the composer next to
 // Send is the point: reporting a bad answer is worth doing the moment you get
@@ -119,7 +122,6 @@ function pushReply(res) {
   })
   lastTrace.id = res.trace_id || lastTrace.id
   if (res.profile) profile.value = res.profile
-  lastWrites.value = res.memory_writes || []
   applyTravel(res)
   if (res.review_prompt) reviewPrompt.value = res.review_prompt
 }
@@ -379,21 +381,37 @@ async function scrollDown() {
       </div>
     </section>
 
-    <!-- Desktop: a persistent rail. -->
-    <aside class="rail hide-narrow">
-      <MemorySidebar :profile="profile" :writes="lastWrites">
-        <TripPanel
-          :history="travelHistory"
-          :wishlist="wishlist"
-          :interests="interests"
-          @drop-wishlist="dropWishlistItem"
-        />
-      </MemorySidebar>
+    <!-- Desktop: a persistent, collapsible rail. -->
+    <aside class="rail hide-narrow" :class="{ collapsed: !railOpen }">
+      <button
+        class="rail-toggle"
+        type="button"
+        :aria-expanded="railOpen"
+        :aria-label="railOpen ? 'Hide trip panel' : 'Show trip panel'"
+        :title="railOpen ? 'Hide trip panel' : 'Show trip panel'"
+        @click="railOpen = !railOpen"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M14 6l-6 6 6 6" />
+        </svg>
+      </button>
+      <Transition name="rail-fade">
+        <div v-show="railOpen" class="rail-body">
+          <MemorySidebar :profile="profile">
+            <TripPanel
+              :history="travelHistory"
+              :wishlist="wishlist"
+              :interests="interests"
+              @drop-wishlist="dropWishlistItem"
+            />
+          </MemorySidebar>
+        </div>
+      </Transition>
     </aside>
 
     <!-- Mobile: the same content, one tap away. -->
     <BottomSheet :open="sheetOpen" title="Your trip" @close="sheetOpen = false">
-      <MemorySidebar :profile="profile" :writes="lastWrites" flat>
+      <MemorySidebar :profile="profile" flat>
         <TripPanel
           :history="travelHistory"
           :wishlist="wishlist"
@@ -407,8 +425,7 @@ async function scrollDown() {
 
 <style scoped>
 .layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(290px, 350px);
+  display: flex;
   gap: var(--sp-5);
   width: 100%;
   max-width: var(--container-wide);
@@ -419,6 +436,8 @@ async function scrollDown() {
 .chat {
   display: flex;
   flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
   min-height: 0;
   height: calc(var(--view-h) - 2 * var(--gutter));
   background: var(--panel);
@@ -432,7 +451,7 @@ async function scrollDown() {
    the tab bar: the page gutter is cancelled with negative margins so the chat
    runs edge to edge, which is both more room and more familiar. */
 @media (max-width: 900px) {
-  .layout { grid-template-columns: 1fr; gap: 0; }
+  .layout { gap: 0; }
   .chat {
     height: var(--view-h);
     margin: calc(-1 * var(--gutter)) calc(-1 * max(var(--gutter), var(--safe-l))) calc(-1 * var(--gutter));
@@ -658,5 +677,53 @@ async function scrollDown() {
 }
 
 /* ---------------------------------------------------------------- the rail */
-.rail { min-width: 0; position: sticky; top: calc(var(--header-h) + var(--gutter)); }
+/* flex-basis (not width) is what animates: shrinking it back also lets .chat's
+   flex: 1 1 auto claim the reclaimed space in the same motion, so the column
+   genuinely narrows rather than leaving a collapsed box in reserved space. */
+.rail {
+  flex: 0 1 350px;
+  min-width: 290px;
+  position: sticky;
+  top: calc(var(--header-h) + var(--gutter));
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--sp-3);
+  transition: flex-basis var(--dur-slow) var(--ease-out), min-width var(--dur-slow) var(--ease-out);
+}
+.rail.collapsed {
+  flex-basis: 52px;
+  min-width: 52px;
+  align-items: center;
+}
+
+.rail-toggle {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-sm);
+  transition: color var(--dur-fast) ease, border-color var(--dur-fast) ease;
+}
+.rail-toggle:hover:not(:disabled) { color: var(--text); border-color: var(--stone-500); transform: none; }
+.rail-toggle svg { width: 17px; height: 17px; transition: transform var(--dur-slow) var(--ease-out); }
+.rail.collapsed .rail-toggle svg { transform: rotate(180deg); }
+
+.rail-body { width: 100%; min-width: 0; }
+
+.rail-fade-enter-active,
+.rail-fade-leave-active {
+  transition: opacity var(--dur) ease, transform var(--dur-slow) var(--ease-out);
+}
+.rail-fade-enter-from,
+.rail-fade-leave-to {
+  opacity: 0;
+  transform: translateX(14px);
+}
 </style>

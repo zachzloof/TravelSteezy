@@ -17,7 +17,6 @@ import { labelFor } from '../preferences'
 
 const props = defineProps({
   profile: { type: Object, default: null },
-  writes: { type: Array, default: () => [] },
   // Inside the mobile sheet the surrounding chrome already exists, so the
   // panel border and padding would be a box drawn inside a box.
   flat: { type: Boolean, default: false }
@@ -68,16 +67,6 @@ const filled = computed(() => rows.value.filter((r) => r.value).length)
       </template>
     </dl>
 
-    <div v-if="writes.length" class="section">
-      <p class="eyebrow">Just remembered</p>
-      <TransitionGroup tag="ul" name="pop" class="writes">
-        <li v-for="(w, i) in writes" :key="w.operation + i">
-          <span class="op mono">{{ w.operation }}</span>
-          <span class="small">{{ Object.entries(w.payload).map(([k, v]) => `${k}=${v}`).join(', ') }}</span>
-        </li>
-      </TransitionGroup>
-    </div>
-
     <!-- The trip panel (route, wishlist, interests) is slotted in here. -->
     <slot />
 
@@ -86,7 +75,15 @@ const filled = computed(() => rows.value.filter((r) => r.value).length)
 </template>
 
 <style scoped>
-.context.panel { animation: fadeIn var(--dur-slow) var(--ease-out) both; }
+/* Bounded to the same height the chat column fits into, so a fully-populated
+   sidebar scrolls internally on a short (laptop) viewport instead of stretching
+   the grid row and forcing the whole page to scroll for its sake. */
+.context.panel {
+  animation: fadeIn var(--dur-slow) var(--ease-out) both;
+  max-height: calc(var(--view-h) - 2 * var(--gutter));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
 
 .head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-2); }
 h3 { margin: 0 0 2px; font-size: var(--fs-h3); }
@@ -106,23 +103,6 @@ dt { color: var(--muted); }
 dd { margin: 0; word-break: break-word; }
 dd.unknown { color: var(--muted-2); font-style: italic; }
 dd.deadline { color: var(--warn); }
-
-.section { margin-top: var(--sp-5); border-top: 1px solid var(--line); padding-top: var(--sp-4); }
-
-ul { margin: 0; padding: 0; list-style: none; }
-
-.writes li {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  margin-bottom: var(--sp-2);
-  padding: 7px 9px;
-  border-radius: var(--radius-sm);
-  background: var(--moss-soft);
-  border: 1px solid var(--moss-dim);
-}
-.writes li:last-child { margin-bottom: 0; }
-.op { font-size: var(--fs-xs); color: var(--moss-bright); }
 
 .edit {
   display: inline-block;
