@@ -19,7 +19,10 @@ const props = defineProps({
   profile: { type: Object, default: null },
   // Inside the mobile sheet the surrounding chrome already exists, so the
   // panel border and padding would be a box drawn inside a box.
-  flat: { type: Boolean, default: false }
+  flat: { type: Boolean, default: false },
+  // Desktop rail only: hides everything below the toolbar so the collapsed
+  // rail is just that sticky bar. Mobile's flat instance never sets this.
+  collapsed: { type: Boolean, default: false }
 })
 
 const FIELDS = [
@@ -46,44 +49,83 @@ const filled = computed(() => rows.value.filter((r) => r.value).length)
 </script>
 
 <template>
-  <div :class="flat ? 'context flat' : 'context panel'">
-    <header v-if="!flat" class="head">
-      <h3>What I remember</h3>
-      <span class="muted small">{{ filled }}/{{ rows.length }}</span>
-    </header>
-    <p v-if="!flat" class="muted small sub">Stored against your account, not this browser.</p>
+  <div :class="[flat ? 'context flat' : 'context panel', { collapsed }]">
+    <!-- Sticky inside the panel's own scroll area, so it never adds height
+         beyond the panel's max-height - only the desktop rail passes this. -->
+    <div v-if="$slots.toolbar" class="toolbar">
+      <slot name="toolbar" />
+    </div>
 
-    <dl>
-      <template v-for="row in rows" :key="row.key">
-        <dt>{{ row.label }}</dt>
-        <dd :class="{ unknown: !row.value }">{{ row.value || 'not set' }}</dd>
-      </template>
-      <template v-if="profile?.visa_deadline_date">
-        <dt>Deadline</dt>
-        <dd class="deadline">
-          {{ profile.visa_deadline_date }}
-          <span v-if="profile.visa_deadline_note" class="muted">— {{ profile.visa_deadline_note }}</span>
-        </dd>
-      </template>
-    </dl>
+    <Transition name="mem-body">
+      <div v-show="!collapsed" class="body">
+        <header v-if="!flat" class="head">
+          <h3>What I remember</h3>
+          <span class="muted small">{{ filled }}/{{ rows.length }}</span>
+        </header>
+        <p v-if="!flat" class="muted small sub">Stored against your account, not this browser.</p>
 
-    <!-- The trip panel (route, wishlist, interests) is slotted in here. -->
-    <slot />
+        <dl>
+          <template v-for="row in rows" :key="row.key">
+            <dt>{{ row.label }}</dt>
+            <dd :class="{ unknown: !row.value }">{{ row.value || 'not set' }}</dd>
+          </template>
+          <template v-if="profile?.visa_deadline_date">
+            <dt>Deadline</dt>
+            <dd class="deadline">
+              {{ profile.visa_deadline_date }}
+              <span v-if="profile.visa_deadline_note" class="muted">— {{ profile.visa_deadline_note }}</span>
+            </dd>
+          </template>
+        </dl>
 
-    <RouterLink class="edit small" to="/preferences">Edit my trip profile →</RouterLink>
+        <!-- The trip panel (route, wishlist, interests) is slotted in here. -->
+        <slot />
+
+        <RouterLink class="edit small" to="/preferences">Edit my trip profile →</RouterLink>
+      </div>
+    </Transition>
   </div>
 </template>
 
 <style scoped>
 /* Bounded to the same height the chat column fits into, so a fully-populated
    sidebar scrolls internally on a short (laptop) viewport instead of stretching
-   the grid row and forcing the whole page to scroll for its sake. */
+   the row and forcing the whole page to scroll for its sake. Padding moves onto
+   .toolbar/.body below so the sticky toolbar can sit flush with the panel's own
+   edges rather than adding height on top of them. */
 .context.panel {
   animation: fadeIn var(--dur-slow) var(--ease-out) both;
+  display: flex;
+  flex-direction: column;
   max-height: calc(var(--view-h) - 2 * var(--gutter));
+  padding: 0;
+  overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
 }
+
+.toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  flex: none;
+  display: flex;
+  justify-content: flex-end;
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--panel);
+}
+.context.collapsed .toolbar { justify-content: center; padding: var(--sp-2); }
+
+.body { min-width: 0; }
+.context.panel .body { padding: var(--sp-2) var(--sp-5) var(--sp-5); }
+@media (max-width: 560px) {
+  .context.panel .body { padding: var(--sp-2) var(--sp-4) var(--sp-4); }
+}
+
+.mem-body-enter-active,
+.mem-body-leave-active { transition: opacity var(--dur) ease; }
+.mem-body-enter-from,
+.mem-body-leave-to { opacity: 0; }
 
 .head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-2); }
 h3 { margin: 0 0 2px; font-size: var(--fs-h3); }

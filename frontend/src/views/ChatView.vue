@@ -381,32 +381,32 @@ async function scrollDown() {
       </div>
     </section>
 
-    <!-- Desktop: a persistent, collapsible rail. -->
+    <!-- Desktop: a persistent, collapsible rail. The toggle lives in the
+         sidebar's own sticky toolbar (see MemorySidebar), so collapsing never
+         adds height on top of the panel's own viewport-bounded max-height. -->
     <aside class="rail hide-narrow" :class="{ collapsed: !railOpen }">
-      <button
-        class="rail-toggle"
-        type="button"
-        :aria-expanded="railOpen"
-        :aria-label="railOpen ? 'Hide trip panel' : 'Show trip panel'"
-        :title="railOpen ? 'Hide trip panel' : 'Show trip panel'"
-        @click="railOpen = !railOpen"
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M14 6l-6 6 6 6" />
-        </svg>
-      </button>
-      <Transition name="rail-fade">
-        <div v-show="railOpen" class="rail-body">
-          <MemorySidebar :profile="profile">
-            <TripPanel
-              :history="travelHistory"
-              :wishlist="wishlist"
-              :interests="interests"
-              @drop-wishlist="dropWishlistItem"
-            />
-          </MemorySidebar>
-        </div>
-      </Transition>
+      <MemorySidebar :profile="profile" :collapsed="!railOpen">
+        <template #toolbar>
+          <button
+            class="rail-toggle"
+            type="button"
+            :aria-expanded="railOpen"
+            :aria-label="railOpen ? 'Hide trip panel' : 'Show trip panel'"
+            :title="railOpen ? 'Hide trip panel' : 'Show trip panel'"
+            @click="railOpen = !railOpen"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M14 6l-6 6 6 6" />
+            </svg>
+          </button>
+        </template>
+        <TripPanel
+          :history="travelHistory"
+          :wishlist="wishlist"
+          :interests="interests"
+          @drop-wishlist="dropWishlistItem"
+        />
+      </MemorySidebar>
     </aside>
 
     <!-- Mobile: the same content, one tap away. -->
@@ -679,51 +679,36 @@ async function scrollDown() {
 /* ---------------------------------------------------------------- the rail */
 /* flex-basis (not width) is what animates: shrinking it back also lets .chat's
    flex: 1 1 auto claim the reclaimed space in the same motion, so the column
-   genuinely narrows rather than leaving a collapsed box in reserved space. */
+   genuinely narrows rather than leaving a collapsed box in reserved space.
+   The rail itself is just the sticky positioner - its child (MemorySidebar's
+   own panel) owns the height cap, the internal scroll, and the sticky toolbar
+   the toggle button lives in, so collapsing never adds height above it. */
 .rail {
   flex: 0 1 350px;
   min-width: 290px;
   position: sticky;
   top: calc(var(--header-h) + var(--gutter));
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: var(--sp-3);
   transition: flex-basis var(--dur-slow) var(--ease-out), min-width var(--dur-slow) var(--ease-out);
 }
 .rail.collapsed {
   flex-basis: 52px;
   min-width: 52px;
-  align-items: center;
 }
 
 .rail-toggle {
   flex: none;
-  width: 34px;
-  height: 34px;
+  width: 30px;
+  height: 30px;
   padding: 0;
   border-radius: 50%;
   display: grid;
   place-items: center;
   color: var(--muted);
-  background: var(--panel);
+  background: transparent;
   border: 1px solid var(--line);
-  box-shadow: var(--shadow-sm);
-  transition: color var(--dur-fast) ease, border-color var(--dur-fast) ease;
+  transition: color var(--dur-fast) ease, border-color var(--dur-fast) ease, background var(--dur-fast) ease;
 }
-.rail-toggle:hover:not(:disabled) { color: var(--text); border-color: var(--stone-500); transform: none; }
-.rail-toggle svg { width: 17px; height: 17px; transition: transform var(--dur-slow) var(--ease-out); }
+.rail-toggle:hover:not(:disabled) { color: var(--text); border-color: var(--stone-500); background: var(--panel-2); transform: none; }
+.rail-toggle svg { width: 15px; height: 15px; transition: transform var(--dur-slow) var(--ease-out); }
 .rail.collapsed .rail-toggle svg { transform: rotate(180deg); }
-
-.rail-body { width: 100%; min-width: 0; }
-
-.rail-fade-enter-active,
-.rail-fade-leave-active {
-  transition: opacity var(--dur) ease, transform var(--dur-slow) var(--ease-out);
-}
-.rail-fade-enter-from,
-.rail-fade-leave-to {
-  opacity: 0;
-  transform: translateX(14px);
-}
 </style>
