@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, onMounted, nextTick } from 'vue'
+import { computed, inject, ref, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { api, tokens, lastTrace } from '../api'
 import DestinationCard from '../components/DestinationCard.vue'
@@ -33,6 +33,11 @@ const catchupBusy = ref(false)
 // On a phone the trip context is a sheet rather than a column, so it needs
 // somewhere to be opened from.
 const sheetOpen = ref(false)
+
+// Opening the bug dialog the app shell owns. Sitting in the composer next to
+// Send is the point: reporting a bad answer is worth doing the moment you get
+// one, and anything buried in a menu does not get used.
+const reportBug = inject('reportBug', null)
 
 // Onboarding is no longer part of this screen. A brand-new account is routed to
 // /welcome before it ever gets here, so the chat is only ever a chat.
@@ -342,11 +347,24 @@ async function scrollDown() {
             v-model="draft"
             rows="1"
             :disabled="busy"
-            placeholder="Where should I go next?"
+            placeholder="Where next?"
             aria-label="Message"
             @input="resizeComposer"
             @keydown="onComposerKey"
           />
+          <button
+            v-if="reportBug"
+            class="bug"
+            type="button"
+            title="Report a bug"
+            aria-label="Report a bug"
+            @click="reportBug"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="8" y="7" width="8" height="12" rx="4" />
+              <path d="M8 11H4.5M8 15H5M16 11h3.5M16 15h3M9.5 7 8 4.5M14.5 7 16 4.5M10 19.5 8.5 21.5M14 19.5l1.5 2" />
+            </svg>
+          </button>
           <button
             class="primary send"
             :disabled="busy || !draft.trim()"
@@ -582,6 +600,9 @@ async function scrollDown() {
   background: color-mix(in srgb, var(--panel) 90%, transparent);
 }
 
+/* The placeholder is deliberately short. "Where should I go next?" wrapped to
+   a second line inside a one-row box at 320px and got clipped mid-word once the
+   report button took its share of the row. */
 .compose { display: flex; gap: var(--sp-2); align-items: flex-end; }
 .compose textarea {
   flex: 1;
@@ -603,6 +624,38 @@ async function scrollDown() {
   place-items: center;
 }
 .send svg { width: 20px; height: 20px; }
+
+/* Secondary to Send, but it still has to read as a button. Borderless and
+   --muted, it disappeared into the dark composer bar entirely - which defeats
+   the point of moving it here. It gets the same outline treatment as the text
+   box so it is unmistakably a control, while the colour keeps Send the
+   brightest thing in the row. */
+.bug {
+  flex: none;
+  width: 42px;
+  height: 42px;
+  margin-bottom: 2px;
+  padding: 0;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--stone-300);
+  background: var(--bg);
+  border: 1px solid var(--line);
+}
+.bug svg { width: 19px; height: 19px; }
+.bug:hover:not(:disabled) {
+  color: var(--accent-bright);
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+/* At 320px the two buttons plus a usable text box is a genuine squeeze, so the
+   bug button loses a few pixels rather than the composer. */
+@media (max-width: 380px) {
+  .bug { width: 36px; height: 36px; margin-bottom: 5px; }
+  .bug svg { width: 17px; height: 17px; }
+}
 
 /* ---------------------------------------------------------------- the rail */
 .rail { min-width: 0; position: sticky; top: calc(var(--header-h) + var(--gutter)); }

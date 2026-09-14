@@ -16,7 +16,7 @@
 // Its height is published as --tabbar-h in style.css rather than hard-coded
 // here, because every full-height view and every fixed element in the app has
 // to stay clear of it.
-import { computed, ref, watch } from 'vue'
+import { computed, provide, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { tokens } from './api'
 import BugReportDialog from './components/BugReportDialog.vue'
@@ -43,13 +43,20 @@ const DESTINATIONS = [
 const menuOpen = ref(false)
 watch(() => route.fullPath, () => { menuOpen.value = false })
 
-// Bug reporting lives in the account menu rather than a floating button: on a
-// phone a bottom-right FAB lands on top of the chat composer's send button.
+// Bug reporting is no longer a floating button - on a phone a bottom-right FAB
+// landed on top of the chat composer's send button. The dialog is owned here,
+// once, and opened from two places: the account menu (reachable on every page)
+// and a button inside the chat composer, which is where people actually are
+// when something goes wrong and so is the one that gets used.
+//
+// Provided rather than imported by ChatView so there is a single dialog
+// instance in the app instead of one per view that wants to open it.
 const bugDialog = ref(null)
 function reportBug() {
   menuOpen.value = false
   bugDialog.value?.show()
 }
+provide('reportBug', reportBug)
 
 function logout() {
   menuOpen.value = false
