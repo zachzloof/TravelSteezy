@@ -266,7 +266,9 @@ def search_seasonal_notes(destination: str) -> dict[str, Any]:
     hits = _search_with_live_fallback(
         f"seasonal weather monsoon safety in {destination}",
         "seasonal", destination,
-        f"seasonal weather, monsoon or hazard season timing for {destination} for travellers",
+        f"month-by-month seasonal weather for {destination} for travellers - which specific "
+        f"months are the best time to visit, which are mixed/shoulder, and which specific "
+        f"months are the actual monsoon, typhoon or hazard peak, not just the overall season name",
         top_k=2,
     )
     result = {

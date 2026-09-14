@@ -69,7 +69,7 @@ ROUTE_DOCS: list[dict[str, Any]] = [
         river-raft guesthouses. South: overnight bus-and-boat combos to Koh Tao for
         the cheapest open-water dive certification in the world, or Krabi and Koh
         Lanta on the Andaman side. Far north: overnight sleeper train to Chiang Mai,
-        800-1,000 THB in second-class sleeper, which saves a night of accommodation.
+        940-1,200 THB in second-class sleeper, which saves a night of accommodation.
         East: the 8-9h bus to Siem Reap via the Poipet border. Bangkok itself is
         worth 3 days, not more, unless you are waiting on a visa.
         """,
@@ -103,10 +103,12 @@ ROUTE_DOCS: list[dict[str, Any]] = [
         """
         Onward from Hanoi. The Ha Giang loop is the thing people name as the highlight
         of Vietnam: 3-4 days by motorbike through the far northern mountains, around
-        USD 100-150 all in, and you can ride pillion with an "easy rider" driver if
-        you cannot ride yourself. Ninh Binh (2h) is the inland version of Ha Long Bay
-        by bicycle and rowboat, and is the better-value stop. Sapa (5-6h by bus or
-        overnight train) for rice terraces, best June-September when they are green.
+        USD 250-350 all in with an "easy rider" driver if you cannot ride yourself (a
+        Border Area Entry Permit, around USD 10, has been required since June 2026 -
+        your driver or homestay arranges it). Ninh Binh (2h) is the inland version of
+        Ha Long Bay by bicycle and rowboat, and is the better-value stop. Sapa (5-6h by
+        bus or overnight train) for rice terraces, best June-August when green or
+        September to mid-October for the golden harvest.
         Cat Ba island rather than a Ha Long Bay cruise if you want the karst scenery
         without the tour-boat crowd. Southward the standard next leg is the overnight
         train or sleeper bus to Phong Nha for the caves.
@@ -130,7 +132,7 @@ ROUTE_DOCS: list[dict[str, Any]] = [
         Onward from Ho Chi Minh City. West: the Mekong Delta, either a rushed day trip
         to My Tho or, much better, two nights in Can Tho for the Cai Rang floating
         market at dawn. East: Mui Ne (5h) for the sand dunes and kitesurfing, then up
-        to Da Lat. Across the border: Phnom Penh is an easy 6-7h bus for USD 12-18
+        to Da Lat. Across the border: Phnom Penh is an easy 6-7h bus for USD 20-27
         through the Bavet/Moc Bai crossing, one of the smoothest land borders in the
         region, with the bus company handling the paperwork. Saigon itself is 2-3
         days: the War Remnants Museum, the Cu Chi tunnels as a half-day, and street
@@ -142,9 +144,11 @@ ROUTE_DOCS: list[dict[str, Any]] = [
         """
         Onward from Siem Reap. Battambang (3-4h) is the underrated stop - the bamboo
         train, colonial shophouses, a genuine circus school, and a fraction of the
-        tourism. Phnom Penh is 6h by bus. Back to Thailand is 8-9h to Bangkok through
-        Poipet, where officials routinely ask for extra "processing fees". If you are
-        heading for the islands, it is Phnom Penh then Sihanoukville then the boat to
+        tourism. Phnom Penh is 6h by bus. Back to Thailand: the Poipet land border has
+        been closed since mid-2025 due to an armed border conflict with no reopening date
+        as of late 2026 - fly Siem Reap-Bangkok (around 1h) instead and check current
+        border status before planning any overland route. If you are heading for the
+        islands, it is Phnom Penh then Sihanoukville then the boat to
         Koh Rong Sanloem. Siem Reap is a 3-4 day stop: buy the three-day Angkor pass
         at USD 62 and spread it across a week, sunrise at Angkor Wat then the outer
         temples in the afternoon when the buses have gone.
@@ -201,7 +205,8 @@ ROUTE_DOCS: list[dict[str, Any]] = [
     _route(
         "El Nido", "Philippines", ["Coron", "Port Barton", "Siargao", "Cebu"],
         """
-        Onward from El Nido. Coron (3.5-4h fast ferry, around PHP 1,800) for wreck
+        Onward from El Nido. Coron (3.5-4h fast ferry, roughly PHP 2,750-3,250 depending
+        on operator, more in peak season) for wreck
         diving on the Japanese fleet, which is world class and cheap. Port Barton
         (2-3h van) is the quieter, cheaper version of El Nido that people wish they
         had gone to first. Further afield: fly via Manila or Cebu to Siargao for
@@ -229,8 +234,8 @@ ROUTE_DOCS: list[dict[str, Any]] = [
     _route(
         "Ella", "Sri Lanka", ["Arugam Bay", "Mirissa", "Kandy", "Nuwara Eliya"],
         """
-        Onward from Ella. East: Arugam Bay (4-5h) for surf, in season May to
-        September only. South: Mirissa and the south coast beaches (4h), good
+        Onward from Ella. East: Arugam Bay (4-5h) for surf, in season April to
+        October, best waves June-August. South: Mirissa and the south coast beaches (4h), good
         December to March, with whale watching November to April. North: Kandy via
         the famous hill-country train, which is the single best cheap experience in
         the country - book a reserved second-class seat a few days ahead, or ride
@@ -326,8 +331,8 @@ ROUTE_DOCS: list[dict[str, Any]] = [
         accommodation. The Lao Cai border crossing into Yunnan, China exists but
         requires arranging a Chinese visa well in advance - not a spontaneous option.
         Sapa itself is 2-3 days: a homestay trek through the rice terraces (best
-        June-September when green, September-October when golden) with a local guide
-        from one of the H'mong or Dao villages.
+        June-August when green, or September to mid-October for the golden harvest)
+        with a local guide from one of the H'mong or Dao villages.
         """,
     ),
     _route(
@@ -379,7 +384,9 @@ ROUTE_DOCS: list[dict[str, Any]] = [
         mainland (for Mount Rinjani trekking, a serious multi-day volcano climb) is a
         short boat plus onward transfer. Back to Bali is a 1.5-2h fast boat to
         Padang Bai or Sanur. No cars or motorbikes are allowed on any of the three
-        Gilis - getting around is on foot, bicycle, or horse-cart (cidomo), which is
+        Gilis - getting around is on foot, bicycle, horse-cart (cidomo), or increasingly
+        a rented electric bike/scooter (no license needed, around IDR 250,000-350,000/day),
+        which is
         part of the appeal, not an inconvenience.
         """,
     ),
@@ -414,9 +421,10 @@ ROUTE_DOCS: list[dict[str, Any]] = [
         "Battambang", "Cambodia", ["Siem Reap", "Phnom Penh", "Poipet Thailand border"],
         """
         Onward from Battambang, the underrated stop most SE Asia itineraries skip.
-        Siem Reap is 3-4h. Phnom Penh is 5-6h. West to Poipet (2-3h) puts you at the
-        land border for an 8-9h onward bus to Bangkok - officials here routinely ask
-        for extra "processing fees", same as at the Siem Reap side of this border.
+        Siem Reap is 3-4h. Phnom Penh is 5-6h. The Poipet land border to Thailand has
+        been closed since mid-2025 due to an armed border conflict with no reopening
+        date as of late 2026 - fly out via Siem Reap or Phnom Penh instead and check
+        current border status before planning any overland route west.
         Battambang itself is 2 days: the bamboo train (a genuinely fun, slightly
         absurd homemade rail-cart ride), well-preserved French colonial shophouses,
         and Phare Ponleu Selpak, a real circus school with evening performances - a
@@ -626,7 +634,12 @@ ROUTE_DOCS: list[dict[str, Any]] = [
         Onward from Mandalay. Bagan is a short flight or a 4-5h bus/boat down the
         Irrawaddy. Inle Lake is a flight or long bus via Heho. Hsipaw, reached by a
         scenic train ride across the Gokteik Viaduct, is the trekking-and-hill-tribe
-        alternative to Kalaw for those who've already done the Inle approach. Mandalay
+        alternative to Kalaw for those who've already done the Inle approach - but unlike
+        the rest of this circuit, Hsipaw and Kyaukme sit in northern Shan State, which the
+        UK FCDO currently advises against ALL travel to (the most severe tier, not the
+        "all but essential" tier covering Mandalay/Bagan/Inle) due to active conflict; the
+        train itself still runs, but check current advisories carefully before treating
+        this as a normal add-on. Mandalay
         itself is 2 days: the U Bein teak bridge at sunset (the longest teak footbridge
         in the world), Mandalay Hill for a panorama, and day trips to the nearby former
         royal capitals of Amarapura, Sagaing and Inwa.
@@ -661,6 +674,611 @@ ROUTE_DOCS: list[dict[str, Any]] = [
         outside town, and the Naran Tuul ("Black Market") for cashmere.
         """,
         region="east asia",
+    ),
+    _route(
+        "Sydney", "Australia", ["Blue Mountains", "Byron Bay", "Melbourne", "Cairns"],
+        """
+        Onward from Sydney, the usual arrival point and start of the east coast run. The Blue
+        Mountains (Katoomba) are an easy day trip - about 2h by train from Central Station - for
+        the Three Sisters lookout at Echo Point, Scenic World's cable car and the world's steepest
+        railway. North up the coast: Byron Bay is a long day's drive or bus (around 10-11h) or a
+        short flight via Ballina/Gold Coast airports - most people break the trip at Port
+        Macquarie or Coffs Harbour. South: Melbourne is 12h by overnight train or coach, or a
+        cheap 1.5h flight, and is the other end of the classic Great Ocean Road detour. Sydney
+        itself rewards 3-4 days: the Bondi-to-Coogee coastal walk (free), the Opera House and
+        Harbour Bridge from Circular Quay, and the ferry to Manly, one of the best-value harbour
+        views in the city for the price of a regular transit ticket.
+        """,
+        region="oceania",
+    ),
+    _route(
+        "Cairns", "Australia", ["Whitsundays", "Byron Bay", "Sydney", "Great Barrier Reef"],
+        """
+        Onward from Cairns, the usual starting point for a north-to-south east coast run. South by
+        bus or campervan to Airlie Beach and the Whitsundays (about 15-17h direct, most people
+        break the trip at Townsville or Mission Beach) for a 2-3 day sailing trip through the
+        islands. Continuing south it's a multi-day hop via Brisbane and the Gold Coast to Byron
+        Bay and eventually Sydney - a full Cairns-Sydney run by bus/campervan realistically takes
+        2-3 weeks done properly, or a Greyhound "Whimit" hop-on-hop-off pass covers the whole leg
+        for around AUD 289 with no fixed schedule. Cairns itself is 3-4 days: a Great Barrier Reef
+        day trip (AUD 220-350 for a full-day outer-reef boat) for snorkelling or diving, the
+        Daintree Rainforest and Cape Tribulation as a long day trip, and the Kuranda Scenic
+        Railway plus Skyrail cable car loop. Stick to patrolled, stinger-netted swimming spots
+        November to May - this is genuine box jellyfish territory, not a generic warning.
+        """,
+        region="oceania",
+    ),
+    _route(
+        "Melbourne", "Australia", ["Great Ocean Road", "Tasmania", "Sydney", "Adelaide"],
+        """
+        Onward from Melbourne. The Great Ocean Road (the Twelve Apostles, Loch Ard Gorge) is the
+        essential detour - a rented car or a budget bus tour over 2-3 days does it properly, rather
+        than the rushed one-day version some tours sell. South across Bass Strait, the Spirit of
+        Tasmania overnight ferry (about 9-11h from Geelong) or a short flight gets you to Hobart
+        and the Tasmanian wilderness - genuinely worth the detour for hikers, especially the
+        Overland Track (bookable October to May). East: Sydney is 12h by train/coach or a short
+        flight. West: Adelaide is 8-9h by road, the gateway toward the Nullarbor and Perth, a much
+        longer and less-travelled leg most first-timers skip. Melbourne itself is 2-3 days: the
+        laneway street art and coffee culture, free trams within the city grid, and a day trip to
+        the Yarra Valley wine region or the Mornington Peninsula.
+        """,
+        region="oceania",
+    ),
+    _route(
+        "Byron Bay", "Australia", ["Gold Coast", "Sydney", "Cairns", "Brisbane"],
+        """
+        Onward from Byron Bay. North: the Gold Coast and Brisbane are about 1.5-2h by bus, the
+        jumping-off point for flights further up to Cairns and the tropical north. South: Sydney
+        is a long 10-11h bus or a cheap short flight via Ballina airport just south of town. Byron
+        itself is a 3-5 day stop, not a quick one - the lighthouse walk at Cape Byron (Australia's
+        easternmost point) for sunrise, learning to surf at the beginner-friendly breaks around
+        Wategos/Main Beach, and the hinterland villages of Nimbin and Bangalow as an easy day trip
+        for a different, market-town side of the region. It has one of the strongest backpacker
+        hostel and long-stay social scenes on the whole east coast, which is exactly why people
+        plan two nights and stay two weeks.
+        """,
+        region="oceania",
+    ),
+    _route(
+        "Auckland", "New Zealand", ["Bay of Islands", "Rotorua", "Wellington", "Waiheke Island"],
+        """
+        Onward from Auckland, the main international gateway. North: the Bay of Islands (Paihia)
+        is about 3-3.5h by bus or car for sailing, dolphin-watching and the Waitangi Treaty
+        Grounds. South: Rotorua is 4-4.5h direct by InterCity coach for geothermal geysers, mud
+        pools and Maori cultural evenings; continuing on, Wellington is a further 8-9h south by bus
+        (most people break the North Island leg at Rotorua and Taupo rather than doing it in one
+        push). Waiheke Island is a 40min ferry from downtown for a cheap day of vineyards and
+        beaches without leaving the city region. Auckland itself is 2 days: the Sky Tower, the free
+        Auckland Domain and Museum, and a walk up One Tree Hill/Maungakiekie for a harbour panorama
+        on both sides of the isthmus at once.
+        """,
+        region="oceania",
+    ),
+    _route(
+        "Queenstown", "New Zealand", ["Milford Sound", "Wanaka", "Te Anau", "Dunedin"],
+        """
+        Onward from Queenstown, the adventure-sports hub and usual South Island base. Milford
+        Sound is a full-day trip (10-12h return, around NZD 100-180 including the fjord cruise)
+        through Fiordland - genuinely worth doing as an organised day trip rather than
+        self-driving if short on time, since the road itself is long and weather can close it.
+        Wanaka is a scenic 1h over the Crown Range, a quieter alternative base with its own lake
+        and the "Wanaka Tree" photo spot. Te Anau, the gateway to the Kepler and Milford tracks, is
+        about 2h. Dunedin is 3.5-4h southeast for Otago Peninsula wildlife (albatross and penguin
+        colonies). Queenstown itself is where the Kawarau Bridge Bungy (the original commercial
+        bungy site, around NZD 205-220) and most of the country's other big-ticket adventure
+        activities - jet boating, skydiving, canyon swinging - are clustered, plus the Skyline
+        Gondola for a cheaper, adrenaline-free view over the lake.
+        """,
+        region="oceania",
+    ),
+    _route(
+        "Wellington", "New Zealand", ["Picton", "Abel Tasman", "Auckland", "Nelson"],
+        """
+        Onward from Wellington across to the South Island: the Interislander or Bluebridge ferry
+        to Picton takes about 3-3.5h through the Marlborough Sounds, one of the scenic highlights
+        of the whole trip and worth booking a daytime sailing for rather than the cheapest slot.
+        From Picton, Nelson (2h) is the base for Abel Tasman National Park - book the water taxi
+        plus a day or multi-day Coastal Track walk well ahead in summer, since it's one of the most
+        popular Great Walks. North back up the North Island, Auckland is a long 8-9h bus, usually
+        broken at Taupo. Wellington itself is 2-3 days: the Museum of New Zealand Te Papa
+        Tongarewa (free entry, genuinely excellent), the Cable Car up to the Botanic Garden, and
+        the waterfront - also worth timing around Wellington's notoriously strong, sudden winds,
+        which can shut the ferry crossing at short notice.
+        """,
+        region="oceania",
+    ),
+    _route(
+        "Rotorua", "New Zealand", ["Auckland", "Taupo", "Wellington"],
+        """
+        Onward from Rotorua. Auckland is back the way you came, 4-4.5h by InterCity coach. South,
+        Taupo is a quick 1h for bungy jumping over the Waikato River and Huka Falls, and is the
+        jumping-off point for the Tongariro Alpine Crossing, New Zealand's best one-day hike
+        (7-8h, a serious full-day tramp not a casual walk - check conditions, since it crosses
+        genuinely alpine terrain that gets snow outside summer). Continuing south, Wellington is a
+        further 4.5-5h from Taupo. Rotorua itself is 2 days: the geothermal fields at Te Puia or
+        Wai-O-Tapu (mud pools, geysers, the Champagne Pool), a Maori cultural evening (hangi feast
+        plus performance), and the smell of sulphur across the whole town, which every visitor
+        comments on within an hour of arriving.
+        """,
+        region="oceania",
+    ),
+    _route(
+        "Seoul", "South Korea", ["Busan", "Gyeongju", "Jeju", "DMZ", "Incheon"],
+        """
+        Onward from Seoul. South: the KTX to Busan is 2h15 direct, around USD 43-50, with
+        trains every 20-30 minutes from Seoul Station - the backbone move of a Korea trip. A
+        DMZ/JSA day tour (half-day DMZ only from around USD 40, full JSA access from around
+        USD 120, book 1-2 weeks ahead for JSA security clearance, no tours run Sunday or
+        Monday) is the other essential Seoul-based day trip. Jeju Island is a roughly 1-hour
+        domestic flight, often under USD 30 one-way on Jeju Air, Jin Air or T'way. Seoul
+        itself rewards 3-4 days: Gyeongbokgung Palace with its changing-of-the-guard
+        ceremony, Bukchon Hanok Village, the Hongdae and Myeongdong nightlife/shopping
+        districts, and Namsan Tower at sunset. Incheon airport, an hour from the city by
+        train, has its own transit-day attractions (a free city tour for long layovers) if
+        passing through rather than stopping.
+        """,
+        region="east asia",
+    ),
+    _route(
+        "Busan", "South Korea", ["Gyeongju", "Seoul", "Jeju", "Fukuoka Japan"],
+        """
+        Onward from Busan. Gyeongju, the old Silla capital, is about an hour away by bus or
+        train and is the standard day trip: Bulguksa Temple and Seokguram Grotto (both
+        UNESCO), and the Daereungwon royal tomb complex in the city centre. Back to Seoul,
+        the KTX is 2h15 (USD 43-50). Onward to Japan: the Camellia Line ferry to Fukuoka
+        (Hakata) runs 6-11.5 hours depending on the sailing, roughly USD 80-150 - the old
+        high-speed JR Beetle hydrofoil (3h40) was discontinued in December 2024 and hasn't
+        been replaced, so budget more time than older guides suggest. Jeju is a roughly
+        1-hour flight, frequently under USD 30 one-way. Busan itself is 2-3 days: Haeundae
+        Beach (with nightlife along the front), Gamcheon Culture Village's colourful hillside
+        houses ("Korea's Santorini"), and the Jagalchi fish market. Busan runs 15-20% cheaper
+        than Seoul for food and dorms, and is the more relaxed of the two if you want extra
+        nights without the capital's pace or prices.
+        """,
+        region="east asia",
+    ),
+    _route(
+        "Jeju", "South Korea", ["Seoul", "Busan"],
+        """
+        Onward from Jeju. There's no cheap way off the island except flying: Seoul and Busan
+        are both roughly 1-hour flights, frequently under USD 30 one-way on Jeju Air, Jin Air
+        or T'way. The old direct Busan-Jeju ferry has been discontinued; sea options now run
+        instead from Mokpo, Wando or Nokdong on the mainland (Mokpo-Jeju is about 4.5 hours).
+        Jeju itself is worth 3-4 days and rewards renting a car or scooter, since public
+        transport is thin outside Jeju City: Hallasan (South Korea's highest peak, a serious
+        but doable day hike), the volcanic tuff cone at Seongsan Ilchulbong for sunrise, the
+        Manjanggul lava tube, and black-sand/turquoise-water beaches on the east and west
+        coasts. It has its own distinct, milder microclimate - noticeably warmer and rainier
+        than the mainland - and its own local specialty worth trying: fresh hoe (raw fish)
+        and tangerines.
+        """,
+        region="east asia",
+    ),
+    _route(
+        "Tokyo", "Japan", ["Kyoto", "Hakone", "Nikko", "Kamakura", "Osaka"],
+        """
+        Onward from Tokyo. Kyoto is the standard next move: 2h15 by Shinkansen, around
+        USD 95-100 one-way (JPY 13,320-14,570) - the backbone leg of a first Japan trip.
+        Hakone (1.5-2h by train/bus, or a Hakone Free Pass covering the cable car, ropeway
+        and pirate-ship lake cruise) is the classic Mt Fuji-view day or overnight trip, best
+        on a clear morning. Nikko (2h) for the ornate Toshogu shrine complex and forest
+        waterfalls, an easier alternative to Hakone if Fuji is clouded over. Kamakura (1h)
+        for the Great Buddha and a laid-back beach-town day trip, crowded on weekends. Tokyo
+        itself easily fills 4-5 days: Shibuya and Shinjuku for the neon-city experience,
+        Senso-ji temple in Asakusa, the Tsukiji outer market for breakfast sushi, and
+        teamLab's digital art museums as a genuine splurge. Get a Suica or Pasmo IC card on
+        day one - it works on virtually every train, bus and convenience-store register in
+        the country from here on.
+        """,
+        region="east asia",
+    ),
+    _route(
+        "Kyoto", "Japan", ["Osaka", "Nara", "Hiroshima", "Tokyo"],
+        """
+        Onward from Kyoto. Osaka is a short, cheap 15-30 minute local-train hop (not worth a
+        Shinkansen ticket), and most people base in one city and day-trip the other. Nara
+        (35min by local train) is the essential half-day trip: over 1,200 free-roaming sika
+        deer in Nara Park that bow for crackers, and Todai-ji temple housing Japan's largest
+        bronze Buddha in the world's largest wooden building. West: Hiroshima is 1h40 by
+        Shinkansen, around USD 65 (JPY 10,570). Kyoto itself rewards a full 3-4 days, more
+        than almost anywhere else in Japan: Fushimi Inari's thousands of vermilion torii
+        gates (free, open 24h, best at dawn to beat the tour groups), the Arashiyama bamboo
+        grove, Kinkaku-ji (the Golden Pavilion), and Gion in the early evening for a chance
+        of spotting a working geiko or maiko. Kyoto's dorm beds (around USD 8-24) are
+        noticeably cheaper than Tokyo's, making it a good place to slow down.
+        """,
+        region="east asia",
+    ),
+    _route(
+        "Osaka", "Japan", ["Kyoto", "Nara", "Hiroshima", "Kobe"],
+        """
+        Onward from Osaka. Kyoto and Nara are both easy local-train day trips (15-30min and
+        about 45min respectively) - Osaka is a genuinely convenient base for both if its
+        hostel prices or nightlife suit you better than Kyoto's. West: Hiroshima is 1h26 by
+        Shinkansen, around USD 60 (JPY 9,710), continuing to Miyajima's floating torii gate
+        by a short onward ferry. Kobe (20-30min) is an easy detour for its beef and the
+        Nunobiki Herb Garden ropeway. Osaka itself is 2-3 days built almost entirely around
+        food: Dotonbori's canal-side street food (takoyaki, okonomiyaki) is the reason most
+        backpackers rate Osaka's eating scene above Tokyo's or Kyoto's, plus Osaka Castle and
+        Shinsekai's retro downtown atmosphere. Kansai International Airport is a common
+        international entry/exit point if doing a one-way Tokyo-to-Osaka run rather than
+        backtracking.
+        """,
+        region="east asia",
+    ),
+    _route(
+        "Hiroshima", "Japan", ["Miyajima", "Kyoto", "Osaka", "Fukuoka"],
+        """
+        Onward from Hiroshima. Miyajima island is a short 10-minute ferry (plus a 30min
+        tram/train from central Hiroshima) for the iconic "floating" torii gate of
+        Itsukushima Shrine and free-roaming deer - doable as a half-day but an overnight lets
+        you see the gate lit up after the day-trippers leave. Back east: Kyoto is 1h40 by
+        Shinkansen (around USD 65), Osaka 1h26 (around USD 60). West: Fukuoka/Hakata is a
+        further 1h by Shinkansen and is the jumping-off point for the Camellia Line ferry to
+        Busan, South Korea (6-11.5h, roughly USD 80-150) if continuing overland into Korea
+        rather than flying. Hiroshima itself is a sobering, essential 1-2 days: the Peace
+        Memorial Park and Museum, and the Atomic Bomb Dome, left deliberately as it was in
+        1945. Most backpackers combine the museum with Miyajima on the same trip to end the
+        day on a lighter note.
+        """,
+        region="east asia",
+    ),
+    _route(
+        "Lima", "Peru", ["Huacachina", "Arequipa", "Cusco"],
+        """
+        Onward from Lima, the usual international arrival point and not a place to
+        linger more than 2-3 days. South along the Panamericana: an overnight or
+        day bus to Huacachina (5-6h) for the desert oasis, sandboarding and pisco
+        tastings, then on to Nazca (2h further) for the Lines. Southeast to
+        Arequipa is a long direct bus (14-16h) that most people break up via the
+        coastal stops rather than doing in one push. Lima itself: Miraflores'
+        clifftop Malecon, Barranco's street art and nightlife, and a ceviche lunch
+        at a proper cevicheria rather than a hotel restaurant - lunch, not dinner,
+        is when it is freshest and cheapest.
+        """,
+        region="south america",
+    ),
+    _route(
+        "Cusco", "Peru", ["Machu Picchu", "Puno", "Arequipa", "La Paz"],
+        """
+        Onward from Cusco, the hub for the whole southern Peru circuit. Machu
+        Picchu is reached either by the 4-day Inca Trail (permits book out months
+        ahead for the May-September season) or by train from Ollantaytambo to
+        Aguas Calientes (around 1.5-2h, from roughly USD 70 one-way) for a
+        same-day or overnight visit. Southeast to Puno (6-7h bus) for Lake
+        Titicaca's floating Uros islands, then on to La Paz, Bolivia via the
+        Desaguadero or Copacabana border crossing (around 7-10h total including
+        formalities). Southwest to Arequipa is a 10-11h bus. Cusco itself rewards
+        2-3 days of altitude acclimatisation before any trek: the San Pedro
+        market, Sacsayhuaman ruins above town, and the Sacred Valley (Pisac,
+        Ollantaytambo) as an easy day trip.
+        """,
+        region="south america",
+    ),
+    _route(
+        "Arequipa", "Peru", ["Colca Canyon", "Cusco", "Lima"],
+        """
+        Onward from Arequipa, Peru's underrated "White City" built from white
+        volcanic sillar stone. Colca Canyon, one of the world's deepest canyons and
+        the best place in Peru to see condors soaring on the morning thermals, is a
+        3-4h bus to Chivay followed by an early village-to-village trek or a
+        single punishing day tour - departures are typically 3-4am, so budget a
+        night in Arequipa beforehand rather than arriving and leaving same-day.
+        Onward to Cusco is a 10-11h night bus; back to Lima is 14-16h or a short
+        flight. Arequipa itself is worth 2-3 days: the Santa Catalina Monastery (a
+        walled colonial city within the city), and it is the standard place to
+        acclimatise for a day or two before heading up to Cusco's higher altitude.
+        """,
+        region="south america",
+    ),
+    _route(
+        "Bogota", "Colombia", ["Medellin", "Salento", "San Gil", "Cartagena"],
+        """
+        Onward from Bogota, the high-altitude (2,640m) capital and usual arrival
+        point. Medellin is 8-10h by bus or a cheap, fast 1h flight - most
+        backpackers fly given the distance and mediocre road. Salento and the
+        coffee region are 7-8h by bus. San Gil, the adventure-sports hub
+        (rafting, paragliding, caving), is 7h. Bogota itself is 2-3 days: the
+        gold museum, the street art and cafes of La Candelaria's colonial core,
+        and Monserrate hill by cable car or funicular for a city panorama - go
+        early to avoid both crowds and Bogota's frequent afternoon rain.
+        """,
+        region="south america",
+    ),
+    _route(
+        "Medellin", "Colombia", ["Guatape", "Salento", "Cartagena", "Bogota"],
+        """
+        Onward from Medellin, most travellers' favourite Colombian base for a
+        long-stay stop. Guatape (2h) is the classic day trip: the striped rock
+        of El Penon (740 steps to the top) and a lakeside town of brightly
+        painted zocalos. Salento and the coffee region are 5-6h. Cartagena is a
+        long overnight bus (13-15h) or a much faster 1h flight - fly this one
+        unless you specifically want the overland experience. Medellin itself
+        rewards several days: the Comuna 13 graffiti tour with a local operator,
+        the Metrocable up into the hillside barrios for the view alone, and
+        Parque Lleras/El Poblado as the backpacker social base.
+        """,
+        region="south america",
+    ),
+    _route(
+        "Cartagena", "Colombia", ["Santa Marta", "Tayrona", "Medellin", "Bogota"],
+        """
+        Onward from Cartagena. Santa Marta is 4-5h by bus and is itself the
+        gateway to Tayrona National Park (a further 1h) for jungle-backed
+        beaches, and to the multi-day Lost City (Ciudad Perdida) trek, a
+        4-5 day jungle hike to Kogi-territory ruins that rivals Peru's Inca Trail
+        for many backpackers without the permit bottleneck. Back inland, Medellin
+        and Bogota are both best reached by air (1-1.5h) rather than the long
+        overland bus. Cartagena itself is 2-3 days: the Walled City's colonial
+        core, and Getsemani next door for the street art, cheaper hostels and a
+        livelier backpacker nightlife scene - Getsemani has gentrified fast and
+        is safe in its main streets, though some side streets still warrant care
+        after dark.
+        """,
+        region="south america",
+    ),
+    _route(
+        "Quito", "Ecuador", ["Banos", "Otavalo", "Mindo", "Cuenca"],
+        """
+        Onward from Quito, the high-altitude (2,850m) capital and usual arrival
+        point. Banos is 4h/USD 5 direct from Quitumbe terminal in the south of
+        the city. Otavalo (2h), for South America's largest indigenous
+        handicrafts market (best on Saturday mornings), is an easy day trip or
+        overnight. Mindo (2-2.5h) is the cloud-forest stop for birdwatching,
+        tubing and zip-lining, a good low-key add-on before heading further
+        south. Cuenca is a longer 8-10h direct bus or better broken up via
+        Banos. Quito itself is worth 2-3 days: the well-preserved colonial Old
+        Town (a UNESCO site), the TelefeQuito cable car up Pichincha volcano for
+        a city panorama, and standing on the actual equator line at the Museo
+        Intinan (not the touristy "Mitad del Mundo" monument next door, which
+        is slightly mislocated).
+        """,
+        region="south america",
+    ),
+    _route(
+        "Banos", "Ecuador", ["Quito", "Cuenca", "Coca"],
+        """
+        Onward from Banos. Back to Quito is 4h. South to Cuenca is a slow,
+        winding 8-10h with no fast alternative - most people treat it as the
+        day's plan rather than a quick hop. East into the Amazon, Coca (Puerto
+        Francisco de Orellana) is the jumping-off point for jungle lodges further
+        downriver, roughly 5-6h by bus or a short flight. Banos itself is 2-4
+        days: the Waterfall Route (Ruta de las Cascadas) by rented bike or
+        dune buggy (USD 5-10/day) past a string of cascades including Pailon
+        del Diablo, the hot springs the town is named for, and the swing at
+        Casa del Arbol with Tungurahua volcano as a backdrop when it isn't
+        clouded over.
+        """,
+        region="south america",
+    ),
+    _route(
+        "Cuenca", "Ecuador", ["Banos", "Guayaquil", "Quito"],
+        """
+        Onward from Cuenca. Banos is the same slow 8-10h back north. Guayaquil
+        (4-4.5h) is mainly useful as the departure point for flights to the
+        Galapagos, which are noticeably cheaper from Guayaquil than from Quito.
+        Quito direct is 8-9h, usually broken up via Banos rather than done in one
+        go. Cuenca itself is 2-3 days: the UNESCO-listed colonial centre with its
+        blue-domed cathedral, Panama hats (genuinely made here despite the name,
+        not in Panama), and El Cajas National Park an hour away for high-altitude
+        paramo hiking among hundreds of glacial lakes.
+        """,
+        region="south america",
+    ),
+    _route(
+        "La Paz", "Bolivia", ["Uyuni", "Death Road", "Sucre", "Copacabana"],
+        """
+        Onward from La Paz, the world's highest administrative capital
+        (3,650m) and the near-universal hub for Bolivia. Uyuni is reached by
+        overnight bus (9-10h) or a short flight - most backpackers bus it to
+        save the flight cost and use the overnight hours for sleep. The Death
+        Road mountain-bike descent (Yungas Road) is a full-day trip direct from
+        La Paz, no overnight needed. Copacabana, on Lake Titicaca and the
+        onward route to Puno, Peru, is 3-4h. Sucre is a longer 12-14h overnight
+        bus or a short flight. La Paz itself is 2-3 days: the cable-car network
+        (Mi Teleferico) is the cheapest sightseeing in South America and doubles
+        as functional public transport up into El Alto, the Witches' Market for
+        the (occasionally unsettling) llama-fetus stalls, and San Pedro Prison's
+        surrounding streets by day only - it is not the informal tourist
+        attraction it once had a reputation for being.
+        """,
+        region="south america",
+    ),
+    _route(
+        "Uyuni", "Bolivia", ["San Pedro de Atacama Chile", "La Paz", "Sucre", "Villazon"],
+        """
+        Onward from Uyuni, essentially a one-purpose town built around the salt
+        flat tours. The standard exit for anyone continuing the circuit south is
+        the 3-day 4x4 salt-flat tour ending at the Chilean border, dropping you
+        directly in San Pedro de Atacama rather than backtracking to Uyuni town -
+        the efficient way to link Bolivia and Chile without doubling back. Back
+        to La Paz is a 9-10h overnight bus. Sucre is 6-7h. South to the
+        Argentine border at Villazon (for Salta) is a longer haul via Tupiza,
+        itself worth a stop for cheaper, less crowded horseback and 4x4 desert
+        tours than Uyuni's. Uyuni town itself has little beyond the tour
+        agencies and the train cemetery on its outskirts, worth an hour before
+        or after a tour rather than a dedicated stop.
+        """,
+        region="south america",
+    ),
+    _route(
+        "Sucre", "Bolivia", ["La Paz", "Uyuni", "Potosi"],
+        """
+        Onward from Sucre, Bolivia's whitewashed constitutional capital and the
+        country's most popular place to study Spanish cheaply. Potosi, the
+        former world's-richest silver-mining city and now a sobering, still-active
+        mine tour (genuinely dangerous conditions, book a reputable operator),
+        is 2.5-3h. La Paz is a long overnight bus (12-14h) or a short flight.
+        Uyuni is 6-7h, the usual link onward to the salt flats. Sucre itself
+        rewards a longer stay than most itineraries budget: the white colonial
+        centre, the dinosaur footprints at Cal Orck'o on the edge of town, and
+        consistently the cheapest, most laid-back Spanish-immersion scene on the
+        continent.
+        """,
+        region="south america",
+    ),
+    _route(
+        "Santiago", "Chile", ["Valparaiso", "San Pedro de Atacama", "Puerto Natales"],
+        """
+        Onward from Santiago, the central hub most trips start and end at.
+        Valparaiso is an easy 1h40 bus for the graffiti-covered hillside
+        funiculars and port-city atmosphere - a worthwhile 1-2 night stop or day
+        trip. North to San Pedro de Atacama is a long 20-23h bus (better broken
+        with an overnight, "salon-cama" seats recommended) or a 2h flight to
+        Calama plus a short transfer. South to Puerto Natales, the Patagonia
+        gateway, is far enough that almost everyone flies (around 3.5h) rather
+        than facing a multi-day bus. Santiago itself is 2 days: the Bellavista
+        and Lastarria neighbourhoods for food and nightlife, and the Cerro San
+        Cristobal funicular for a smog-permitting city panorama with the Andes
+        behind it.
+        """,
+        region="south america",
+    ),
+    _route(
+        "San Pedro de Atacama", "Chile", ["Uyuni Bolivia", "Santiago", "Calama"],
+        """
+        Onward from San Pedro de Atacama, a small desert town that is the base
+        for the whole Atacama circuit rather than a destination in itself.
+        Crossing into Bolivia to Uyuni is the classic onward move: a 3-day 4x4
+        salt-flat tour run in reverse from the Bolivian side, ending in Uyuni
+        town rather than a simple bus transfer. Calama, 1h10 away, is the
+        airport town for flights back to Santiago (around 2h) when the long bus
+        is not appealing. San Pedro itself is 3-4 days of day-tour base: Valle
+        de la Luna at sunset, the El Tatio geysers (a brutal 4am pickup to catch
+        them steaming at dawn), and the high-altitude Altiplanic lagoons -
+        almost everything here is done via organised half or full-day tours
+        from town rather than independently, given the distances and lack of
+        public transport between sites.
+        """,
+        region="south america",
+    ),
+    _route(
+        "Puerto Natales", "Chile", ["Torres del Paine", "El Calafate Argentina", "Punta Arenas"],
+        """
+        Onward from Puerto Natales, the compact gateway town for Torres del
+        Paine National Park. The park entrance is roughly 1.5-2h by bus or
+        organised transfer, with the W Trek (4-5 days) or the longer O Circuit
+        (7-10 days) as the main draws - book refugio/campsite accommodation
+        months ahead for December-February. Crossing into Argentina, El Calafate
+        (for the Perito Moreno Glacier) is a straightforward 5-6h bus across the
+        border. Punta Arenas, for onward flights or Antarctic-adjacent
+        cruises, is 3h south. Puerto Natales itself is a 1-2 day logistics stop
+        for gear rental and grocery shopping before the trek - it has limited
+        sights of its own beyond the waterfront and is treated by most
+        backpackers as pure staging ground.
+        """,
+        region="south america",
+    ),
+    _route(
+        "Buenos Aires", "Argentina", ["Mendoza", "Iguazu Falls", "Bariloche", "El Calafate"],
+        """
+        Onward from Buenos Aires, the near-universal arrival hub. Mendoza is a
+        2h flight or a long 13-14h overnight bus for wine country. Iguazu Falls
+        (Puerto Iguazu) is 1h45 by air or a very long 18-19h bus - fly this one
+        unless time is no object. Bariloche is 2h15 by air or a full 22-24h bus.
+        El Calafate, for Patagonia's south, is 3h by air. Buenos Aires itself
+        rewards 3-4 days: San Telmo's Sunday antiques market, a tango show
+        (skip the touristy dinner-show package, seek out a milonga instead for
+        the real thing), the pastel houses of La Boca's Caminito, and Recoleta
+        Cemetery, where Evita is buried among elaborate above-ground mausoleums.
+        """,
+        region="south america",
+    ),
+    _route(
+        "Mendoza", "Argentina", ["Buenos Aires", "Santiago Chile", "Bariloche"],
+        """
+        Onward from Mendoza. Back to Buenos Aires is a 2h flight or a long
+        13-14h overnight bus. West over the Andes to Santiago, Chile is a
+        spectacular 6-7h bus through the high mountain pass (weather-dependent
+        in winter, sometimes closed by snow). South to Bariloche is a long
+        18-19h bus or a shorter flight via Buenos Aires. Mendoza itself is 2-3
+        days: bike-and-wine tours through Lujan de Cuyo and the Uco Valley
+        wineries (rent a bike and a map from a hostel rather than booking a
+        guided van tour, cheaper and more fun), and Aconcagua, the highest peak
+        outside Asia, visible and climbable (with permits, for serious
+        mountaineers only) from the province.
+        """,
+        region="south america",
+    ),
+    _route(
+        "Bariloche", "Argentina", ["El Calafate", "Buenos Aires", "Puerto Varas Chile"],
+        """
+        Onward from Bariloche, the northern gateway to Argentine Patagonia. El
+        Calafate is 1.5h by air (the bus is a very long 24h+ and rarely worth
+        it). Buenos Aires is 2h15 by air. West into Chile, Puerto Varas is
+        reachable via the multi-day Cruce Andino lake-and-bus crossing through
+        Andean scenery, a genuinely scenic alternative to flying. Bariloche
+        itself is 3-4 days: the Circuito Chico lake-and-mountain drive (rentable
+        by bike or car), Cerro Catedral for hiking in summer or skiing in the
+        July-August winter season, and the town's famous chocolate shops, a
+        legacy of its Swiss-German immigrant history.
+        """,
+        region="south america",
+    ),
+    _route(
+        "El Calafate", "Argentina", ["Puerto Natales Chile", "Ushuaia", "Bariloche", "Buenos Aires"],
+        """
+        Onward from El Calafate, the base for Argentina's Perito Moreno Glacier.
+        Crossing into Chile, Puerto Natales (for Torres del Paine) is a
+        straightforward 5-6h bus over the border. South to Ushuaia, the world's
+        southernmost city and jumping-off point for Antarctica cruises, is a
+        long 18-19h bus around the Chilean side of the border or a short flight.
+        Buenos Aires is a 3h flight. El Calafate itself is 2-3 days: the Perito
+        Moreno Glacier's walkways (a straightforward day trip, watch and listen
+        for the ice calving off the face) and, for the more committed, ice-trekking
+        directly on the glacier itself with crampons, bookable in town.
+        """,
+        region="south america",
+    ),
+    _route(
+        "Rio de Janeiro", "Brazil", ["Paraty", "Ilha Grande", "Salvador", "Florianopolis"],
+        """
+        Onward from Rio, the usual arrival point and worth 4-5 days on its own.
+        Paraty, a well-preserved colonial coastal town, is 4-5h by bus
+        (around R$70). Ilha Grande, a car-free island with some of Brazil's best
+        beaches, is reached via a bus-plus-boat combo from either Rio or the
+        Angra dos Reis mainland. North to Salvador is a long 24h+ bus or a
+        cheap 2h flight - fly this one. South to Florianopolis is similarly
+        long overland or a 1.5h flight. Rio itself: Christ the Redeemer and
+        Sugarloaf by cable car for the views, Santa Teresa's tram and bohemian
+        streets, and a Copacabana or Ipanema beach day - keep valuables to a
+        bare minimum on the sand, phone and bag snatching is a real and common
+        risk there.
+        """,
+        region="south america",
+    ),
+    _route(
+        "Salvador", "Brazil", ["Rio de Janeiro", "Foz do Iguacu", "Morro de Sao Paulo"],
+        """
+        Onward from Salvador, the historic heart of Afro-Brazilian culture.
+        Rio is a 2h flight or a long 24h+ bus. Morro de Sao Paulo, a
+        car-free island beach town, is a combined bus-and-boat trip of around
+        3-4h and a popular quieter add-on. Foz do Iguacu, for the Brazilian side
+        of Iguazu Falls, is a longer domestic flight connection (there is no
+        practical direct overland option). Salvador itself is 2-3 days: the
+        Pelourinho historic centre's colourful colonial architecture and live
+        capoeira and percussion in the street, Afro-Brazilian Candomble
+        culture and cuisine (acaraje street food is the classic bite), and
+        beaches within the city itself before heading further up the coast for
+        quieter sand.
+        """,
+        region="south america",
+    ),
+    _route(
+        "Florianopolis", "Brazil", ["Rio de Janeiro", "Paraty", "Foz do Iguacu"],
+        """
+        Onward from Florianopolis ("Floripa"), an island city with over 40
+        beaches ranging from surf breaks to families-only calm water. Rio is a
+        1.5h flight or a long overland haul. Paraty, breaking the journey north,
+        is a similarly long bus best flown past rather than endured in one go.
+        Foz do Iguacu is a domestic flight connection, no practical direct bus.
+        Floripa itself rewards renting a scooter or car for a few days to work
+        the island's beaches by surf conditions and crowd level - Joaquina and
+        Mole for surfing and nightlife, Lagoinha do Leste for a quieter
+        hike-in beach, and the historic centre (Santo Antonio de Lisboa) for a
+        slower colonial-fishing-village afternoon.
+        """,
+        region="south america",
     ),
 ]
 
@@ -722,6 +1340,51 @@ EXTRA_CITIES: dict[str, str] = {
     "lake khovsgol": "mongolia",
     # Bhutan (no route doc - see tips-bhutan-overview, no independent circuit).
     "thimphu": "bhutan", "paro": "bhutan", "punakha": "bhutan",
+    # Australia (route docs cover sydney/cairns/melbourne/byron bay as origins).
+    "whitsundays": "australia", "airlie beach": "australia", "great ocean road": "australia",
+    "uluru": "australia", "tasmania": "australia", "hobart": "australia",
+    "gold coast": "australia", "port douglas": "australia", "daintree": "australia",
+    "blue mountains": "australia", "katoomba": "australia", "perth": "australia",
+    "adelaide": "australia", "darwin": "australia", "townsville": "australia",
+    "mission beach": "australia",
+    # New Zealand (route docs cover auckland/queenstown/wellington/rotorua as origins).
+    "bay of islands": "new zealand", "waiheke island": "new zealand",
+    "milford sound": "new zealand", "wanaka": "new zealand", "te anau": "new zealand",
+    "dunedin": "new zealand", "nelson": "new zealand", "abel tasman": "new zealand",
+    "taupo": "new zealand", "picton": "new zealand", "franz josef": "new zealand",
+    "fiordland": "new zealand",
+    # South Korea (route docs cover seoul/busan/jeju as origins).
+    "gyeongju": "south korea", "incheon": "south korea", "dmz": "south korea",
+    # Japan (route docs cover tokyo/kyoto/osaka/hiroshima as origins).
+    "nara": "japan", "hakone": "japan", "nikko": "japan", "kamakura": "japan",
+    "okinawa": "japan", "naha": "japan", "miyajima": "japan", "kobe": "japan",
+    "fukuoka": "japan",
+    # Peru (route docs cover lima/cusco/arequipa as origins).
+    "huacachina": "peru", "nazca": "peru", "puno": "peru", "machu picchu": "peru",
+    "colca canyon": "peru", "ica": "peru", "paracas": "peru", "ollantaytambo": "peru",
+    "aguas calientes": "peru", "rainbow mountain": "peru",
+    # Colombia (route docs cover bogota/medellin/cartagena as origins).
+    "santa marta": "colombia", "tayrona": "colombia", "guatape": "colombia",
+    "salento": "colombia", "san gil": "colombia", "getsemani": "colombia",
+    "palomino": "colombia", "cocora valley": "colombia",
+    # Ecuador (route docs cover quito/banos/cuenca as origins).
+    "galapagos islands": "ecuador", "guayaquil": "ecuador", "mindo": "ecuador",
+    "montanita": "ecuador", "otavalo": "ecuador", "quilotoa": "ecuador",
+    "coca": "ecuador", "santa cruz island": "ecuador", "isabela island": "ecuador",
+    # Bolivia (route docs cover la paz/uyuni/sucre as origins).
+    "potosi": "bolivia", "copacabana bolivia": "bolivia", "rurrenabaque": "bolivia",
+    "tupiza": "bolivia", "villazon": "bolivia",
+    # Chile (route docs cover santiago/san pedro de atacama/puerto natales as origins).
+    "valparaiso": "chile", "torres del paine": "chile", "pucon": "chile",
+    "punta arenas": "chile", "calama": "chile",
+    # Argentina (route docs cover buenos aires/mendoza/bariloche/el calafate as origins).
+    "ushuaia": "argentina", "salta": "argentina", "puerto iguazu": "argentina",
+    "iguazu falls": "argentina", "cordoba argentina": "argentina", "cafayate": "argentina",
+    "perito moreno glacier": "argentina",
+    # Brazil (route docs cover rio de janeiro/salvador/florianopolis as origins).
+    "foz do iguacu": "brazil", "ilha grande": "brazil", "paraty": "brazil",
+    "ouro preto": "brazil", "sao paulo": "brazil", "morro de sao paulo": "brazil",
+    "jericoacoara": "brazil",
 }
 
 KNOWN_CITIES: dict[str, str] = {**CITY_TO_COUNTRY, **EXTRA_CITIES}

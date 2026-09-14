@@ -192,9 +192,23 @@ COUNTRY_NEIGHBOURS: dict[str, list[str]] = {
     "sri lanka": ["india", "nepal", "thailand"],
     "india": ["nepal", "sri lanka", "bhutan"],
     "bhutan": ["india", "nepal"],
-    # Mongolia and Myanmar are deliberately left without neighbours here: neither
-    # has a realistic overland "nearby country" pairing within this corpus (and
-    # Myanmar's land borders carry their own safety caveats - see the visa doc).
+    # South America's classic overland "gringo trail" - every pairing below is a
+    # real, commonly-used land border crossing named in the corresponding route
+    # docs (e.g. Cusco -> La Paz, Uyuni -> San Pedro de Atacama, Mendoza <->
+    # Santiago, El Calafate <-> Puerto Natales, the Iguazu Falls Brazil/Argentina
+    # pairing, Quito -> Bogota).
+    "peru": ["bolivia", "ecuador"],
+    "bolivia": ["peru", "chile", "argentina"],
+    "chile": ["bolivia", "argentina"],
+    "argentina": ["chile", "brazil", "bolivia"],
+    "brazil": ["argentina"],
+    "colombia": ["ecuador"],
+    "ecuador": ["colombia", "peru"],
+    # Mongolia, Myanmar, South Korea, Japan, Australia and New Zealand are
+    # deliberately left without neighbours here: none has a realistic overland
+    # "nearby country" pairing within this corpus (Myanmar's land borders also
+    # carry their own safety caveats - see the visa doc; Korea/Japan/Australia/NZ
+    # are reachable from each other only by sea or air).
 }
 
 

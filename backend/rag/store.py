@@ -126,6 +126,60 @@ def detect_destinations(text: str) -> list[str]:
         "gobi": "mongolia",
         "thimphu": "bhutan",
         "paro": "bhutan",
+        "sydney": "australia",
+        "melbourne": "australia",
+        "cairns": "australia",
+        "byron bay": "australia",
+        "brisbane": "australia",
+        "perth": "australia",
+        "tasmania": "australia",
+        "whitsundays": "australia",
+        "uluru": "australia",
+        "auckland": "new zealand",
+        "queenstown": "new zealand",
+        "wellington": "new zealand",
+        "rotorua": "new zealand",
+        "milford sound": "new zealand",
+        "seoul": "south korea",
+        "busan": "south korea",
+        "jeju": "south korea",
+        "gyeongju": "south korea",
+        "tokyo": "japan",
+        "kyoto": "japan",
+        "osaka": "japan",
+        "hiroshima": "japan",
+        "okinawa": "japan",
+        "hokkaido": "japan",
+        "nara": "japan",
+        "lima": "peru",
+        "cusco": "peru",
+        "machu picchu": "peru",
+        "arequipa": "peru",
+        "bogota": "colombia",
+        "medellin": "colombia",
+        "cartagena": "colombia",
+        "quito": "ecuador",
+        "galapagos": "ecuador",
+        "banos": "ecuador",
+        "cuenca": "ecuador",
+        "la paz": "bolivia",
+        "uyuni": "bolivia",
+        "sucre": "bolivia",
+        "santiago": "chile",
+        "atacama": "chile",
+        "patagonia": "chile",
+        "torres del paine": "chile",
+        "buenos aires": "argentina",
+        "mendoza": "argentina",
+        "bariloche": "argentina",
+        "el calafate": "argentina",
+        "ushuaia": "argentina",
+        "rio de janeiro": "brazil",
+        "rio": "brazil",
+        "salvador": "brazil",
+        "sao paulo": "brazil",
+        "florianopolis": "brazil",
+        "iguazu": "brazil",
     }
 
     found: list[str] = []
@@ -435,6 +489,39 @@ def format_passages(hits: list[dict[str, Any]]) -> str:
         header += ")"
         lines.append(f"{header}\n{hit['text']}")
     return "\n\n".join(lines)
+
+
+def wipe() -> dict[str, Any]:
+    """Delete every vector in every namespace, on whichever backend is active.
+
+    Used before a full reingest so stale documents - most importantly
+    live-sourced ones cached under ``metadata.origin == "live"``, which never
+    expire on their own - cannot linger alongside a freshly corrected curated
+    corpus. A live-sourced document that turns out to have been synthesised
+    from an overly-blunt read of its source passage (see
+    notes/03-rag-and-retrieval.md) has no other removal path today: it is
+    cached forever by ``live_lookup.get_or_fetch`` the first time it is
+    fetched. Wiping and reingesting is the supported way to clear it, since
+    it will simply be re-fetched (now with the corrected prompt) next time
+    it's asked about.
+    """
+    if settings.pinecone_enabled:
+        index = _pinecone_index()
+        cleared: dict[str, str] = {}
+        for namespace in NAMESPACES:
+            try:
+                index.delete(delete_all=True, namespace=namespace)
+                cleared[namespace] = "cleared"
+            except Exception as exc:  # noqa: BLE001 - an empty namespace 404s in some client versions
+                cleared[namespace] = f"skipped ({exc})"
+        return {"backend": "pinecone", "namespaces": cleared}
+
+    settings.ensure_dirs()
+    settings.local_rag_path.write_text(
+        json.dumps({"backend": "local-json", "embedding": None, "documents": []}),
+        encoding="utf-8",
+    )
+    return {"backend": "local-json", "path": str(settings.local_rag_path)}
 
 
 def index_stats() -> dict[str, Any]:

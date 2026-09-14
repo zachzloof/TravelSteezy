@@ -114,11 +114,21 @@ MONTH: {month}
 SEASONAL DESCRIPTION:
 {passage}
 
-Reply with EXACTLY one word and nothing else - good, mixed, avoid, or unknown. "avoid" means a
-genuinely bad time (monsoon, typhoon peak, extreme heat, a major seasonal closure). "mixed" means
-a real but manageable downside. "good" means no significant seasonal problem for backpacking. If
-the description does not actually mention {month} or its season clearly enough to judge, reply
-with exactly: unknown"""
+Reply with EXACTLY one word and nothing else - good, mixed, avoid, or unknown.
+
+"avoid" requires the description to place {month} SPECIFICALLY inside the worst/peak part of a
+hazard window (peak monsoon rain, peak typhoon risk, a named closure, extreme heat) - not merely
+somewhere inside a broad multi-month season that is named without {month} being singled out as
+bad. A season loosely spanning several months (e.g. "typhoon season is June to September") is NOT
+by itself grounds for "avoid" on every month in that range if the description does not say {month}
+itself is a bad or peak part of it - many destinations have long nominal hazard windows where most
+individual months are still genuinely fine. "mixed" means a real but manageable downside, or a
+month at the shoulder/edge of a hazard window. "good" means no significant seasonal problem. If the
+description does not actually mention {month} or its season clearly enough to judge, reply with
+exactly: unknown
+
+Err toward "mixed" over "avoid" when the description is ambiguous about whether {month}
+specifically, rather than the season in general, is the problem."""
 
 
 def is_configured() -> bool:
@@ -356,7 +366,9 @@ def classify_season(destination: str, month: str) -> str | None:
     hits = get_or_fetch(
         destination,
         "seasonal",
-        f"seasonal weather, monsoon or hazard season timing for {destination} for travellers",
+        f"month-by-month seasonal weather for {destination} for travellers - which specific "
+        f"months are the best time to visit, which are mixed/shoulder, and which specific "
+        f"months are the actual monsoon, typhoon or hazard peak, not just the overall season name",
         top_k=1,
     )
     if not hits:

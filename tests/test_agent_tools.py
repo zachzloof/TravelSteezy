@@ -169,9 +169,13 @@ def test_curated_seasonal_rating_never_calls_classify_season(monkeypatch):
 def test_uncurated_destination_falls_back_to_classify_season(monkeypatch):
     """Regression test for the exact bug reported live: check_seasonal_conditions
     used to have NO live fallback at all, so a wishlist country outside the
-    curated table (e.g. South Korea) was reported as "unknown, no verified
-    seasonal data" even on a turn where search_seasonal_notes - a different
-    tool, already live-aware - found real seasonal data for the same country."""
+    curated table (originally reproduced with South Korea) was reported as
+    "unknown, no verified seasonal data" even on a turn where search_seasonal_notes
+    - a different tool, already live-aware - found real seasonal data for the same
+    country. South Korea was subsequently added to CLIMATE_TABLE as part of the
+    2026-09 corpus expansion (see notes/03-rag-and-retrieval.md), so this test now
+    uses Morocco - still genuinely uncurated - to keep exercising the fallback path
+    itself rather than accidentally passing because the destination got curated."""
     calls = []
 
     def _fake_classify_season(destination, month):
@@ -180,9 +184,9 @@ def test_uncurated_destination_falls_back_to_classify_season(monkeypatch):
 
     monkeypatch.setattr(tools.live_lookup, "classify_season", _fake_classify_season)
 
-    result = tools.check_seasonal_conditions("south korea", "September")
+    result = tools.check_seasonal_conditions("morocco", "September")
 
-    assert calls == [("south korea", "September")]
+    assert calls == [("morocco", "September")]
     assert result["known"] is True
     assert result["rating"] == "mixed"
     assert result["is_bad_season"] is False

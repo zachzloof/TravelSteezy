@@ -456,3 +456,57 @@ tourism, and others) were each checked against the existing corpus before
 writing to avoid restating a fact already covered under a different heading —
 matching the user's explicit ask to grow the corpus "without too much
 duplicate information."
+
+## 41. Live-lookup month-classification was too blunt, and it was a code bug, not a one-off bad fact
+
+Caught live, 2026-09-14: a wishlist candidate ranking asked "is September good
+for South Korea" and got told "avoid" (bad/typhoon season), when real sources
+say September is genuinely one of the best months there — the jangma monsoon
+is a narrow ~4-week window in late June/July, and typhoon *landfall* risk
+clusters late August to mid-September, not the whole month. Root cause:
+`live_lookup.classify_season` fetched ONE generic annual seasonal passage per
+destination (cached forever) and asked an LLM to rate a specific month
+against it; the classify prompt treated any mention of a broadly-named hazard
+season as grounds for "avoid" on every month inside it, with no requirement
+that the month be singled out as the bad part specifically. Fixed at the root
+in two places, not patched for Korea alone: (1) the search query that
+produces the cached passage now explicitly asks for month-by-month
+breakdown rather than an annual summary, so the passage itself carries the
+granularity the classify step needs; (2) `_SEASON_CLASSIFY_PROMPT` now
+requires the month be specifically placed inside the worst/peak part of a
+hazard window, not merely somewhere inside a broadly-named season, and is
+told to prefer "mixed" over "avoid" when ambiguous. The stale South Korea
+document already cached from the old prompt was cleared by the full
+`store.wipe()` + reingest below rather than patched in place, since a
+targeted delete-by-id function didn't exist and a full rebuild was already
+warranted (see #42).
+
+## 42. Full fact-check of the original 13-country corpus, plus an 11-country expansion, in one pass
+
+Prompted directly by #41: if one live-sourced fact was wrong and confidently
+served, "how confident are we in the *curated* corpus" was a fair question,
+since `seed_data.py`'s own header already admitted the figures were
+"indicative... compiled as course seed data," never systematically checked.
+Ran an LLM-assisted fact-check (real web search per claim, not
+training-memory recall) across all 53 original visa/seasonal/tips documents
+plus the `CLIMATE_TABLE`. Highest-consequence finding: Thailand's visa
+exemption dropped from 60 to 30 days by a Royal Gazette rule effective 15
+September 2026 — the day after this fact-check ran — with land-border entries
+under the exemption newly capped at two per calendar year; every mention of
+the old 60-day figure (the visa doc, the SE Asia visa-run comparison doc) was
+corrected. Also corrected: Sapa/Ha Giang rice-terrace green/gold timing (was
+claiming terraces were simultaneously green and golden in "late September"),
+several stale prices (the Ha Giang loop easy-rider cost had roughly doubled;
+the new mandatory Ha Giang Border Area Entry Permit, introduced June 2026,
+was entirely missing), and two Thailand burning-season month notes that had
+the March/April peak backwards. Separately, added full visa/seasonal/tips
+triads plus route documents for 11 new countries — Peru, Colombia, Ecuador,
+Bolivia, Chile, Argentina, Brazil, South Korea, Japan, Australia, New Zealand
+— chosen as "most of South America" plus the three countries named directly,
+deliberately excluding Mexico/Central America and Europe from this round to
+keep it high-quality rather than wide (recorded as open gaps in the new
+coverage tracker, note 10). Corpus grew 13 → 24 countries, 53 → 88 curated
+documents, 60 → 84 route documents. A new `notes/10-corpus-coverage.md`
+tracks per-country depth (1-5 stars) and what's still missing, specifically
+so "how good is our data for X" has a maintained answer instead of requiring
+a fresh audit each time someone asks.

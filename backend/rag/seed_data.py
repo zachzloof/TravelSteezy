@@ -50,16 +50,19 @@ VISA_DOCS = [
         "visa-thailand-western",
         """
         Thailand visa exemption: holders of UK, US, Australian, Canadian, Irish and New
-        Zealand passports enter visa-free for 60 days on arrival by air or land, extendable
+        Zealand passports enter visa-free for 30 days on arrival by air or land - cut down
+        from the old 60-day allowance by a rule change effective 15 September 2026 - extendable
         once at an immigration office inside Thailand for a further 30 days (fee around
-        1,900 THB). Land border crossings used to be limited to shorter stays, so confirm
-        the current land-entry allowance before doing a border run. Proof of onward travel
-        within the permitted window is occasionally requested at check-in by budget airlines
-        even when immigration does not ask. Overstaying carries a 500 THB per day fine,
-        payable at the airport, and overstays beyond 90 days trigger re-entry bans.
-        Backpacker note: the standard "visa run" to Vientiane, Penang or Phnom Penh is a
-        routine part of long stays, but consecutive back-to-back land entries attract
-        scrutiny from immigration officers.
+        1,900 THB), a 60-day ceiling per entry. Land border entries under this exemption are
+        now capped at two per calendar year (air arrivals are not subject to this cap), so the
+        old habit of unlimited back-to-back land "visa runs" no longer works - it's a hard rule,
+        not just something that draws officer scrutiny. Proof of onward travel within the
+        permitted window is occasionally requested at check-in by budget airlines even when
+        immigration does not ask. Overstaying carries a 500 THB per day fine (capped at 20,000
+        THB), payable at the airport, and overstays beyond 90 days trigger re-entry bans of a
+        year or more. Backpacker note: a land visa run to Vientiane, Penang or Phnom Penh still
+        works within the new two-per-year cap, but long-stay travellers now need to plan around
+        that limit rather than assuming unlimited resets.
         """,
         "visa",
         "thailand",
@@ -89,13 +92,20 @@ VISA_DOCS = [
         """
         Cambodia e-visa and visa on arrival: all Western passports (UK, US, Australia,
         Canada, Ireland, New Zealand) get a 30-day tourist visa (type T) on arrival at
-        Phnom Penh and Siem Reap airports and at major land borders, costing USD 30 plus a
-        passport photo. An e-visa is available online for about USD 36 and speeds up
-        airport arrival. Extendable once for 30 days inside the country. Land borders,
-        especially Poipet from Thailand, are notorious for officials requesting extra
-        "processing fees" of a few dollars, often demanded in Thai baht - paying in exact
-        USD and politely declining the extra usually works. Carry USD cash: land borders
-        frequently have no working card facilities.
+        Phnom Penh and Siem Reap airports, costing USD 30 plus a passport photo. An e-visa
+        is available online at evisa.gov.kh for USD 30 (cut from USD 36 in January 2025 -
+        third-party sites still quote the old, higher figure) and speeds up airport arrival.
+        Extendable once for 30 days inside the country. IMPORTANT: the entire
+        Thailand-Cambodia land border, including Poipet, has been closed since mid-2025 amid
+        an armed border conflict, with no reopening date as of late 2026 - fly between
+        Bangkok and Phnom Penh/Siem Reap instead (around 1-1.25h) rather than planning any
+        overland crossing from Thailand; check current status immediately before travel,
+        since this situation moves. VOA remains available at land borders with Vietnam
+        (Bavet) and Laos (Tropaeng Kreal). If the Thai border does reopen: officials at
+        Poipet have long been notorious for requesting extra "processing fees" of a few
+        dollars, often demanded in Thai baht - paying the exact USD 30 and politely
+        declining the extra usually works. Carry USD cash: land borders frequently have no
+        working card facilities.
         """,
         "visa",
         "cambodia",
@@ -121,9 +131,12 @@ VISA_DOCS = [
         """
         Indonesia visa on arrival (B1): UK, US, Australian, Canadian, Irish and New Zealand
         passport holders buy a 30-day visa on arrival for IDR 500,000 (about USD 35),
-        extendable once for another 30 days either online through the e-VOA portal or in
-        person at an immigration office - the in-person extension takes three visits over
-        about a week, which matters if you are on a tight schedule. An e-VOA bought before
+        extendable once for another 30 days - you can start the application online through
+        the e-VOA portal, but since a June 2025 rule change every extension, with no
+        exceptions, requires an in-person visit to an immigration office for mandatory
+        biometrics (fingerprints and photo); without an agent handling it, budget about
+        three visits (apply, biometrics, collection) over roughly a week, which matters if
+        you are on a tight schedule. An e-VOA bought before
         flying speeds up arrival at Bali's Ngurah Rai airport, where the on-arrival queue
         can run over an hour at peak times. Passport needs 6 months validity and proof of
         onward travel is checked reasonably often at Bali immigration.
@@ -168,11 +181,17 @@ VISA_DOCS = [
         Nepal visa on arrival at Kathmandu Tribhuvan airport and land borders for all
         Western passports: USD 30 for 15 days, USD 50 for 30 days, USD 125 for 90 days,
         payable in cash (USD preferred, most major currencies accepted). Fill the online
-        pre-arrival form to skip a queue. Separately, trekking requires permits: a TIMS card
-        plus a conservation area permit (ACAP for Annapurna, Sagarmatha permit for Everest
-        region), bought in Kathmandu or Pokhara - budget roughly USD 50-70 in permits for a
-        standard Annapurna trek, and note that solo trekking rules in some regions now
-        require a licensed guide.
+        pre-arrival form to skip a queue. Separately, trekking requires a conservation
+        area/national park permit everywhere (ACAP for Annapurna, a Sagarmatha National Park
+        permit plus a Khumbu Rural Municipality permit for Everest), plus a TIMS card - still
+        required for Annapurna, Langtang and Manaslu, but no longer required in the
+        Everest/Khumbu region, where the local municipality permit replaces it. Budget roughly
+        USD 40-45 in permits (TIMS + ACAP) for a standard Annapurna trek, bought together in
+        Kathmandu or Pokhara. Since March 2023, Nepal officially requires a licensed guide
+        (booked through a registered trekking agency) for permit issuance in nearly every
+        major trekking region - Annapurna, Everest, Langtang, Manaslu and more, not just
+        isolated areas - though enforcement is inconsistent in practice, especially around
+        Everest; budget for a guide as the default expectation, not an edge case.
         """,
         "visa",
         "nepal",
@@ -182,12 +201,18 @@ VISA_DOCS = [
     _doc(
         "visa-srilanka-western",
         """
-        Sri Lanka ETA (Electronic Travel Authorisation): required in advance for UK, US,
-        Australian, Canadian, Irish and New Zealand passport holders, applied for online,
-        typically around USD 50 for a 30-day double-entry tourist ETA, approved within a day
-        or two. Extendable to 90 days at the immigration department in Colombo. Apply only
-        through the official eta.gov.lk site - the search results are full of agent sites
-        charging double. Passport must have 6 months validity.
+        Sri Lanka ETA (Electronic Travel Authorisation): mandatory in advance for all Western
+        passport holders - visa-on-arrival was discontinued 15 October 2025, so applying
+        online before flying is now the only route in. As of 25 May 2026, the ETA is FREE for
+        a 30-day double-entry stay for UK, US, Australian, Canadian and New Zealand passport
+        holders (one of 40 nationalities granted a fee waiver); Irish passport holders are
+        notably NOT on that free list and still pay the standard USD 50 fee - check per
+        passport rather than assuming "Western = free". Approved within a day or two.
+        Extending beyond 30 days in Colombo is not a simple flat jump to 90 days - it's a
+        staged, paid, per-30-day-block process (confirm current fees directly on
+        immigration.gov.lk, since this has changed multiple times recently). Apply only
+        through the official eta.gov.lk site - agent sites still charge USD 50-80 even where
+        the official fee is now zero. Passport must have 6 months validity.
         """,
         "visa",
         "sri lanka",
@@ -200,16 +225,26 @@ VISA_DOCS = [
         """
         India e-Visa: UK, US, Australian, Canadian, Irish and New Zealand passport
         holders apply online for an e-Tourist Visa before travel - there is no visa
-        on arrival for these nationalities. Options are 30 days (double entry, around
-        USD 25-40), 1 year (multiple entry, around USD 40-80) or 5 years (multiple
-        entry, around USD 80-120), with the 1-year and 5-year versions capping any
-        single stay at 90 days (180 for US, UK and Japanese citizens) regardless of
-        the visa's overall validity. Apply only at the official indianvisaonline.gov.in
-        - third-party sites charge large markups. Processing is officially "within
-        72 hours" but budget 4-5 working days in practice, and note a fixed number of
-        designated entry airports/ports apply to e-Visa holders. Passport needs 6
-        months validity and two blank pages. Registration (FRRO) is generally not
-        required for stays under 180 days on a tourist e-Visa.
+        on arrival for these nationalities. Options are 30 days (multiple entry - changed
+        from double entry on 12 June 2026 - USD 25 July-March or a discounted USD 10
+        April-June low season), 1 year (multiple entry, a flat USD 40) or 5 years (multiple
+        entry, USD 200 standard rate as of mid-2026, a sharp rise from a former USD 80 - some
+        nationalities pay more under reciprocal pricing, notably UK passport holders at
+        USD 484; confirm your specific nationality's current rate on the official portal
+        before applying), with the 1-year and 5-year versions capping any single stay at
+        90 days (180 for US, UK, Canadian and Japanese citizens) regardless of the visa's
+        overall validity. Apply only at the official indianvisaonline.gov.in - third-party
+        sites charge large markups. Processing is officially "within 72 hours" but budget
+        8-10 working days in practice (real-world processing has slowed well past the old
+        4-5 day estimate), and note a fixed number of designated entry airports/ports apply
+        to e-Visa holders. Since 1 April 2026, every foreign national must also submit a
+        digital e-Arrival Card within 72 hours before arrival via indianvisaonline.gov.in or
+        the Su-Swagatam app - the old paper disembarkation form no longer exists, and turning
+        up without having done this causes problems at immigration. Passport needs 6 months
+        validity and two blank pages. Registration (FRRO) is generally not required for stays
+        under 180 days on a tourist e-Visa; a June 2026 rule tightened the FRRO deadline for
+        anyone staying beyond 180 days (register before day 180, no more grace period), which
+        does not affect an ordinary tourist trip.
         """,
         "visa",
         "india",
@@ -221,14 +256,18 @@ VISA_DOCS = [
         "visa-mongolia-western",
         """
         Mongolia visa-free entry: UK, US, and most EU passport holders can enter
-        visa-free for tourism - UK citizens get 30 days, but the popular allowance
-        varies by nationality and by exactly which bilateral agreement is current, so
-        confirm your specific nationality's allowance before flying since these
-        agreements are renewed and occasionally lapse. Canadian, Australian and New
-        Zealand passport holders have historically needed to apply for a visa in
-        advance through a Mongolian embassy or consulate (around USD 50-80, several
-        working days), so do not assume visa-free purely from being "Western" -
-        check per passport. Extensions beyond the visa-free window are handled at the
+        visa-free for tourism - UK citizens get 30 days under Mongolia's temporary
+        34-country tourism exemption (currently extended through 1 January 2027), while
+        US citizens get 90 days under a separate, older, permanent bilateral agreement in
+        force since 2001. Canadian passport holders are ALSO visa-free for 30 days, under
+        a permanent bilateral arrangement in place since 2014 - no advance visa needed.
+        Australian and New Zealand passport holders are currently visa-free for 30 days
+        too, but under the same temporary 34-country exemption as the UK (through 1
+        January 2027) rather than a permanent one - worth a quick check before flying
+        since this is the allowance most likely to lapse or change, unlike Canada's or
+        the US's. Confirm your specific nationality's current allowance before flying
+        regardless, since these agreements are renewed and occasionally lapse. Extensions
+        beyond the visa-free window are handled at the
         Immigration Agency office in Ulaanbaatar. Land border crossings from Russia
         and China exist but have limited operating hours and are far less
         straightforward than flying into Ulaanbaatar's Chinggis Khaan airport.
@@ -242,24 +281,324 @@ VISA_DOCS = [
         "visa-myanmar-western",
         """
         Myanmar e-Visa: UK, US, Australian, Canadian, Irish and New Zealand passport
-        holders can apply online for a tourist e-Visa (around USD 50, 28 days,
-        single entry, processing a few working days), entering through Yangon,
-        Mandalay or Naypyidaw international airports. IMPORTANT SAFETY CONTEXT, not
-        just a bureaucratic note: Myanmar has been in a state of civil war and
-        military rule since the February 2021 coup, and most Western governments
-        (UK FCDO, US State Department, Australian DFAT) advise against all but
-        essential travel to large parts of the country outside the main tourist
-        circuit (Yangon, Bagan, Mandalay, Inle Lake), citing armed conflict, arbitrary
-        detention risk, and patchy insurance coverage in conflict-affected states and
-        regions. Internal flights and overland routes between the main tourist towns
-        can be curtailed at short notice depending on the security situation. Check
-        current government travel advisories immediately before booking, not months
-        in advance - this situation moves fast and this document cannot track it.
+        holders can apply online for a tourist e-Visa at the official evisa.moip.gov.mm
+        portal (USD 50, 28 days, single entry, standard processing 3-5 working days),
+        entering through Yangon, Mandalay or Naypyidaw international airports, or the
+        Kawthaung land border from Thailand. The e-Visa system was suspended from
+        3 April to 20 May 2025 after the devastating 28 March 2025 magnitude-7.7
+        earthquake damaged infrastructure - a concrete example of why this situation
+        needs checking immediately before booking, not assumed stable from any static
+        document, this one included.
+
+        IMPORTANT SAFETY CONTEXT, not just a bureaucratic note: Myanmar has been in a
+        state of civil war and military rule since the February 2021 coup, and the
+        situation has continued to deteriorate rather than stabilise - a military-run
+        election in December 2025/January 2026, widely condemned as a sham, was
+        accompanied by a spike in attacks (over 400 military air strikes killing at
+        least 170 civilians during the election period alone), and the March 2025
+        earthquake caused serious damage in Mandalay (the palace) and Bagan (multiple
+        centuries-old temples) on top of the conflict. The US State Department (Level 4,
+        Do Not Travel - the highest tier) and Australian DFAT (Do Not Travel) both advise
+        against ALL travel to the ENTIRE country, including Yangon - not just to conflict
+        regions or areas "outside" a tourist circuit. The UK FCDO takes a two-tier
+        approach: it advises against all travel to specific conflict states/regions
+        (Rakhine, Kachin, Chin, Kayah, Kayin, Mon, Sagaing, Magway, northern Shan State,
+        and parts of Tanintharyi and Bago), and against all but essential travel to the
+        REST of the country - which still includes Yangon, Bagan, Mandalay and Inle Lake,
+        not a cleared or exempted zone. Internal flights and overland routes between the
+        main tourist towns can be curtailed at short notice depending on the security
+        situation, and domestic flight capacity has shrunk substantially since 2021.
+        Check current government travel advisories immediately before booking, not months
+        in advance - this situation moves fast, has gotten worse rather than better since
+        2021, and this document cannot track it in real time.
         """,
         "visa",
         "myanmar",
         nationalities=WESTERN_PASSPORTS,
         lead_time_days=4,
+    ),
+    _doc(
+        "visa-australia-western",
+        """
+        Australia requires almost every Western nationality to sort paperwork before arrival -
+        there is no visa-free entry the way there often is in Southeast Asia. UK, Irish and most
+        EU passport holders use the free eVisitor (subclass 651), applied for online, valid 12
+        months with unlimited entries and up to 3 months per visit - no service fee. US and other
+        non-eVisitor-eligible Western passports use the ETA (subclass 601) instead: apply through
+        the official Australian ETA phone app only, AUD 20 service fee, decision usually within
+        minutes to 24 hours, also 12 months multiple-entry with a 3-month-per-visit cap. New
+        Zealand citizens are the outlier: under the 1973 Trans-Tasman Travel Arrangement they need
+        no visa at all and are simply granted a Special Category Visa (subclass 444) on arrival,
+        letting them live and work indefinitely. Watch for lookalike paid "ETA visa service"
+        websites charging a large markup over the AUD 20 app fee - only the AustralianETA app and
+        immi.homeaffairs.gov.au are official.
+
+        Working holiday: Subclass 417 (UK, Ireland, Canada and roughly 16 other mostly
+        European/East Asian passports) and Subclass 462 (US and around 30 other countries, with
+        extra requirements like proof of funds or education) both grant 12 months of unrestricted
+        work and travel, extendable to a second and third year by completing specified regional
+        work. Age limit is 18-30 for most nationalities, 18-35 for UK, Irish, Canadian, French,
+        Italian and Danish passport holders. The application charge rose to AUD 840 for a first
+        application (AUD 1,000 for a second or third) from 1 July 2026 - budget for this on top of
+        flights, since it's the single biggest fixed cost of the whole working-holiday plan.
+        """,
+        "visa",
+        "australia",
+        region="oceania",
+        nationalities=WESTERN_PASSPORTS,
+    ),
+    _doc(
+        "visa-newzealand-western",
+        """
+        New Zealand requires visa-waiver nationalities - UK, US, Canadian and Irish passport
+        holders among them - to hold an NZeTA (Electronic Travel Authority) before boarding, plus
+        pay the International Visitor Levy (IVL). Apply via the official NZeTA mobile app (NZD 17)
+        or the immigration.govt.nz website (NZD 23); the IVL, which jumped from NZD 35 to NZD 100
+        on 1 October 2024, is charged in the same transaction, for a combined cost of roughly
+        NZD 117 (app) to NZD 123 (web). It's valid 2 years multiple-entry once granted and must be
+        arranged before departure, not on arrival - there is no visa-on-arrival option. Everyone,
+        including exempt nationalities, must also complete the New Zealand Traveller Declaration
+        (NZTD) shortly before travel. Australian citizens are the exception: under the Trans-Tasman
+        Travel Arrangement they need no NZeTA, no IVL and no advance visa at all, and are simply
+        issued a resident visa on arrival.
+
+        Working holiday: New Zealand runs a separate bilateral scheme per passport rather than one
+        uniform visa. The standard terms - 18-30, 12 months, NZD 770 - apply to US and most
+        nationalities, but UK citizens can be granted up to 36 months from first entry without
+        needing to extend, and Canadians up to 23 months; several countries (UK, Canada plus a
+        handful of others) also raise the age ceiling to 35. Applicants must show roughly NZD 4,200
+        in available funds (less with a booked return ticket) and, for capped countries, apply
+        promptly once the annual quota opens - the US scheme currently has no cap, so there's no
+        rush there specifically.
+        """,
+        "visa",
+        "new zealand",
+        region="oceania",
+        nationalities=WESTERN_PASSPORTS,
+    ),
+    _doc(
+        "visa-southkorea-western",
+        """
+        South Korea visa-free entry: UK, US, Australian, Irish and New Zealand passport
+        holders get 90 days visa-free for tourism; Canadians get an unusually generous 180
+        days under a separate bilateral agreement, both multiple-entry. The K-ETA (Korea
+        Electronic Travel Authorization) is normally a mandatory pre-arrival online
+        authorization (10,000 KRW, about USD 9, apply only at k-eta.go.kr, valid 3 years),
+        but it is currently suspended for a list of 22 countries - including the UK, US,
+        Australia, Canada and New Zealand - through 31 December 2026, so those nationalities
+        need nothing beyond a passport right now. Ireland is NOT on that 22-country
+        suspension list even though Irish citizens are otherwise visa-exempt, so Irish
+        passport holders currently still need to apply for and pay for a K-ETA before flying
+        - check per-passport rather than assuming "Western = exempt". K-ETA is due to become
+        mandatory again for everyone from 1 January 2027. Separately, every arriving
+        traveller regardless of K-ETA status must complete the free e-Arrival Card online
+        within 3 days of arrival. Passport validity is unusually relaxed: Korea only requires
+        it to cover the length of your stay, not the usual 6-month buffer (K-ETA applications
+        do ask for 6 months). Land/sea entry barely applies here - nearly everyone flies into
+        Incheon or Gimhae (Busan); the one real option is the Camellia Line ferry from Busan
+        to Fukuoka, Japan (6-11.5h, roughly USD 80-150), now the only ferry link since the
+        faster JR Beetle hydrofoil was discontinued in December 2024.
+        """,
+        "visa",
+        "south korea",
+        region="east asia",
+        nationalities=WESTERN_PASSPORTS,
+    ),
+    _doc(
+        "visa-japan-western",
+        """
+        Japan visa-free entry: UK, US, Australian, Canadian and New Zealand passport holders
+        get a 90-day visa-free stamp on arrival for tourism, no application needed
+        beforehand. UK and Irish passport holders specifically get a better deal: their
+        visa-exempt status can be extended in-country, before the initial 90 days expire, to
+        a total of 6 months, by applying at a Regional Immigration Bureau - worth knowing if
+        a long Japan stint is the plan. No electronic pre-authorization is required yet:
+        Japan's planned system, JESTA (modelled on the US ESTA), is not live - it's currently
+        targeted for fiscal year 2028 (by law no later than March 2029), with an expected fee
+        around JPY 2,000-3,000 (roughly USD 13-20) once it launches, but as of now (2026) it
+        does not apply to anyone. Every traveller must still complete the free Japan Arrival
+        Card (the disembarkation/customs forms) via the Visit Japan Web portal, ideally
+        before flying, to get a QR code for immigration. Passport validity: no fixed minimum
+        is legally required for the visa-exempt stamp itself, but the practical "6 months
+        from arrival" rule still matters because airlines routinely refuse boarding without
+        it. Land/sea entry is essentially moot - Japan is reached almost exclusively by air
+        (or the Camellia Line ferry from Busan, South Korea; see the South Korea route notes).
+        """,
+        "visa",
+        "japan",
+        region="east asia",
+        nationalities=WESTERN_PASSPORTS,
+    ),
+    _doc(
+        "visa-peru-western",
+        """
+        Peru visa exemption, with a real split by nationality that is easy to flatten
+        incorrectly. US passport holders get an unusually generous stay of up to 183
+        days, granted at immigration officer discretion. UK, Australian, Canadian,
+        Irish and New Zealand passport holders get up to 90 days, also at officer
+        discretion - ask for the full amount on arrival, since officers sometimes
+        default to a shorter stamp. Since August 2021, Peru generally does not allow
+        tourist-visa extensions for any of these nationalities: once your stamped
+        period ends you are expected to leave, not apply for more days in-country.
+        Overstaying is not a grey area - it is a fixed daily fine (0.1% of the UIT,
+        around S/5.50/day in 2026) payable online via Pagalo.pe or at a Banco de la
+        Nacion branch before you fly out; paying the fine is a penalty, not a
+        legalisation of extra days. Arrival/departure is recorded via the Tarjeta
+        Andina de Migracion (TAM), now completed digitally rather than on paper.
+        Passport needs 6 months validity remaining.
+        """,
+        "visa",
+        "peru",
+        region="south america",
+        nationalities=WESTERN_PASSPORTS,
+    ),
+    _doc(
+        "visa-colombia-western",
+        """
+        Colombia visa exemption: UK, US, Australian, Canadian, Irish and New
+        Zealand passport holders all enter visa-free for tourism, granted for up
+        to 90 days on arrival at officer discretion. This can be extended once,
+        for a further 90 days, at a Migracion Colombia office or online, for
+        around COP 110,000 - apply before the original stamp expires, not after.
+        The combined maximum is 180 days of tourist stay within any calendar year,
+        after which you must leave; there is no simple visa run to reset the
+        clock the way there sometimes is in Southeast Asia. Since 2024 Colombia
+        has rolled out "Check-Mig", an online pre-arrival/pre-departure
+        registration - as of mid-2026 Migracion Colombia's own guidance lists it
+        as not strictly mandatory, but most airlines still require proof it was
+        completed before they will let you board, so treat it as required in
+        practice. It is free and must be done 72 hours to 1 hour before each
+        flight, on the official Migracion Colombia portal only. Passport needs 6
+        months validity.
+        """,
+        "visa",
+        "colombia",
+        region="south america",
+        nationalities=WESTERN_PASSPORTS,
+    ),
+    _doc(
+        "visa-ecuador-western",
+        """
+        Ecuador visa exemption: UK, US, Australian, Canadian, Irish and New
+        Zealand passport holders all get a T-3 tourist stamp on arrival, no
+        application, no fee, no pre-approval. The allowance is 90 days within any
+        rolling 12-month period, not 90 days per entry - leaving and re-entering
+        does not reset the clock, which catches out long-stay travellers who try
+        a quick border-hop expecting a fresh 90 days. One additional 90-day
+        extension can be granted by the Direccion de Extranjeria, capping total
+        tourist time at 180 days within any rolling 12 months. Since 29 July 2025
+        all arrivals, including these visa-exempt nationalities, must also
+        complete a free online customs registration (the FRA form) before
+        travelling, which generates a QR code shown on arrival - a new
+        requirement worth flagging since it postdates most existing guides.
+        Passport needs 6 months validity remaining, and proof of onward travel is
+        sometimes requested at check-in.
+        """,
+        "visa",
+        "ecuador",
+        region="south america",
+        nationalities=WESTERN_PASSPORTS,
+    ),
+    _doc(
+        "visa-bolivia-western",
+        """
+        Bolivia visa: as of 1 December 2025, the United States was moved onto
+        Bolivia's visa-free list, ending nearly two decades of a USD 160
+        reciprocity fee for American passport holders - a genuinely recent
+        change worth double-checking against the embassy site before relying on
+        older guides that still describe the old fee. UK, Australian, Canadian,
+        Irish and New Zealand passport holders were already visa-free before this
+        change. All six nationalities now get the same deal: visa-free entry for
+        tourism, up to 90 days within a 12-month period. The one requirement that
+        now applies to everyone regardless of nationality is SIGEMIG, Bolivia's
+        mandatory digital pre-registration (migracion.gob.bo) - free, takes
+        8-10 minutes, opens 30 days before travel, and produces a QR code you
+        show at the border or airport; arriving without having done it can mean
+        delays or being asked to complete it on the spot with patchy border wifi.
+        Passport needs 6 months validity remaining. Land borders (from Peru at
+        Desaguadero/Copacabana, from Chile at San Pedro/Uyuni routes, from
+        Argentina at Villazon) are all functional for these nationalities but
+        slower and less streamlined than flying into La Paz.
+        """,
+        "visa",
+        "bolivia",
+        region="south america",
+        nationalities=WESTERN_PASSPORTS,
+    ),
+    _doc(
+        "visa-chile-western",
+        """
+        Chile visa exemption: UK, US, Canadian, Irish and New Zealand passport
+        holders have long entered visa-free for up to 90 days with no fee.
+        Australia was the outlier for years - Chile charged Australians a
+        reciprocity fee (around USD 117 at the end) until it was scrapped in
+        2019, and Australians still needed a visa in advance after that. That
+        changed again on 17 September 2025, when Chile unexpectedly dropped the
+        visa requirement for Australian citizens entirely: Australians now get
+        the same visa-free 90-day entry as the other five nationalities, with no
+        fee. As of 2026 there is no reciprocity fee currently active for any of
+        the six nationalities covered here - a genuine change from the
+        2000s-2010s pattern where several South American countries charged
+        Americans, Canadians and Australians fees mirroring their own visa costs,
+        so do not assume an old reciprocity-fee figure is still current. A
+        90-day extension is possible once via the extranjeria (immigration
+        office) for a fee, or by leaving and re-entering. Passport needs 6
+        months validity; a Chilean customs declaration form covering food/plant
+        items is taken seriously at the airport.
+        """,
+        "visa",
+        "chile",
+        region="south america",
+        nationalities=WESTERN_PASSPORTS,
+    ),
+    _doc(
+        "visa-argentina-western",
+        """
+        Argentina visa exemption: UK, US, Australian, Canadian, Irish and New
+        Zealand passport holders all enter visa-free for tourism for up to 90
+        days, extendable once for a further 90 days at the Direccion Nacional de
+        Migraciones in Buenos Aires or by leaving and re-entering. This is one
+        of the more genuinely simplified entries in South America for Western
+        passports: the once-notorious "reciprocity fee" (a one-off charge,
+        historically USD 100-160, mirroring what each country charged Argentine
+        visitors) has been suspended for all six nationalities for years now -
+        the US since August 2016, Australia since July 2017, Canada since
+        January 2018 - and remains suspended as of 2026. Do not confuse this
+        with the AVE (Autorizacion de Viaje Electronica): that online
+        authorisation exists for a small set of third-country nationals who hold
+        a valid US or Schengen visa, not for these six passports directly, which
+        need no pre-arrival authorisation of any kind. Passport needs 6 months
+        validity.
+        """,
+        "visa",
+        "argentina",
+        region="south america",
+        nationalities=WESTERN_PASSPORTS,
+    ),
+    _doc(
+        "visa-brazil-western",
+        """
+        Brazil is the one country in this region where the six "Western"
+        passports genuinely split three ways, so do not give one blanket answer.
+        US, Canadian and Australian passport holders currently need an e-Visa,
+        reinstated 10 April 2025 after Brazil had waived it unilaterally since
+        2019 - apply online in advance (around USD 80.90), valid 10 years for
+        US citizens and 5 years for Canadians/Australians, but each individual
+        stay is capped at 90 days and total time in Brazil at 180 days within
+        any 12-month period; this is a policy that has flip-flopped before and
+        could change again, so verify immediately before booking rather than
+        trusting any cached guide. UK and New Zealand passport holders remain
+        visa-free for up to 90 days, no application needed. Irish passport
+        holders got a brand-new visa-waiver effective 24 February 2026 (Ireland
+        was one of a small group of countries added, alongside China, France and
+        others): 30 days visa-free, extendable to 90 days within 12 months.
+        Passport needs 6 months validity and proof of onward/return travel for
+        all nationalities.
+        """,
+        "visa",
+        "brazil",
+        region="south america",
+        nationalities=WESTERN_PASSPORTS,
     ),
 ]
 
@@ -291,8 +630,9 @@ SEASONAL_DOCS = [
         """
         Vietnam is long enough that there is no single season for the whole country. The
         north (Hanoi, Sapa, Ha Giang) is cold and misty December to February - Sapa can drop
-        near freezing and the rice terraces are bare; the terraces are green in June to
-        September and golden in late September. Central Vietnam (Hue, Hoi An, Da Nang) has a
+        near freezing and the rice terraces are bare; the terraces are green from planting in
+        May/June through August, then turn golden with the harvest from early September
+        through mid-October. Central Vietnam (Hue, Hoi An, Da Nang) has a
         distinct typhoon and flood season from September to November, and Hoi An's old town
         genuinely floods most years. The south (Ho Chi Minh City, Mekong Delta) has a wet
         season May to November, usually short heavy afternoon downpours rather than all-day
@@ -404,7 +744,8 @@ SEASONAL_DOCS = [
         Sri Lanka has two monsoons hitting opposite coasts, so there is almost always
         somewhere good to be. The southwest monsoon (May to September) soaks the west and
         south coasts and the hill country, while the east coast (Arugam Bay, Trincomalee) is
-        at its best then - Arugam Bay's surf season is precisely May to September. The
+        at its best then - Arugam Bay's surf season runs April to October, with the best
+        waves June through August. The
         northeast monsoon (October to January) reverses it: the south and west coasts
         (Mirissa, Unawatuna, Galle) are good December to March while the east shuts down.
         The mistake to avoid is planning a single loop of the whole island in one trip and
@@ -460,9 +801,10 @@ SEASONAL_DOCS = [
         "seasonal-mongolia",
         """
         Mongolia has one short travel season and everything else is a hard closure. The
-        window is late May to early September, and even within it July and August are
-        the only months most Gobi Desert and steppe tour operators run full itineraries,
-        because the shoulder months bring cold nights and unpredictable early/late snow.
+        window is late May to early September, and even within it June through August are
+        the months most Gobi Desert and steppe tour operators run full itineraries,
+        while May and September are real shoulder months, with cold nights and a genuine
+        chance of early/late snow.
         Winters (November to March) are ferociously cold - Ulaanbaatar is one of the
         coldest capital cities on Earth, regularly below -20C, and most tourist
         infrastructure outside the capital simply closes. The Naadam festival (July)
@@ -494,6 +836,352 @@ SEASONAL_DOCS = [
         "myanmar",
         monsoon_months=[6, 7, 8, 9, 10],
     ),
+    _doc(
+        "seasonal-australia",
+        """
+        Australia is too big for one season to mean anything nationwide, and it genuinely runs two
+        opposite climate systems - see seasonal-australia-north for the tropical half. The
+        temperate south and east (Sydney, Melbourne, Adelaide, Perth, Tasmania) has four real
+        seasons on the reverse of the northern-hemisphere calendar: summer December-February (hot,
+        25-30C+ in Sydney/Melbourne, peak season and prices, Christmas/New Year the single busiest
+        and most expensive stretch), autumn March-May and spring September-November (the genuine
+        sweet spot - mild, fewer crowds, best value), and winter June-August (cool rather than cold
+        on the mainland coast - Sydney highs around 17C - but this is when the Victorian and NSW
+        alpine areas and Tasmania get properly cold). Tasmania runs cooler than the mainland
+        year-round and its best hiking window (the Overland Track booking season) runs October to
+        May, narrowing toward summer for the most reliable weather. Bushfire risk on the mainland
+        peaks in the hot, dry summer months, especially January-March in the southeast, and can
+        close national parks and trails at short notice - check state fire service (Rural Fire
+        Service/CFA) total fire ban alerts before a bush walk in summer.
+        """,
+        "seasonal",
+        "australia",
+        region="oceania",
+    ),
+    _doc(
+        "seasonal-australia-north",
+        """
+        Tropical northern Australia (Darwin and the Top End, Cairns and tropical North Queensland,
+        Broome) runs on a wet/dry cycle completely opposite to the southern states' four seasons,
+        and mixing the two up is a common planning mistake. Dry season, May to October, is the
+        prime time to visit: sunny, low humidity, comfortable heat, and the safe window for
+        swimming off Cairns beaches and camping in Kakadu. Wet season, November to April, brings
+        monsoonal downpours, high humidity, and a genuine tropical cyclone season that can disrupt
+        flights and roads with little notice - some Kakadu and Kimberley routes become impassable.
+        Wet season also brings marine stinger (box jellyfish and Irukandji) season to the tropical
+        coast: swimming outside stinger nets or a full-body stinger suit is genuinely dangerous
+        roughly November to May around Cairns, and October to June further north beyond Port
+        Douglas, where estuarine crocodiles are also a real, non-theoretical risk in rivers, creeks
+        and even some beaches - check local signage and don't swim or wade in the tropical north
+        outside patrolled, netted areas regardless of how inviting a creek looks. The Great Barrier
+        Reef itself is diveable year-round, but visibility and calm seas are best in the dry season.
+        """,
+        "seasonal",
+        "australia",
+        region="oceania",
+    ),
+    _doc(
+        "seasonal-newzealand",
+        """
+        New Zealand's seasons run opposite the northern hemisphere - December to February is
+        summer, June to August is winter - which regularly catches travellers out planning a
+        "European summer" itinerary for the wrong half of the year. Summer (Dec-Feb) is peak
+        season nationwide: warm (20-25C), long days, the Great Walks and general hiking season at
+        its best, and the busiest, priciest stretch, especially over the Christmas/New Year school
+        holidays. The Great Walks hut/booking season runs late October to April; outside that
+        window huts are unserviced (no warden, sometimes no gas) and conditions get genuinely
+        alpine at altitude, so hiking the Milford or Kepler Track in July is a different, much more
+        serious undertaking than in January. The South Island ski season, centred on Queenstown and
+        Wanaka, runs mid-June to early October, with July and August the reliable deep-snow months
+        - this is the one part of the country where winter is the peak season, not the off-season.
+        Spring (Sep-Nov) and autumn (Mar-Apr) are the shoulder sweet spots: fewer crowds, lower
+        prices, and, in autumn especially, Central Otago's stone-fruit and wine-country colour.
+        Weather changes fast and without warning at altitude and on the coast year-round - a fine
+        morning is not a promise about the afternoon on any NZ tramping track.
+        """,
+        "seasonal",
+        "new zealand",
+        region="oceania",
+    ),
+    _doc(
+        "seasonal-southkorea",
+        """
+        South Korea's seasons are sharply defined and the narrow "monsoon" label causes real
+        damage if applied to the wrong months. Jangma, the actual monsoon, is short: it
+        typically arrives in the south (Jeju first) around June 19-25 and finishes by roughly
+        July 20, dumping 30-50% of the year's rain in about a month; July is the wettest,
+        most humid month nationwide (near 80% humidity). Typhoon season runs July-September
+        but the real landfall risk clusters late August to mid-September, mainly hitting Jeju
+        and the southern/east coasts - it is not a reason to write off the whole autumn. By
+        contrast, September itself is one of the best months to visit: the monsoon is over,
+        the worst heat has broken, humidity drops, and any lingering typhoon risk is a
+        tail-end exception rather than the rule. October is the true peak: dry, mild, and
+        carrying the famous autumn foliage, which starts in the northern mountains
+        (Seoraksan) in mid-to-late October and reaches Seoul and the south by
+        early-to-mid November. Spring is similarly narrow: cherry blossoms move north from
+        Jeju (~mid-March) to Seoul (~early April), with the Jinhae festival the first week of
+        April, but March-May is also "yellow dust" season - fine Mongolian/Chinese desert
+        sand that peaks in April and can turn air quality genuinely bad for a few days at a
+        time. Winter (Dec-Feb) is cold and very dry with clear skies, Seoul averaging around
+        -6 to 2C in January - good for skiing, less good for wandering outdoors all day.
+        """,
+        "seasonal",
+        "south korea",
+        region="east asia",
+        monsoon_months=[6, 7],
+        hazard="typhoon",
+    ),
+    _doc(
+        "seasonal-japan",
+        """
+        Japan's seasons are dramatic and timing mistakes are common, especially around three
+        names that get treated as monoliths when they shouldn't be. Cherry blossom (sakura)
+        timing moves with latitude and altitude, not a fixed calendar date: it opens in
+        Okinawa as early as January, reaches Tokyo and Kyoto in full bloom around April 5-10
+        most years, and finishes in Hokkaido in early-to-mid May - check a live forecast
+        rather than booking a date months out, since a mild or cold spring shifts it by a
+        week or more. Tsuyu, the rainy season, is a genuine Honshu-wide event running roughly
+        early June to mid-July (Okinawa's own tsuyu is separate and earlier, mid-May to late
+        June) - persistent rain and high humidity, though rarely all-day downpours. Typhoon
+        season runs May-October but the real risk concentrates in August and September,
+        hitting Okinawa hardest (6-7 storms a year on average) and the main islands less
+        often. Late April-early May brings Golden Week (Apr 29-May 6 in 2026), when domestic
+        transport and hotels nationwide sell out and prices spike - avoid travelling ON those
+        dates even if the weather is perfect. August also brings Obon (around Aug 13-16), the
+        year's single busiest, most expensive domestic travel week, on top of the year's
+        worst heat and humidity. November is the autumn-foliage peak in Kyoto and Tokyo,
+        following Hokkaido's earlier colour in October. Winter (Dec-Feb) is cold and dry on
+        the Pacific side, but Hokkaido and the Japan Alps get serious snow and are prime ski
+        season December-March.
+        """,
+        "seasonal",
+        "japan",
+        region="east asia",
+        monsoon_months=[6, 7],
+        hazard="typhoon",
+    ),
+    _doc(
+        "seasonal-japan-okinawa",
+        """
+        Okinawa runs on a different climate from the rest of Japan and is worth treating
+        separately rather than folding into the mainland's seasonal calendar. It's genuinely
+        subtropical: winter (Dec-Feb) stays mild, around 15-20C, roughly 10C warmer than the
+        mainland at the same time, though the sea is too cool for casual swimming. Its rainy
+        season (tsuyu) starts about a month before Honshu's, typically mid-May to late June,
+        so a late-May Honshu itinerary can dodge rain that Okinawa is already having. The
+        beach season is long by Japanese standards, roughly April through October, with peak
+        swimming July-September. The trade-off for that long season is typhoon exposure:
+        Okinawa takes the brunt of Japan's typhoons, an average of 6-7 direct hits a year,
+        concentrated August-September, more frequent and more disruptive to inter-island
+        ferries and flights than anywhere on the mainland - check forecasts specifically
+        before island-hopping to the Yaeyama or Kerama chains in late summer.
+        """,
+        "seasonal",
+        "japan",
+        region="east asia",
+        monsoon_months=[5, 6],
+        hazard="typhoon",
+    ),
+    _doc(
+        "seasonal-peru-highlands",
+        """
+        The Andes (Cusco, the Sacred Valley, Machu Picchu, the Inca Trail) run on a
+        single clear dry/wet cycle that dominates most backpacker planning here. Dry
+        season is May to October, with June to September the coldest, clearest and
+        most crowded stretch - nights in Cusco regularly drop near freezing even
+        though days are warm and sunny. The wet season, November to April, peaks in
+        January and February: trails get muddy and landslide risk rises on mountain
+        roads, though Machu Picchu itself stays open year-round via train. The one
+        hard closure to know: the Inca Trail itself shuts completely for the whole
+        of February every year for government-mandated maintenance (bridge repair,
+        landslide clearing) - Machu Picchu is still reachable by train during the
+        closure, just not via the trek. March is a mixed reopening month with heavy
+        demand for the first permits back. April, and September-October, are the
+        shoulder-season sweet spots: drying or still-dry trails, green-tinged
+        landscapes, and noticeably thinner crowds than the June-August peak.
+        """,
+        "seasonal",
+        "peru",
+        region="south america",
+        monsoon_months=[11, 12, 1, 2, 3],
+    ),
+    _doc(
+        "seasonal-peru-coast-amazon",
+        """
+        Lima and the desert coast run on the opposite logic to the Andes: this is a
+        true coastal desert, so there is fog (garua) rather than rain. May to
+        October is Lima's grey, cool, overcast "winter" - overcast skies most days,
+        rarely above 20C, and the sun barely appears in the city itself even though
+        it is technically the Andes' dry season. December to March is Lima's warm,
+        sunny summer, the best window for the coastal towns and for Huacachina's
+        sandboarding. The Peruvian Amazon (Puerto Maldonado, Iquitos) has its own
+        cycle again: a drier, easier-trail season May to September/October with
+        better wildlife visibility along shrinking riverbanks, and a wetter
+        November-to-March season when rivers rise and canoe access into flooded
+        forest (igapo-style routes) actually improves even as trail-walking gets
+        harder. The practical upshot: a single Peru itinerary crossing coast,
+        highlands and jungle will hit three different weather logics at once, and
+        "best time to visit Peru" genuinely depends on which of the three you
+        prioritise.
+        """,
+        "seasonal",
+        "peru",
+        region="south america",
+        monsoon_months=[12, 1, 2, 3],
+    ),
+    _doc(
+        "seasonal-colombia",
+        """
+        Colombia has two dry and two wet seasons nationwide rather than a single
+        monsoon, and the pattern shifts by region on top of that. The two reliable
+        dry windows are December to March and July to August; the wetter stretches
+        are April to May and October to November, with October typically the
+        single wettest month countrywide. The Caribbean coast (Cartagena, Santa
+        Marta, Tayrona) is at its best and driest December to March, and gets
+        genuinely wet and quieter October-November. The Andean cities (Bogota,
+        Medellin) see a bimodal pattern with rain spread more evenly across the
+        year and cooler temperatures driven by altitude rather than season - pack
+        a layer for Bogota regardless of month. The Amazon (Leticia) is wet nearly
+        year-round, and counter-intuitively the higher-water rainy months are
+        often better for wildlife-boat access than the drier months. The Pacific
+        coast (Nuqui, Bahia Solano) has its own draw July to October: humpback
+        whale migration season, when the coast is at its wettest but also its most
+        worthwhile for that specific reason.
+        """,
+        "seasonal",
+        "colombia",
+        region="south america",
+        monsoon_months=[4, 5, 10, 11],
+    ),
+    _doc(
+        "seasonal-ecuador",
+        """
+        Ecuador is small but genuinely splits into four different climates that
+        do not share a calendar. The Andean highlands (Quito, Banos, Cuenca,
+        Cotopaxi) have their dry, clear season June to September - the best
+        hiking and volcano-viewing window - with a wetter, cloudier stretch
+        October to May, though "wet" here usually means overcast afternoons
+        rather than washed-out days. The Pacific coast (Montanita, Guayaquil)
+        runs the opposite way: December to May is warm, wet-but-sunny beach
+        season with the warmest sea, while June to November is cooler, greyer and
+        less appealing for swimming despite technically being the "dry" season by
+        highland logic. The Amazon (the Oriente, reached from Quito or Coca) is
+        driest and best for wildlife spotting June to October, wetter but still
+        very travellable the rest of the year. The Galapagos run on their own
+        cycle again: a cooler, dry garua season June to November with rougher
+        seas but calmer surface wildlife-viewing conditions, and a warmer, wetter,
+        calmer-seas season December to May that many divers actually prefer for
+        visibility. Trying to time one trip for all four regions at once is not
+        really possible - decide which region is the priority first.
+        """,
+        "seasonal",
+        "ecuador",
+        region="south america",
+        monsoon_months=[],
+    ),
+    _doc(
+        "seasonal-bolivia",
+        """
+        Bolivia's Altiplano (La Paz, Uyuni, the Andean highlands) is a genuine
+        high-altitude desert, and its two seasons produce completely different
+        versions of the same headline attraction. Dry season, May to October,
+        gives full physical access across the Uyuni salt flats, the vivid white
+        hexagonal crust patterns, and the clearest stargazing conditions anywhere
+        on the continent - but no mirror effect. Wet season, roughly December to
+        March (peaking January-February), floods a thin layer of water over parts
+        of the salt flat, creating the famous sky-mirror reflection that fills
+        Instagram feeds - at the cost of some areas, including Incahuasi Island,
+        becoming inaccessible, and rural roads elsewhere in the country turning
+        difficult. Late April is often cited as the single best compromise week:
+        a lingering thin water layer for photography alongside mostly-dry, still
+        accessible terrain. Nights on the Altiplano are cold year-round because of
+        the altitude (La Paz sits around 3,600-4,100m) - expect near-freezing
+        nights even in the dry season, worse in June-July. Lowland Bolivia (the
+        Amazon-fringe Yungas around Rurrenabaque) runs on the opposite, wetter-in-
+        summer logic typical of the Amazon basin.
+        """,
+        "seasonal",
+        "bolivia",
+        region="south america",
+        monsoon_months=[12, 1, 2, 3],
+    ),
+    _doc(
+        "seasonal-chile",
+        """
+        Chile is absurdly long north to south, and its two headline regions run
+        on genuinely opposite logics within the same hemisphere and season.
+        The Atacama Desert (San Pedro de Atacama) in the north is a
+        high-altitude desert that is workable essentially year-round: December
+        to February is its busiest, warmest high season, while the shoulder
+        months (September-November and March-May) bring the mildest days,
+        clearest skies and noticeably fewer crowds and lower prices. Chilean
+        Patagonia (Torres del Paine, Puerto Natales) is the opposite story: it
+        only properly opens November to March, with December-February the
+        warmest but also the windiest and most crowded window, and effectively
+        shuts down June-August when most refugios and campsites close entirely
+        for the season. The result is that "best time for Chile" genuinely
+        depends on which region matters more - November and March are the best
+        compromise months if you are trying to combine both desert and
+        Patagonia in one trip, since Patagonia is open-but-calmer and the
+        Atacama is mild rather than at its hottest.
+        """,
+        "seasonal",
+        "chile",
+        region="south america",
+        monsoon_months=[],
+    ),
+    _doc(
+        "seasonal-argentina",
+        """
+        Argentina spans subtropical north to sub-Antarctic south, and Buenos
+        Aires sits temperately in between with its own separate calendar again.
+        Iguazu Falls and the northern regions (Salta, the wine country around
+        Cafayate) are best in the shoulder seasons, April-May and
+        September-October, avoiding both winter cold in the northwest highlands
+        and the sometimes brutal summer humidity further north. Buenos Aires
+        itself is most pleasant spring (September-November) and autumn
+        (March-May); December-February is hot and humid, June-August is cool but
+        still very workable for city sightseeing. Patagonia (Bariloche, El
+        Calafate, Ushuaia) is the real hard seasonal boundary: it is only fully
+        open and accessible November to March, with December-February the
+        warmest, busiest, priciest window and June-August a genuine winter
+        closure for most trekking infrastructure outside Bariloche's ski season.
+        November and March are the shoulder sweet spots for Patagonia - milder
+        winds, thinner crowds, still-open trails. A single round-the-country trip
+        hits at least three different climate logics, so pin down priority
+        regions before picking dates.
+        """,
+        "seasonal",
+        "argentina",
+        region="south america",
+        monsoon_months=[],
+    ),
+    _doc(
+        "seasonal-brazil",
+        """
+        Brazil is continent-sized and its regions do not share a season. Rio de
+        Janeiro and the southeast are best September to March: hot, festive, and
+        including Carnival (dates move year to year, usually February or early
+        March) - the single busiest and most expensive fortnight in the country,
+        genuinely worth planning around rather than accidentally colliding with
+        if budget matters. The Amazon's dry season runs roughly May to October,
+        the better window for jungle-lodge trail walks and wildlife spotting
+        along lower rivers; the wet season (especially around February) actually
+        suits canoe-based exploration of flooded forest (igapo) better, so "dry
+        is always best" does not fully hold here. The Northeast beaches (Bahia/
+        Salvador, Ceara/Jericoacoara) are warm and sunny nearly year-round, driest
+        and brightest September to March, with a specific kitesurfing/windsurfing
+        peak around July-September when trade winds are strongest. Southern
+        Brazil (Florianopolis, the far south around Rio Grande do Sul) has a real
+        temperate winter - June-July brings genuinely cold weather and
+        occasional snow in higher towns like Gramado, unusual for a country this
+        associated with heat.
+        """,
+        "seasonal",
+        "brazil",
+        region="south america",
+        monsoon_months=[],
+    ),
 ]
 
 # --------------------------------------------------------------------------- #
@@ -511,7 +1199,7 @@ TIPS_DOCS = [
         Skip the tiger and elephant-riding attractions; the ethical alternative most
         backpackers use is an observation-only elephant sanctuary, which costs more but is
         the standard advice in every hostel. Overnight trains Bangkok-Chiang Mai in second
-        class sleeper cost around 800-1,000 THB and save a night's accommodation. Standard
+        class sleeper cost around 940-1,200 THB and save a night's accommodation. Standard
         circuit: Bangkok - Chiang Mai - Pai, then fly or bus south to the islands. Scam
         watch: the "Grand Palace is closed today" tuk-tuk gem scam is still running.
         """,
@@ -527,12 +1215,15 @@ TIPS_DOCS = [
         loop - Ninh Binh - Phong Nha - Hue - Hoi An - Da Lat - Ho Chi Minh City - Mekong.
         The Ha Giang loop, three or four days by motorbike with an easy-rider driver if you
         cannot ride, is the thing most backpackers name as the highlight of the country, and
-        it costs around USD 100-150 all in. Sleeper buses are cheap and ubiquitous but
-        genuinely uncomfortable if you are over about 180cm; the reunification train is
-        slower and much more pleasant. Phong Nha's caves are world class and still cheap to
-        visit at the Paradise Cave and Dark Cave level. Bank on losing a day to the Hanoi
-        traffic before you find your feet. Avoid booking bus tickets through hostels at a
-        markup when the Futa/Phuong Trang app is cheaper.
+        it costs around USD 250-350 all in for an easy-rider driver over 3-4 days (self-drive,
+        no guide, comes in cheaper at roughly USD 100-150). As of June 2026 foreign tourists
+        also need a Border Area Entry Permit (around USD 10) to enter the regulated Ha Giang
+        loop districts - arrange it through your easy-rider operator or homestay rather than
+        assuming the old no-paperwork version of the loop still applies. Sleeper buses are
+        cheap and ubiquitous but genuinely uncomfortable if you are over about 180cm; the
+        reunification train is slower and much more pleasant. Phong Nha's caves are world
+        class and still cheap to visit at the Paradise Cave and Dark Cave level. Bank on
+        losing a day to the Hanoi traffic before you find your feet.
         """,
         "tips",
         "vietnam",
@@ -562,7 +1253,9 @@ TIPS_DOCS = [
         """
         Laos backpacker notes. Daily budget: shoestring USD 18-25, the cheapest country on
         the circuit alongside Cambodia. The two-day Mekong slow boat from Huay Xai to Luang
-        Prabang (around USD 35, overnight stop in Pakbeng) is the classic arrival from
+        Prabang (around USD 20-25 booked direct at the pier, more like USD 60-80 via a
+        pre-booked package from Chiang Mai/Chiang Rai that includes border transport;
+        overnight stop in Pakbeng) is the classic arrival from
         Thailand - bring a cushion and food. Luang Prabang: Kuang Si falls, the morning alms
         procession watched respectfully from a distance and never with a flash, and Mount
         Phousi at sunset. Vang Vieng has shifted from the infamous tubing scene to
@@ -659,8 +1352,8 @@ TIPS_DOCS = [
         train through the tea country is the single best cheap experience in the country -
         book a reserved second-class seat a few days ahead, or ride third class unreserved
         and stand at the door. Ella for Little Adam's Peak and the Nine Arches Bridge,
-        Mirissa for whale watching (season November to April), Arugam Bay for surf (May to
-        September), Sigiriya rock or the cheaper Pidurangala alternative directly opposite
+        Mirissa for whale watching (season November to April), Arugam Bay for surf (April to
+        October, best waves June-August), Sigiriya rock or the cheaper Pidurangala alternative directly opposite
         with a better view of Sigiriya itself, and Adam's Peak climbed overnight for sunrise
         during the December to May pilgrimage season. Tuk-tuk rental for self-driving is
         popular and cheap but requires a local permit. Buses are extremely cheap and
@@ -676,17 +1369,23 @@ TIPS_DOCS = [
         "tips-route-sea-overland",
         """
         The standard Southeast Asia overland circuit and how long it actually takes. The
-        "banana pancake trail" loop runs Bangkok - Chiang Mai - (slow boat via Huay Xai) -
-        Luang Prabang - Vang Vieng - Vientiane - (bus or train) - Hanoi - south through
+        classic "banana pancake trail" loop runs Bangkok - Chiang Mai - (slow boat via Huay
+        Xai) - Luang Prabang - Vang Vieng - Vientiane - (bus or train) - Hanoi - south through
         Vietnam to Ho Chi Minh City - Phnom Penh - Siem Reap - back to Bangkok, and doing it
         properly takes about three months; two months is brisk, one month means flying
-        several legs. Key overland realities: Bangkok to Siem Reap by bus is 8-9 hours plus
-        an unpredictable border; Hanoi to Luang Prabang overland is a punishing 24 hours and
-        most people fly it for around USD 100; Ho Chi Minh City to Phnom Penh is an easy
-        6-hour bus with a straightforward border; the Laos high-speed rail has made
-        Vientiane to Luang Prabang a two-hour trip instead of ten. Budget airlines (AirAsia,
-        VietJet, Scoot) frequently undercut a 20-hour bus once you price in the lost day, so
-        the "always go overland to save money" instinct is often wrong for the long legs.
+        several legs. IMPORTANT: the Siem Reap-back-to-Bangkok leg of that classic loop is
+        currently not possible overland - every Thailand-Cambodia land border, including
+        Poipet, has been closed since mid-2025 due to an armed border conflict, with no
+        reopening date as of late 2026; fly Siem Reap-Bangkok instead and check current
+        border status before assuming the loop can be closed on land. Other key overland
+        realities: Hanoi to Luang Prabang overland is a punishing 20-25 hours and most people
+        fly it for around USD 100-150 (fares vary well above that); Ho Chi Minh City to Phnom
+        Penh is an easy 6-8 hour bus with a straightforward border; the Laos high-speed rail
+        has made Vientiane to Luang Prabang a two-hour trip instead of ten. Budget airlines
+        (AirAsia, VietJet, Scoot) frequently undercut a 20-hour bus once you price in the lost
+        day, so the "always go overland to save money" instinct is often wrong for the long
+        legs - and is now a hard requirement, not just a preference, for the Cambodia-Thailand
+        leg specifically.
         """,
         "tips",
         "southeast asia",
@@ -743,8 +1442,10 @@ TIPS_DOCS = [
         Mongolia backpacker notes. Daily budget: shoestring USD 25-40 - cheaper than it
         looks on paper for food and guesthouses in Ulaanbaatar, but a multi-day Gobi or
         steppe tour (driver, guide, jeep, ger accommodation, all meals) is the main
-        expense and typically runs USD 50-80 a day per person in a shared group, which
-        is close to unavoidable since public transport barely reaches the sites that
+        expense and typically runs USD 60-140 a day per person in a shared group - budget
+        around USD 80-120/day for a hostel-organised shared-jeep trip, noticeably more
+        than a few years ago - which is close to unavoidable since public transport
+        barely reaches the sites that
         justify the trip. Independent budget travel is realistic in Ulaanbaatar itself
         but the Gobi Desert (Khongoryn Els sand dunes, the Flaming Cliffs), Lake
         Khövsgöl in the north, and the nomadic homestay experience genuinely require a
@@ -790,14 +1491,19 @@ TIPS_DOCS = [
         """
         Bhutan is deliberately not a shoestring-backpacker destination, and a traveller
         asking about it should be told that plainly rather than given a daily budget
-        figure that doesn't apply. Independent budget travel is not possible: all
-        tourists (except Indian, Bangladeshi and Maldivian nationals, who face separate
-        rules) must book through a licensed Bhutanese tour operator and pay a
-        Sustainable Development Fee (SDF) of USD 100 per person per night as of the
-        post-2023 reduced rate (down from USD 200), on top of accommodation, food.
-        transport and a guide, which the operator arranges as a package - there is no
-        walk-in hostel scene or DIY overland route the way there is elsewhere on this
-        circuit. A visa is arranged by the operator as part of booking, not applied for
+        figure that doesn't apply. Independent budget travel is not possible for Western
+        passport holders: all such tourists must book through a licensed Bhutanese tour
+        operator and pay a Sustainable Development Fee (SDF) of USD 100 per person per
+        night - the post-September-2023 reduced rate (down from USD 200), officially
+        guaranteed through 31 August 2027 - on top of accommodation, food, transport and a
+        guide, which the operator arranges as a package - there is no walk-in hostel scene
+        or DIY overland route the way there is elsewhere on this circuit. Indian, Bangladeshi
+        and Maldivian nationals face separate, much cheaper rules: Indians pay an SDF of
+        INR 1,200/night (about USD 14) and can travel independently without a licensed
+        operator, though a guide is still compulsory for temples/dzongs and travel outside
+        the Thimphu-Paro-Punakha corridor; Bangladeshis pay USD 15/night for the first
+        15,000 tourists annually. Children under 6 are free, ages 6-12 pay half the standard
+        rate. A visa is arranged by the operator as part of booking, not applied for
         independently. The upside of the cost floor is a country that has deliberately
         avoided mass tourism: the Tiger's Nest monastery hike near Paro and the
         Punakha valley are the headline sights, and trekking (Druk Path, Jomolhari) is
@@ -813,10 +1519,12 @@ TIPS_DOCS = [
         "tips-connectivity-work-sea",
         """
         Connectivity and long-stay work notes across the Southeast/South Asia circuit.
-        Physical SIM cards (AIS/dtac in Thailand, Viettel in Vietnam, Smart/Globe in
-        the Philippines, Airtel/Jio in India) are cheap - typically USD 5-10 for a
-        tourist SIM with several GB - and sold at every airport arrivals hall, usually
-        faster than queueing for an eSIM provider's activation support. eSIMs (Airalo,
+        Physical SIM cards (AIS/dtac in Thailand ~USD 9-13, Viettel in Vietnam ~USD 3-7,
+        Airtel/Jio in India ~USD 4-6) are cheap and sold at every airport arrivals hall,
+        usually faster than queueing for an eSIM provider's activation support. Smart/Globe
+        in the Philippines run noticeably higher for a real data package - typically
+        USD 18-40 rather than the USD 5-10 you'd pay elsewhere on the circuit, so budget for
+        that difference specifically. eSIMs (Airalo,
         Holafly) trade a small price premium for not needing a physical shop, and are
         the practical choice for a short multi-country hop where buying a new local SIM
         every few days is wasted effort. Coworking-adjacent cafe culture is strongest in
@@ -885,12 +1593,12 @@ TIPS_DOCS = [
         "tips-visa-runs-comparison-sea",
         """
         Comparing visa-run and long-stay options across the region for anyone trying to
-        stay longer than a single tourist entry allows. Thailand: the most run-heavy
-        country on the circuit historically, with land border runs to Laos, Cambodia or
-        Malaysia resetting a 60-day exemption, though immigration scrutiny of
-        back-to-back land entries has increased and the 60-day extension (one extra 30
-        days, in-country) is now the more reliable route to a longer single stay than
-        repeated runs. Indonesia: the 30-day visa on arrival extends once for 30 more
+        stay longer than a single tourist entry allows. Thailand: historically the most
+        run-heavy country on the circuit, but since a 15 September 2026 rule change cut the
+        visa exemption from 60 to 30 days and capped land-border entries under it at two per
+        calendar year, unlimited back-to-back runs no longer work - the 30-day in-country
+        extension (one extra 30 days) plus at most two land visa runs a year is now the real
+        ceiling on how long an exemption-only stay can run. Indonesia: the 30-day visa on arrival extends once for 30 more
         days; beyond that, leaving and re-entering restarts the clock but a social/
         cultural visa or the newer long-stay options are the real route to months, not
         a border run. Vietnam and the Philippines both tolerate in-country extensions
@@ -936,10 +1644,13 @@ TIPS_DOCS = [
         foreigners and cheap, but genuinely slow and chaotic by Southeast Asian
         standards - budget a full day, expect crowding, and arrange the onward Indian
         leg (a long sleeper train from the border town) rather than assuming a single
-        smooth bus. There is no land border between India/Nepal and Sri Lanka - Sri
-        Lanka is reached only by air, most cheaply via Chennai, Bengaluru or Chennai-
-        Colombo budget routes, or via Kuala Lumpur/Bangkok if arriving from Southeast
-        Asia. Bhutan has no independent overland entry either: the sole land crossing
+        smooth bus. There is no land border between India/Nepal and Sri Lanka, and it's
+        no longer air-only either: a passenger ferry (Nagapattinam, India, to Kankesanthurai
+        near Jaffna) has run since October 2023, open to foreign tourists with a valid ETA,
+        at roughly USD 75-80 one-way - a genuine alternative to flying. Otherwise Sri Lanka
+        is reached by air, most cheaply via Chennai, Bengaluru or Chennai-Colombo budget
+        routes, or via Kuala Lumpur/Bangkok if arriving from Southeast Asia. Bhutan has no
+        independent overland entry either: the sole land crossing
         (Phuentsholing, from West Bengal) is used by tour operators as part of a
         pre-booked package, not something a backpacker walks across freely (see
         tips-bhutan-overview). Within India, sleeper trains booked well ahead (or via
@@ -963,8 +1674,11 @@ TIPS_DOCS = [
         to September only, since Ladakh is snowbound the rest of the year) is a true
         high-altitude desert trek requiring more self-sufficiency and often a hired
         guide, as teahouse infrastructure is thinner than Nepal's. Permits differ
-        sharply: Nepal's TIMS/conservation permits are bought in Kathmandu or Pokhara
-        in a day; India's Inner Line Permit for parts of Ladakh and other border-
+        sharply: Nepal's conservation-area/TIMS permits are issued in Kathmandu or Pokhara
+        in a day, but since 2023 rule changes they require booking through a registered
+        trekking agency with a licensed guide attached rather than a same-day DIY counter
+        transaction (TIMS itself no longer applies to the Everest region specifically -
+        see the visa doc); India's Inner Line Permit for parts of Ladakh and other border-
         adjacent areas can take longer and is worth checking well ahead. Altitude
         sickness risk is identical regardless of country - ascend slowly above 3,000m
         and know the symptoms, not just the itinerary.
@@ -1091,6 +1805,294 @@ TIPS_DOCS = [
         """,
         "tips",
         "southeast asia",
+    ),
+    _doc(
+        "tips-australia",
+        """
+        Australia backpacker notes - genuinely expensive by backpacker standards, closer to
+        Western Europe than Southeast Asia. Daily budget: shoestring USD 60-80, mid USD
+        100-150; hostel dorms run AUD 30-45 (roughly USD 20-30) in Sydney and Melbourne, more
+        on the Gold Coast and Whitsundays in peak season. The classic circuit is the east coast
+        run, either direction, Cairns to Melbourne (or Sydney to Cairns): Cairns for the Great
+        Barrier Reef (day trips AUD 220-350) and the Daintree, the Whitsundays for a 2-3 day
+        sailing trip (backpacker boats around AUD 250-300/day), Byron Bay, and Sydney to
+        Melbourne via the Great Ocean Road. A Greyhound "Whimit" hop-on-hop-off pass covers the
+        whole Cairns-Sydney leg from around AUD 289. Campervan relocation deals (Imoova,
+        Wicked, DriveNow) move a company's van between cities for as little as AUD 1-5/day,
+        sometimes with free fuel - the standard cheap way backpackers see the coast on their
+        own schedule; expect 5-6 days allowed for a Cairns-Sydney relocation. Perth and the
+        west coast are a genuinely separate, much less-visited leg due to the distance - most
+        first-time backpackers skip it. Safety: rip currents are Australia's single deadliest
+        beach hazard (over a third of beach drowning deaths) - always swim between the
+        red-and-yellow patrol flags, since international visitors unfamiliar with them are
+        disproportionately represented in the drowning statistics. Use SPF50+ sunscreen and a
+        hat without exception - Australia has among the highest UV and skin cancer rates in the
+        world even on a cloudy day.
+        """,
+        "tips",
+        "australia",
+        region="oceania",
+        budget_shoestring_usd=70,
+    ),
+    _doc(
+        "tips-newzealand",
+        """
+        New Zealand backpacker notes - small but not cheap; budget closer to Australia than to
+        Asia. Daily budget: shoestring USD 70-90 (one backpacker-budget estimate lands around
+        NZD 130/day for dorms, cooked-not-bought food, buses and a couple of activities), mid
+        USD 110-150; hostel dorms run NZD 25-40 in the main towns, cheaper in small South Island
+        towns, pricier in Queenstown in ski season. The standard split is North Island
+        (Auckland, Rotorua for geothermal fields, Wellington for the Te Papa museum and the
+        ferry) then a 3-3.5h Interislander/Bluebridge ferry crossing the Marlborough Sounds to
+        the South Island (Queenstown for bungy jumping and Milford Sound day trips, Abel
+        Tasman, Franz Josef, Fiordland). Hop-on-hop-off bus networks (Kiwi Experience, Stray) or
+        the fixed-route InterCity network are how most backpackers without a car get around; a
+        multi-day hop-on pass runs roughly NZD 40-45/day of travel. The genuine planning
+        gotcha: Great Walks bookings (Milford, Kepler, Routeburn, Abel Tasman and others) for a
+        given October-April season open the previous May, staggered by track over about ten
+        days, and the popular huts on Milford and Routeburn can sell out within days of booking
+        opening - decide your Great Walk and book it months ahead, not on arrival in
+        Queenstown. Weather on any tramping track can turn cold, wet and genuinely dangerous
+        within hours regardless of season - check the DOC track and hut status and a mountain
+        forecast (not just a town forecast) before setting out, and tell someone your
+        intentions.
+        """,
+        "tips",
+        "new zealand",
+        region="oceania",
+        budget_shoestring_usd=80,
+    ),
+    _doc(
+        "tips-southkorea",
+        """
+        South Korea backpacker notes. Daily budget: shoestring USD 40-55 (KRW 50,000-70,000),
+        mid USD 70-100 - noticeably pricier than Southeast Asia, driven mostly by
+        accommodation. Dorm beds run USD 15-25 in Seoul (Hongdae and Myeongdong have the
+        biggest hostel scene), a bit cheaper in Busan and inland cities. The standard
+        first-timer route is Seoul - a DMZ/JSA day tour (USD 40 for DMZ only, USD 120+ for
+        full JSA access, book 1-2 weeks ahead since JSA needs security clearance and doesn't
+        run Sun/Mon) - then KTX south to Busan (2h15, around USD 43-50 one-way, trains every
+        20-30 minutes), with Gyeongju's temples and royal tombs as an easy day trip from
+        Busan, and Jeju Island as a cheap ~1-hour domestic flight add-on (often under USD 30
+        one-way on budget carriers). Get a T-money card on day one (sold at any convenience
+        store/subway station) for buses and subways - it is completely separate from the
+        KORAIL/KTX system, and a KORAIL Pass only pays off if you're doing several
+        long-distance legs in a short window. Rent a pocket wifi "egg" at the airport or buy
+        a tourist SIM/eSIM - Korean map apps (Naver Map, KakaoMap) work far better than
+        Google Maps here, so data matters more than usual. Convenience stores (CU, GS25,
+        7-Eleven) are a genuine backpacker institution: hot food, cheap beer, ATMs and free
+        wifi, open 24/7, and often cheaper and more reliable than a restaurant for a fast meal.
+        """,
+        "tips",
+        "south korea",
+        region="east asia",
+        budget_shoestring_usd=48,
+    ),
+    _doc(
+        "tips-japan",
+        """
+        Japan backpacker notes. Daily budget: shoestring USD 55-70 (JPY 9,500-12,500)
+        covering a hostel/capsule bed, convenience-store and casual food, and local trains
+        only - noticeably pricier than Southeast Asia and closer to Western Europe. Hostel
+        dorms run JPY 4,000-5,000 (about USD 26-33) in Tokyo and a bit cheaper in Kyoto
+        (USD 8-24). The standard first-timer route is Tokyo - Kyoto - Osaka, with Hiroshima
+        (and Miyajima) as the common extension. Bullet trains are a real budget line item:
+        Tokyo-Kyoto is 2h15 for about USD 95-100 one-way (JPY 13,320-14,570), Kyoto-Hiroshima
+        1h40 for about USD 65 (JPY 10,570), Osaka-Hiroshima 1h26 for about USD 60
+        (JPY 9,710). The 7-day nationwide JR Pass costs JPY 50,000 (about USD 330) as of
+        2026 - after a 70% price hike in October 2023 - and rises again to JPY 53,000 in
+        October 2026 via overseas agents; do the arithmetic before buying, since a
+        straightforward one-way Tokyo-Kyoto-Osaka-Hiroshima run (roughly USD 220-240 in
+        individual tickets) can come in cheaper than the pass unless you're also covering a
+        return leg or extra long-distance hops. For city transport, a Suica, Pasmo or ICOCA
+        IC card (tap-to-pay on every train, bus and at convenience stores) is essential and
+        works nationwide. Despite Japan's tech reputation, carry cash: contactless cards now
+        cover most chain restaurants and stations, but small independent izakayas, older
+        guesthouses and rural areas are still cash-only - keep JPY 10,000-20,000 on hand.
+        """,
+        "tips",
+        "japan",
+        region="east asia",
+        budget_shoestring_usd=62,
+    ),
+    _doc(
+        "tips-peru",
+        """
+        Peru backpacker notes. Daily budget: shoestring USD 25-35, mid USD 45-65 -
+        among the cheaper Andean countries, though Inca Trail/Machu Picchu costs are
+        a fixed large line item regardless of budget level. Standard route: Lima -
+        Huacachina (sandboarding and pisco in a desert oasis) - Nazca (the Lines, by
+        plane or viewing tower) - Arequipa (the "White City", base for Colca
+        Canyon's condors) - Cusco - Machu Picchu. The classic 4-day Inca Trail costs
+        around USD 129 in permits alone (S/444: trail permit plus Machu Picchu
+        entrance, now sold separately as of 2026) on top of the guided-tour price,
+        and permits for the May-September high season sell out 4-6 months ahead -
+        book early or take the (also excellent, less regulated) Salkantay trek as
+        the fallback alternative. Machu Picchu entrance alone is USD 65. Rainbow
+        Mountain is a popular, punishing high-altitude day trip from Cusco (5,200m).
+        Safety/scam note: Lima's Miraflores and Barranco districts are the
+        tourist-safe base; fake police and inflated "photocopy" or "fee" demands
+        target travellers at the Bolivia land border near Desaguadero specifically -
+        genuine officials do not charge cash processing fees. Carry soles cash
+        outside major cities; card acceptance thins out fast beyond Lima and Cusco.
+        """,
+        "tips",
+        "peru",
+        region="south america",
+        budget_shoestring_usd=30,
+    ),
+    _doc(
+        "tips-colombia",
+        """
+        Colombia backpacker notes. Daily budget: shoestring USD 30-40, mid USD 50-70. Standard
+        first-timer route: Bogota - Medellin - (Guatape as a day trip) - Cartagena/Santa Marta
+        - Tayrona National Park, often extended south to Salento in the coffee region (Cocora
+        Valley's wax palms, a coffee farm tour) or San Gil for whitewater rafting and
+        paragliding. Bogota to Medellin is 8-10h by bus or a cheap 1h flight; Medellin to
+        Cartagena is a long 13-15h overnight bus or a 1h flight - most backpackers fly this leg
+        given the distance. Medellin's Comuna 13 graffiti tour is genuinely worth doing, but go
+        with an established operator and before late afternoon rather than wandering into the
+        surrounding residential comunas alone. Safety/scam note: scopolamine ("devil's breath")
+        drink-spiking robberies are a real and specifically Colombian risk in nightlife areas -
+        never accept a drink, cigarette or scented item from a stranger; use Uber, InDriver or
+        Cabify rather than hailing street taxis, and agree fares upfront if you do. El Poblado,
+        Laureles and Envigado are Medellin's safe backpacker bases; Centro is fine by day, avoid
+        at night. Cash (pesos) is still needed for small purchases and rural areas despite
+        decent card coverage in cities.
+        """,
+        "tips",
+        "colombia",
+        region="south america",
+        budget_shoestring_usd=35,
+    ),
+    _doc(
+        "tips-ecuador",
+        """
+        Ecuador backpacker notes. Daily budget: shoestring USD 30-40, mid USD 45-60 - and
+        unusually for the region, Ecuador is fully dollarised (the US dollar is the official
+        currency), so there is no exchange-rate guesswork or local-currency ATM confusion at
+        all, a genuine convenience versus every other country in this batch. Standard route:
+        Quito - Banos (waterfalls, hot springs, adventure sports - swinging at "the end of the
+        world" at Casa del Arbol is the famous photo) - Cuenca (a quieter, UNESCO-listed
+        colonial city, less touristed than Quito) - onward to the Amazon or the coast. Quito to
+        Banos is 4h/USD 5 by direct bus from Quitumbe terminal; Banos to Cuenca is a genuinely
+        slow, winding 8-10h with no fast option. Galapagos: budget travellers go land-based
+        rather than on a cruise - island-hop by public ferry (USD 30-38 each way) between Santa
+        Cruz, Isabela and San Cristobal and do free/cheap DIY sites (Tortuga Bay, Las Grietas)
+        rather than paid tours, though the USD 200 park entrance fee and flights from the
+        mainland are unavoidable and account for most of the cost. Safety note: Quito's
+        historic centre is fine by day but has a real pickpocketing/robbery reputation after
+        dark - take a taxi rather than walking back to your hostel late.
+        """,
+        "tips",
+        "ecuador",
+        region="south america",
+        budget_shoestring_usd=35,
+    ),
+    _doc(
+        "tips-bolivia",
+        """
+        Bolivia backpacker notes. Daily budget: shoestring USD 20-30, the cheapest country in
+        this batch and one of the cheapest in South America outright. Standard route: La Paz -
+        Uyuni (salt flats) - Sucre or onward to Chile/Argentina via Villazon or the Uyuni-San
+        Pedro de Atacama border crossing. The classic Uyuni experience is a 3-day 4x4 tour
+        (from around USD 150-200 shared) taking in the salt flats, coloured lagoons and geysers
+        before crossing into Chile at San Pedro de Atacama - book through a reputable La Paz or
+        Uyuni agency with recent reviews, since safety and vehicle quality varies a lot at the
+        cheapest end. The Death Road (Yungas Road) mountain-bike descent from La Paz costs
+        around USD 100-160 for a full day with a certified operator - do not go with the
+        cheapest bike-rental-only option, since fatalities have happened on this route and
+        equipment quality matters. Sucre, Bolivia's constitutional capital, is the whitewashed,
+        laid-back Spanish-school town most backpackers wish they'd budgeted more days for.
+        Safety/scam note: the Peru-Bolivia land border near Desaguadero has a pattern of
+        officials inventing "processing fees" or steering travellers to overpriced
+        photocopy/photo shops - genuine Bolivian border fees do not exist for these
+        nationalities post-SIGEMIG. Cash (bolivianos, with USD as backup) is essential outside
+        La Paz and Sucre; ATMs are sparse and unreliable in smaller towns.
+        """,
+        "tips",
+        "bolivia",
+        region="south america",
+        budget_shoestring_usd=25,
+    ),
+    _doc(
+        "tips-chile",
+        """
+        Chile backpacker notes. Daily budget: shoestring USD 35-45, mid USD 60-85 - the most
+        expensive country in this batch, on a par with parts of Europe once you add Patagonia's
+        food and gear costs. Standard route: Santiago - Valparaiso (coastal, colourful,
+        hillside funiculars) - north to San Pedro de Atacama for desert tours (Valle de la
+        Luna, geysers, salt flats), or south to Puerto Natales as the gateway to Torres del
+        Paine National Park. The W Trek (4-5 days) needs its accommodation booked months ahead
+        for December-February - the park splits between two private operators (Las Torres and
+        Vertice Patagonia) who run separate, non-interchangeable booking systems, which trips
+        up a lot of independent hikers; camping is far cheaper (roughly USD 12-50/night
+        depending on operator and site) than the refugio dorm beds (USD 40-100+). Park entrance
+        itself is around USD 49 for foreigners staying more than 3 days. Santiago to San Pedro
+        is a genuinely long overnight-plus bus (20-23h, or fly in ~2h); Santiago to Puerto
+        Natales for Patagonia is far enough south that almost everyone flies (3.5h) rather than
+        buses. Money note: Chile is largely card-friendly in cities, but bring cash for
+        Patagonia's smaller towns where card machines and ATMs are unreliable.
+        """,
+        "tips",
+        "chile",
+        region="south america",
+        budget_shoestring_usd=40,
+    ),
+    _doc(
+        "tips-argentina",
+        """
+        Argentina backpacker notes. Daily budget: shoestring USD 30-45, mid USD 55-80 - but
+        treat these figures cautiously, because Argentina's currency situation moves fast:
+        after President Milei's government lifted most currency controls (the "cepo
+        cambiario") in April 2025, the old huge gap between the official exchange rate and the
+        informal "blue dollar" rate has largely closed - as of September 2026 the gap is
+        roughly 1-5%, a fraction of what it was in the mid-2020s. This means the old standard
+        backpacker advice to "bring cash USD and change on the blue market for a much better
+        rate" barely applies any more; a Wise-style card at the near-official rate is now close
+        enough to any cash rate that chasing a "cueva" exchange house is no longer the free win
+        it used to be - verify the current gap before travelling, since Argentine monetary
+        policy has changed direction repeatedly in the past decade. Standard route: Buenos
+        Aires - Mendoza (wine country, Andes views) - Bariloche (Lake District, chocolate,
+        hiking) - El Calafate (Perito Moreno Glacier) - sometimes extended to Ushuaia, the
+        world's southernmost city, or diverted north to Salta and Iguazu Falls. Iguazu is worth
+        visiting from both the Argentine side (close-up walkways) and the Brazilian side
+        (panoramic views) if your visas allow - see the Brazil visa note on the reinstated
+        e-Visa requirement for Americans, Canadians and Australians specifically before
+        planning that crossing.
+        """,
+        "tips",
+        "argentina",
+        region="south america",
+        budget_shoestring_usd=37,
+    ),
+    _doc(
+        "tips-brazil",
+        """
+        Brazil backpacker notes. Daily budget: shoestring USD 35-50, mid USD 60-90 - pricier
+        than the Spanish-speaking Andean countries, closer to Chile. Standard first-timer
+        route: Rio de Janeiro - Paraty (colonial coastal town, 4-5h bus, around R$70) -
+        Florianopolis or Ilha Grande for beach time - or north to Salvador for
+        Afro-Brazilian culture and the historic Pelourinho district. Carnival, if timing
+        around it, is biggest and best-known in Rio and Salvador but both get extremely
+        booked and expensive months ahead. Iguazu Falls (Foz do Iguacu on the Brazilian
+        side) pairs naturally with a visit to the Argentine side across the border - see the
+        Argentina tips doc, and check your specific e-Visa status before planning the
+        crossing if you are American, Canadian or Australian. Safety note: Rio's Copacabana
+        and Ipanema are fine by day but phone/bag snatching from the sand and beachfront
+        promenade is common - bring only cash and a card in a waterproof pouch to the beach,
+        leave everything else at the hostel. After dark, stick to well-lit, busy streets;
+        favela tours are genuinely worthwhile culturally but only with an established
+        community-based operator, never independently. Money note: Brazil is heavily card-
+        and Pix-based domestically now, but carry some reais cash for small vendors and bus
+        fares. Portuguese, not Spanish, is spoken here - a surprising number of first-time
+        South America backpackers assume otherwise and it is worth 20 minutes learning basic
+        phrases before arrival.
+        """,
+        "tips",
+        "brazil",
+        region="south america",
+        budget_shoestring_usd=42,
     ),
 ]
 

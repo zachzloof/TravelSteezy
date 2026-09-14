@@ -27,6 +27,7 @@ written — none of it is aspirational.
 | [07-known-limitations.md](07-known-limitations.md) | What is simplified, what is untested, what would break first in production |
 | [08-decisions-log.md](08-decisions-log.md) | Chronological log of every non-obvious choice, in the order they were made |
 | [09-observability-and-tracing.md](09-observability-and-tracing.md) | Tracing rebuilt on OTEL auto-instrumentation (not hand-rolled spans) - why, how it was verified against a live trace - plus the full 2026-09 dependency modernization (google-adk, openai, pinecone, langfuse, fastapi, bcrypt/passlib removal) and what stayed pinned and why |
+| [10-corpus-coverage.md](10-corpus-coverage.md) | Which countries the curated corpus covers and to what depth (1-5 stars), the rating methodology, what's deliberately not covered yet - update this whenever the corpus changes |
 
 ## How to use these if you're picking this project back up
 

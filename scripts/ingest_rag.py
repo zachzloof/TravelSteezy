@@ -60,6 +60,11 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Ingest seed content into the RAG store.")
     parser.add_argument("--stats", action="store_true", help="report index stats and exit")
     parser.add_argument(
+        "--wipe", action="store_true",
+        help="delete every vector in every namespace before ingesting - clears stale "
+             "live-sourced cache documents as well as any previous curated content",
+    )
+    parser.add_argument(
         "--experience", action="store_true",
         help="also index reviews and recommendation outcomes already in SQLite",
     )
@@ -75,6 +80,10 @@ def main() -> int:
     if args.stats:
         print(json.dumps(store.index_stats(), indent=2, default=str))
         return 0
+
+    if args.wipe:
+        print("Wiping all namespaces before reingest...")
+        print(json.dumps(store.wipe(), indent=2, default=str))
 
     chunks = chunk_documents(ALL_SEED_DOCUMENTS)
     print(f"\nIngesting {len(chunks)} chunks from {len(ALL_SEED_DOCUMENTS)} seed documents...")
