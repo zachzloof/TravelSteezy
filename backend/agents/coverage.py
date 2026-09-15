@@ -12,6 +12,7 @@ explicitly unsupported destination it is forbidden to rank first.
 """
 from __future__ import annotations
 
+import re
 from typing import Any, Iterable
 
 from backend.agents.climate import CLIMATE_TABLE
@@ -132,7 +133,19 @@ def route_note(current_location: str | None) -> str:
 
     origin = (current_location or "").strip().lower()
     if not origin:
-        return "Current location unknown - ask where they are before suggesting onward hops."
+        # Bug report #3 (2026-09-14, test1234): with no stored location the old
+        # note was a polite suggestion ("ask where they are"), and the agent
+        # simply picked a town out of the traveller's past route and answered
+        # as though they were still in it - real curated hops for a town they
+        # had not mentioned, which reads far more convincingly than a
+        # hallucination. Nothing about "ask" is optional here.
+        return (
+            "CURRENT LOCATION UNKNOWN - no town and no country is recorded. You MUST "
+            "NOT assume, infer or pick one: not from their route history, not from "
+            "their wishlist, not from anywhere in this prompt. Do not call "
+            "discover_next_destinations with a guessed origin. Ask which town or "
+            "country they are in now, and answer nothing else this turn."
+        )
     if origin in ROUTE_GRAPH:
         hops = ", ".join(ROUTE_GRAPH[origin])
         return f"Route data IS held for {origin}. Known onward hops: {hops}."
@@ -141,11 +154,15 @@ def route_note(current_location: str | None) -> str:
     # whole country is not outside coverage - we just cannot give hop-by-hop
     # detail until we know which town they are in.
     if origin in SUPPORTED:
-        towns = sorted(t for t in ROUTE_GRAPH if t)
+        # The list of every town held used to be spelled out here, which turned
+        # a "we need one more detail" note into a menu to pick from - same bug
+        # report #3: stored location "Thailand", answer delivered from Chiang
+        # Mai. The traveller's own town is the only acceptable source.
         return (
             f"{origin.title()} is covered at country level, but the onward-route "
             f"corpus is town-level and no town is recorded. Ask which town they "
-            f"are in before giving hop-by-hop detail. Towns held: {', '.join(towns)}."
+            f"are in before giving hop-by-hop detail. You MUST NOT choose a town "
+            f"in {origin.title()} yourself, or answer as though they were in one."
         )
     return (
         f"NO CURATED ROUTE DATA HELD FOR {origin.upper()}. The curated route corpus "
@@ -195,3 +212,52 @@ COUNTRY_NEIGHBOURS: dict[str, list[str]] = {
 def nearby_country_options(origin: str, limit: int = 3) -> list[str]:
     """Plausible next countries from a covered country. Empty if uncovered."""
     return COUNTRY_NEIGHBOURS.get((origin or "").strip().lower(), [])[:limit]
+
+
+# --------------------------------------------------------------------------- #
+# question SCOPE: is this a "which country" question or a "which town" one?
+# --------------------------------------------------------------------------- #
+# Bug report #3 (2026-09-14, test1234): "which country should i go to next",
+# asked three different ways, was answered three times with towns in the country
+# the traveller was already in, once with their visa about to expire. The cause
+# was structural, not a model failure: the scope of a "where next" answer was
+# decided entirely by the granularity of the STORED location (town -> town-level
+# discovery agent, country -> country-level comparison), and the word "country"
+# in the question had no effect anywhere in the pipeline.
+#
+# Deterministic, code-computed, and applied as an override the same way the
+# two-destinations-means-compare rule is (see runner.py) - not a line of prompt
+# asking the classifier to be more careful.
+_COUNTRY_SCOPE_RE = re.compile(
+    r"""
+    \b(?:which|what|another|different|new|next|other)\s+countr(?:y|ies)\b
+  | \bcountr(?:y|ies)\s+(?:should|to|next|do|can|would|is|are)\b
+  | \b(?:best|cheapest|safest|easiest|nearest|closest|warmest)\s+countr(?:y|ies)\b
+  | \b(?:change|leave|leaving|exit|switch)\s+(?:the\s+|this\s+|a\s+)?countr(?:y|ies)\b
+  | \b(?:cross|crossing)\s+(?:the\s+|a\s+)?border\b
+  | \bborder\s+(?:run|hop|crossing)\b
+  | \bvisa\s+run\b
+  | \bout\s+of\s+(?:the\s+|this\s+)?country\b
+  | \bvisa\s+(?:is\s+|has\s+)?(?:running\s+out|expir\w*|about\s+to\s+expire|runs\s+out|up)\b
+  | \b(?:overstay|overstaying)\b
+    """,
+    re.IGNORECASE | re.VERBOSE,
+)
+
+
+def wants_country_scope(message: str) -> bool:
+    """True when the message asks about leaving the country, not about the next town.
+
+    Covers the two phrasings that mean the same thing operationally: naming the
+    country granularity outright ("which country next", "I want to change
+    country", "crossing the border"), and the constraint that forces it anyway
+    ("my visa is running out"). A visa about to expire is a leave-the-country
+    fact, and answering it with towns in the country being left is the single
+    worst answer the app can give.
+
+    Deliberately NOT matched: "countryside", and a bare mention of a country
+    name - travellers name countries constantly in questions that are still
+    about towns ("best bit of Thailand?"), and over-firing here would push
+    ordinary town-level questions into a country comparison.
+    """
+    return bool(_COUNTRY_SCOPE_RE.search(message or ""))

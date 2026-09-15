@@ -276,12 +276,28 @@ Field rules:
 - "visits": places they are AT or have ARRIVED in, as
   [{"location": "Chiang Mai", "location_type": "city", "country": "Thailand",
      "arrival_date": "YYYY-MM-DD or null"}].
+  ONLY places named in THIS message. If the message names no place at all
+  ("any parties?", "what should I do?", "where should I go next"), this list is
+  EMPTY - do not restate where you believe they are, and never copy a place
+  name out of the trip profile, the route history or the example above. A
+  re-stated location is not free: it is written to their profile as a fact they
+  just told you, and a stale one silently overwrites what they actually said.
   Include a place when they say they are there, have just arrived, or ask an
   on-the-ground question that only makes sense if they are there ("any good
   hostels here in Pai"). Do NOT include somewhere they are merely considering.
+  A COUNTRY counts: "I'm in Thailand now" is a visit with location_type
+  "country", exactly as much as "I'm in Pai now" is. Do not skip it for being
+  less precise than the towns in the examples, and do not invent a town to go
+  with it - record the country they actually said.
 - "departures": places they have LEFT, as
   [{"location": "Laos", "location_type": "country", "departure_date": "YYYY-MM-DD or null"}].
-  Only on a clear signal that they have gone, or are leaving now.
+  Only on a clear signal that they have gone, or are leaving now. A PLAN is not
+  a departure: "thinking of leaving Thailand", "might head off soon", "should I
+  leave Laos?", "planning to move on next week" are all empty departure lists.
+  They have left when they say they have left, or are in the act of leaving
+  today. Getting this wrong writes a country into their history as finished,
+  asks them to review somewhere they are still standing in, and contradicts
+  them the next time they say where they are.
 - "wishlist_adds": places they say they want to go, as
   [{"location": "Pai", "location_type": "city", "country": "Thailand", "priority": 1}].
   Priority 1 high, 2 medium, 3 low. Wanting to go is enough; it need not be booked.
@@ -665,11 +681,23 @@ greeting, a follow-up, or a question about what you remember about them.
 
 Question: {user_question?}
 
+--- ROUTE COVERAGE (computed in code, not negotiable) ---
+{route_note?}
+--- END COVERAGE ---
+
 Answer directly and briefly from the trip profile above. If they are asking what
 you remember, list it back accurately: never claim to remember something that is
 "(unknown)" in the profile, and never invent a value. If the profile is mostly
 empty, say what you still need and point them at the My Preferences screen where
 they can set it directly.
+
+A "where should I go next" question reaches you ONLY when the orchestrator has
+established there is nothing to answer it with - no recorded location, or no
+onward options held from where they are. The block above says which. In that
+case ask for the one detail that unblocks it and stop there: you hold no
+retrieval tools, so any destination, journey time or price you produced would
+be invented. Naming somewhere plausible is the failure mode here, not the
+helpful thing.
 """
 )
 

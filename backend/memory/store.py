@@ -501,16 +501,32 @@ def append_turn(user_id: int, role: str, content: str) -> None:
 # WHEN WE FORGET
 # --------------------------------------------------------------------------- #
 def archive_country(user_id: int, country: str, source: str = "agent") -> bool:
-    """If the archived country is the profile's ``current_location``, clear it.
+    """If the archived place is the profile's ``current_location``, clear it.
 
     The country stops being live context but stays readable in ``visited_history``,
     so a later re-entry or re-entry-visa question can still reach it.
     Returns True when active context actually changed.
+
+    A COUNTRY also clears a town inside it: the comparison used to be a raw
+    string match, so leaving Thailand while the stored location was "Pai" left
+    the app believing the traveller was still in Pai, days after they had gone
+    (bug report #3, 2026-09-14). A TOWN still only clears itself - resolving
+    both sides to a country would make leaving Chiang Mai wrongly clear a
+    stored location of Pai. This is the ``resolve_country`` rule from
+    notes/05-guards-and-prompting.md applied to the one place that still
+    compared destination strings directly.
     """
+    from backend.rag.route_data import COUNTRIES, resolve_country
+
     profile = get_profile(user_id)
     current = (profile.get("current_location") or "").strip().lower()
-    if not current or current != country.strip().lower():
+    archived = country.strip().lower()
+    if not current:
         return False
+    if current != archived:
+        archived_is_country = archived in COUNTRIES
+        if not archived_is_country or resolve_country(current) != archived:
+            return False
     with get_conn() as conn:
         conn.execute(
             "UPDATE trip_profile SET current_location = NULL, updated_at = datetime('now') "

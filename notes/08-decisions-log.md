@@ -510,3 +510,210 @@ documents, 60 → 84 route documents. A new `notes/10-corpus-coverage.md`
 tracks per-country depth (1-5 stars) and what's still missing, specifically
 so "how good is our data for X" has a maintained answer instead of requiring
 a fresh audit each time someone asks.
+
+## 43. Answer scope is read from the question, not inferred from how precisely the location was stored
+
+Bug report #3 (2026-09-14, `test1234`) asked which **country** to go to next
+three times, in three phrasings, one of them because their visa was about to
+expire, and got three lists of towns inside Thailand. The cause was
+architectural: a "where next" turn was answered at whatever granularity the
+stored `current_location` happened to have (town → `discovery_agent`, country →
+the country comparison fallback), and nothing anywhere read the question's own
+granularity. `coverage.wants_country_scope()` now decides it in code, next to
+the existing two-destinations-means-`compare` override, and treats a visa
+running out as the leave-the-country constraint it is. The alternative
+considered and rejected was a new `scope` field on `TurnParse`: it puts a
+decision the app can make deterministically back inside the model, and this
+codebase's whole routing story is the opposite of that (see #12, and the intent
+override in note 01).
+
+## 44. With no known location, the answer is a question — enforced by routing, not by asking the model nicely
+
+The same report's second failure: after a departure cleared
+`current_location`, the `discovery_agent` picked Chiang Mai out of the route
+history in its own prompt and answered with the genuine `route-chiang-mai`
+passage — correct prices, correct journey times, correct onward towns, for a
+town the traveller had never said they were in. `route_note` had told it the
+location was unknown and to ask; it asked nothing. This is the Reykjavik lesson
+(#17 / note 05) repeating with a sharper edge, because every verifiable detail
+in the answer was true.
+
+Fixed at two levels. Control flow: a `discover` turn with no recorded location
+goes to the tool-less `concierge`, so the agent that *could* fetch convincing
+detail never gets the turn. Prompt: the unknown-location `route_note` became a
+hard block naming the specific move that was made, and the country-level one
+**stopped listing every town in the corpus** — that list was meant as "tell us
+which of these you're in" and read as a menu to choose from. A guard that hands
+over the candidates it is trying to rule out is not a guard, and this is the
+second time a well-intentioned "here is what we hold" block has been used as
+source material rather than as a constraint.
+
+## 45. Confirming the country you are in is not a move, and planning to leave is not leaving
+
+Two smaller granularity rules from the same conversation. "I'm in Thailand now"
+from a traveller already recorded in Pai used to overwrite the precise town with
+the vaguer country and append `Thailand` to a town-level route as though the
+country were the next stop; it is now treated as a confirmation, with a real
+country change (they were in Laos) still landing normally. "I'm thinking of
+leaving Thailand" was written as a departure, which closed the country out, fired
+a review prompt for somewhere they were still standing in, and cleared their
+active location — tightened in the parser prompt with the hypotheticals spelled
+out, and pinned by eval case `tracking-ignores-a-hypothetical-departure`.
+
+Also removed here: the unreachable departure loop in `_apply_memory_writes`,
+keyed on a `ParsedDeparture.country` field that does not exist (note 02), and
+the silent failure of `_apply_structured_writes`, which is now the only path
+writing visits, departures and reviews and so reports its failures to the trace
+instead of swallowing them into a log line.
+
+## 46. The write path being Python did not make the writes true
+
+Bug report #3's actual root cause, found by reading the Langfuse traces rather
+than the reply text, and worth recording because the first diagnosis from the
+reply alone was wrong. Every write in that conversation went through the
+explicit Python path exactly as designed (#2, note 02) - and the database still
+ended up asserting the traveller was in a town they had never mentioned,
+because nothing checked the model's extraction against what they actually
+typed. The parser restates a `visits` entry on nearly every turn (four
+consecutive turns naming no place at all produced `visits: [Pai]`); it went
+unnoticed for as long as it echoed the right place, and did real damage the one
+time it echoed a stale one over a location the traveller had stated thirteen
+seconds earlier.
+
+`tracking.mentioned_in()` now grounds the three writes that assert a place -
+`visits`, `departures`, `profile_updates.current_location` - in the traveller's
+own words, and a stated presence beats an inferred departure within the same
+turn. The lesson generalises past this app: "the model only reports, code
+writes" removes a whole class of failure but says nothing about whether the
+report is true, and an extraction can be hallucinated as easily as prose.
+
+## 47. Langfuse session ids are the ADK sub-session, not the conversation
+
+Found while investigating #46 and NOT yet fixed - recorded so the next person
+does not lose the same hour. `run_turn` opens its trace with
+`session_id=f"user-{user_id}"`, but each agent runs in its own ADK session
+(`parse-2`, `local-2`, `discover-2`, `weigh-2-1` - see `_run_agent`), and the
+OpenInference auto-instrumentation overwrites the trace's session id with
+whichever of those ran. The result: one conversation is scattered across four
+Langfuse "sessions" by which agent happened to answer, and no session in
+Langfuse shows the actual conversation. Reconstructing bug report #3 needed a
+`userId` + time-window query instead, which is what `--session` in
+`scripts/fetch_trace.py` falls back on being useful for.
+
+Confirmed by a controlled experiment against the live project rather than by
+reading the code, because the code looks correct - `propagate_attributes(...,
+session_id=f"user-{user_id}")` is exactly the documented way to set it. Same
+turn, same account, one variable changed:
+
+| ADK session ids passed to `Runner` | `sessionId` Langfuse ends up storing |
+|---|---|
+| per-agent (`parse-1`, `concierge-1`) - current code | `concierge-1` |
+| one per turn (`user-1` for every agent) | `user-1` |
+
+So the app's propagated value is real but gets overwritten by the
+auto-instrumentation, which carries the ADK session of whichever agent ran
+LAST - consistent with what production traces show (`local-N` for local turns,
+`discover-N` for discovery, `weigh-N-M` for comparisons, `concierge-N` for
+memory; the parser runs first in every turn and never wins).
+
+Two things make it easy to miss. The overwrite is applied at INGESTION, as the
+child spans arrive: reading the trace back immediately returns the correct
+`user-N`, and it changes a few seconds later. And the whole of the rest of
+Langfuse - the span tree, models, token usage, costs, latency - is completely
+unaffected, so nothing looks wrong in the UI unless you specifically try to
+follow one conversation through Sessions.
+
+The fix is to pass ONE ADK session id per turn instead of one per agent.
+Nothing depends on those ids being distinct: `_run_agent` builds its own
+`InMemorySessionService` per call, so isolation comes from the separate service
+instance, not the id string, and agent identity is already in the span name
+(`agent_run [concierge]`). Applied in #48 below, after the other half of note 09's
+verification standard was done: a real multi-agent `compare` turn, re-read
+once ingestion had settled.
+
+## 48. One ADK session per turn, not one per agent
+
+The fix for #47, applied after the experiment there established both the cause
+and that this was the cure. `runner.adk_session_id(user_id)` returns
+`f"user-{user_id}"` and all six `_run_agent` call sites use it. The per-agent
+ids read like helpful labelling and were load-bearing for nothing: `_run_agent`
+constructs its own `InMemorySessionService` per call, so isolation comes from
+separate service instances rather than from the id string, and which agent ran
+is still in the span name and in this app's own timing panel.
+
+Verified live on the demanding case rather than the easy one - a real `compare`
+turn with turn_parser, three specialists concurrently under `asyncio.gather`
+and the decision weigher, 49 observations and five `agent_run` spans, read back
+after ingestion settled: `sessionId: user-1`. Note 09's standard gained a
+fourth rule from this: trace-level attributes can be overwritten by the
+auto-instrumentation, so setting them correctly is not proof, and the check has
+to be a delayed read of a real trace.
+
+## 49. Geocoding a town without its country searched the wrong continent
+
+`geocode("Pai")` resolves through Places text search, which returns the
+strongest global match: "Public Administration International (PAI)" on Russell
+Square, London. `get_places_recommendations("Pai", "bar")` therefore centred a
+radius search on Bloomsbury and offered a backpacker in Mae Hong Son Dishoom
+Covent Garden and Ronnie Scott's. `place_tools._geocode` now appends the
+country `route_data.resolve_country` already knows, and passes through anything
+that already names a country or that the corpus does not recognise - inventing
+a country for an unknown town would be the worse failure.
+
+The part worth remembering is why nobody saw it. The `GOOGLE_PLACES_API_KEY`
+had stopped working at some earlier point; every call was returning `401 API
+keys are not supported by this API`, the tools degraded honestly to
+`configured: false`, and the agents correctly said they had no live place data.
+The degradation path was doing its job so well that it hid a second, worse bug
+behind it for as long as the key stayed broken. Replacing the key on
+2026-09-15 surfaced this within one test call. `/health` said
+`places: {configured: true}` throughout, because that flag means "a key is
+set", not "the key works" - now stated as such in the README.
+
+## 50. The test suite was writing to the production Langfuse project
+
+Noticed while watching the live project during a full eval run: test messages
+("Laos or Cambodia next?", "any good hostels here?") were interleaved with real
+eval traces in the real project's timeline. The tests stub `_run_agent`, so no
+model call is ever made - but `run_turn` opens its `Trace` before any of that,
+so every test turn still created a trace whenever a real `.env` was present.
+The project had no `.env` on this machine until today, which is why it had
+never shown up.
+
+`tests/conftest.py` now disables tracing for the whole suite. The obvious
+version of that guard - blanking the two key settings - turned out not to be
+enough, and the way it failed is worth recording: it held when one test file
+ran alone and leaked when the whole suite ran, because the per-test fixtures
+reload `backend.config` and which `Settings` instance `langfuse_setup` ends up
+holding afterwards depends on import order. Patching `langfuse_setup._client`
+to return `None` is order-independent, since every `Trace` and every span goes
+through it. Verified by timestamp: zero traces carrying the suite's empty
+username after the guard, against eleven in the run before it.
+
+## 51. The Weather specialist is not optional on a comparison
+
+Found while checking that the bug-report fixes had broken nothing:
+`season-nepal-monsoon` ("I want to do a big trek in July. Nepal or Sri Lanka?")
+was failing, with Nepal - in monsoon, the one destination the case exists to
+rule out - ranked first. Not caused by this session's changes: the results
+files show it passing through run 31 and failing from run 36, the
+post-rollback full suite, which is the run after the three specialists went
+back to `gpt-4o-mini` (#33). A stronger model got this right.
+
+The mechanism is worth recording because it is silent. The turn parser decides
+which specialists a turn needs, and it returned `needs_weather: false` for a
+question whose entire subject is the season. `build_specialists` honoured it,
+no `weather_agent` span appears anywhere in the trace, and the Decision-Weigher
+simply received an empty seasonal report and ranked on everything else. Nothing
+errored, nothing was logged, and the answer was confidently wrong about the one
+thing this app exists to get right.
+
+`needs_weather` is therefore no longer read on the compare path. The other two
+flags stay advisory - the parser is usually right that a "what would I actually
+do there" question needs no route lookup, and the flags exist to keep four
+concurrent model calls from being five. Season is the exception: it is the
+project's primary failure mode, it has four eval cases of its own, and it is
+exactly the kind of decision the rest of this codebase takes away from the
+model (#12, the intent override, the country-scope override in #43). Verified:
+`season-nepal-monsoon` passes again, and `season-philippines-typhoon` still
+does.

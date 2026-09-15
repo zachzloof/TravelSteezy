@@ -54,6 +54,54 @@ span literally named `(merged tools)`, losing which tool/args it was. This is
 a limitation in that package's current release, not in this app's code -
 worth re-checking on a future upgrade of that dependency.
 
+## The session id the app sets is not the session id Langfuse keeps
+
+**What broke:** conversation grouping, and only that. `run_turn` opens its
+trace with `session_id=f"user-{user_id}"` through `propagate_attributes(...)`,
+which is the documented way to set it and looks entirely correct in the code.
+Langfuse nonetheless stored `local-2`, `discover-2`, `weigh-2-1`,
+`concierge-2` - the ADK session id of whichever agent ran LAST in that turn,
+because `_run_agent` used to build one per agent. One conversation therefore
+scattered across four Langfuse "sessions" named after whichever agent happened
+to answer, and no session in Langfuse showed the actual conversation.
+
+**Found** while working bug report #3, the hard way: reconstructing that
+traveller's conversation from Langfuse produced a session with four of the
+turns missing, and the missing ones turned out to be filed under three other
+session ids. The `--session` flag in `scripts/fetch_trace.py` and a `userId` +
+time-window query are what actually recovered it.
+
+**Why it is easy to miss, and why the UI looks fine:**
+
+- Everything else is unaffected - span tree, models, token usage, cost,
+  latency, tags, user id. Only conversation grouping is wrong.
+- The overwrite is applied **at ingestion, as the child spans arrive**. Read
+  the trace back immediately and it still says `user-2`; read it again a few
+  seconds later and it says `concierge-2`. An early read will tell you there is
+  no bug. (This cost a full experiment cycle before it was noticed.)
+
+**Verified by experiment, not by reading the code** - the code reads correct,
+which is exactly why. Same turn, same account, one variable changed:
+
+| ADK session ids passed to `Runner` | `sessionId` Langfuse stores |
+|---|---|
+| one per agent (`parse-1`, `concierge-1`) | `concierge-1` |
+| one per turn (`user-1` for every agent) | `user-1` |
+
+**The fix** is `runner.adk_session_id(user_id)`, used by all six
+`_run_agent` call sites: one ADK session per turn rather than one per agent.
+Nothing depended on those ids being distinct - `_run_agent` builds its own
+`InMemorySessionService` per call, so two agents are isolated by holding
+separate service instances, not by the id string - and which agent ran is
+still in the span name (`agent_run [decision_weigher]`) and in this app's own
+"what ran" panel.
+
+**Verified live afterwards on the demanding case**, per the standard below: a
+real `compare` turn (turn_parser, three specialists concurrently under
+`asyncio.gather`, then the decision weigher - 49 observations, five
+`agent_run` spans) read back after ingestion settled, `sessionId: user-1`.
+Regression-pinned by `test_every_agent_in_a_turn_shares_one_adk_session_id`.
+
 ### Why this replaced a hand-rolled version, twice
 
 **First problem (found 2026-09-13, this app's original state):** Langfuse
@@ -223,6 +271,15 @@ or its next one:
    `agents.fan_out` in `runner.py` for the pattern: the whole fan-out,
    including building the aggregate report, stays inside one `with
    trace.span(...)`, not split into "gather, then close, then try to update").
+4. **Trace-level attributes (session id, user id) can be overwritten by the
+   auto-instrumentation**, which carries its own idea of them from whatever
+   framework object it wraps. Setting them correctly on the app's own root
+   span is not sufficient and not proof - see the session-id section above.
+   After any change that touches them, read a real trace back through the API
+   and check the stored value, and do it a second time a minute later: the
+   overwrite happens at ingestion, so an immediate read shows the value you
+   set rather than the value that sticks.
+
 4. **Don't assume a pin has gone stale without checking why it's there.**
    Both `langfuse` and `google-adk` were years behind with no reason on
    record; `litellm` looks identically stale next to them but has a real,

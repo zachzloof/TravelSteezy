@@ -127,20 +127,40 @@ run:
 1. **Read memory** — `store.get_memory_snapshot(user_id)`.
 2. **Parse the turn** — `turn_parser` (no tools) turns the message plus the
    stored profile into JSON: intent, profile changes, visits/departures/
-   wishlist, and which specialists this turn needs. A missing or malformed
+   wishlist, and which specialists this turn needs — advisory except for the
+   Weather specialist, which always runs on a comparison. The parser returned
+   `needs_weather: false` for "a big trek in July, Nepal or Sri Lanka?", so no
+   seasonal report reached the weigher and Nepal was ranked first in monsoon
+   ([notes/08](notes/08-decisions-log.md), decision 51). A missing or malformed
    response falls back to `_fallback_parse`, a heuristic that keeps the turn
    alive rather than erroring.
 3. **Write memory** — the parsed JSON drives plain Python calls
    (`_apply_memory_writes`, `tracking.apply_tracking`), not a model-authored
-   side effect.
+   side effect. Writes that assert a *place* — visits, departures,
+   `current_location` — are additionally grounded in the raw message: a place
+   the traveller did not actually type is refused, because the parser restates
+   a location on nearly every turn and one stale restatement silently
+   overwrote what a traveller had just said (bug report #3, see
+   [notes/02](notes/02-memory-and-schema.md)).
 4. **Re-read memory** and compute the code-side guards (`coverage_note`,
    `route_note`) so the specialists see what was just learned.
-5. **Route by intent** — `compare | discover | local | memory | review`. One
-   override matters more than the classifier: any message naming two or more
-   destinations is forced into `compare`, because that is the only path with
-   visa/route tools. This exists because the classifier once sent a
-   two-country visa question to `local_guide`, which has no visa tool, and it
-   answered from parametric memory — wrong.
+5. **Route by intent** — `compare | discover | local | memory | review`. Three
+   code-computed overrides matter more than the classifier:
+   - any message naming two or more destinations is forced into `compare`,
+     because that is the only path with visa/route tools. This exists because
+     the classifier once sent a two-country visa question to `local_guide`,
+     which has no visa tool, and it answered from parametric memory — wrong.
+   - a message asking about **countries** rather than towns — "which country
+     next", "I want to change country", "my visa is running out"
+     (`coverage.wants_country_scope`) — is answered at country level even when
+     the stored location is a town the route corpus covers. Scope used to be a
+     side effect of how precisely the location happened to be recorded.
+   - a `discover` turn with **no recorded location at all** goes to the
+     tool-less `concierge` to ask where they are, rather than to the
+     `discovery_agent`, which would otherwise pick a town out of their route
+     history and answer as though they were still in it.
+   Both of the last two are bug report #3 — see
+   [notes/05-guards-and-prompting.md](notes/05-guards-and-prompting.md).
 6. **Run the chosen agent(s)**, append the turn to history, return the reply.
 
 ### Agent reference
@@ -387,6 +407,13 @@ which path each dependency is on, so this is checkable rather than a claim:
   suite run with no managed services and no keys: a local JSON index with
   brute-force cosine search, and no-op tracing. `backend_name()` and
   `tracing_enabled()` report which path is live.
+- **`configured` means a key is present, not that the key works.** `/health`
+  does not spend an API call per check to prove otherwise. A Google Places key
+  that had stopped working returned `401 API keys are not supported by this
+  API` on every call for an unknown period while `/health` reported
+  `places: {configured: true}`; the tools themselves degraded honestly, so the
+  symptom was agents saying they had no live place data rather than anything
+  breaking. Worth knowing when reading a green `/health`.
 - **OpenAI.** If unset, memory still reads and writes normally and the app says
   the model is unavailable rather than erroring.
 
@@ -397,8 +424,13 @@ Tracing is built on OpenTelemetry auto-instrumentation
 startup), not hand-rolled spans — the officially documented way to trace a
 Google ADK app with Langfuse. Every `Runner.run_async()` call and every raw
 OpenAI completion is captured with zero tracing code at the call site,
-correctly typed and nested. A real run (verified by reading the trace back
-through the Langfuse API, not just inspecting the code):
+correctly typed and nested. Every agent in a turn runs under one shared ADK
+session id (`runner.adk_session_id`) so the turn lands in the Langfuse session
+for that traveller — per-agent ids used to be carried onto the instrumented
+spans and overwrote it, scattering one conversation across four "sessions"
+named after whichever agent answered ([notes/09](notes/09-observability-and-tracing.md)).
+A real run (verified by reading the trace back through the Langfuse API, not
+just inspecting the code):
 
 ```
 SPAN       onward.turn
@@ -439,16 +471,34 @@ as three sibling `CHAIN`s under one span, not sequential nesting. See
 for how this replaced an earlier hand-rolled tracer, the exact verification
 steps, and the standard new agent/tool code is held to.
 
+### Reading a trace from the terminal
+
+Every in-app bug report carries the Langfuse trace URL for the turn that went
+wrong, and working the report means reading that turn's routing, parse and tool
+results. `scripts/fetch_trace.py` prints the whole trace as text — input,
+output, then every observation with its model, latency, arguments and return
+value — so that can happen without leaving the terminal:
+
+```bash
+python -m scripts.fetch_trace <trace-id-or-url>      # truncated
+python -m scripts.fetch_trace <trace-id-or-url> --full
+python -m scripts.fetch_trace <trace-id-or-url> --json
+```
+
+It reads the same `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` /
+`LANGFUSE_HOST` the app traces with, and exits with a clear message rather than
+a stack trace when they are unset.
+
 ---
 
 ## 8. Evals (TRACE)
 
 19 base-app cases in `evals/cases.jsonl`, run by `python -m evals.run_evals`.
-The extension adds 16 more (8 `travel`, 8 `onboarding`) for 35 in total.
+The extension adds 20 more (11 `travel`, 9 `onboarding`) for 39 in total.
 
 Scoring is **assertion-first**: did the retrieval tool actually fire, is this
 destination ranked below another, did a row land in `visited_history`. Those are
-facts about the run, not opinions about prose. Only four genuinely qualitative
+facts about the run, not opinions about prose. Eight genuinely qualitative
 cases use an LLM judge, each with its own rubric and pass threshold.
 
 Covered failure modes: recommending a destination in monsoon or hazard season;
@@ -528,12 +578,19 @@ python -m evals.run_evals --case season-nepal-monsoon
 python -m evals.run_evals --no-judge           # assertions only, no judge calls
 ```
 
-Unit tests (no API keys needed, ~20s):
+Unit tests (no API keys needed, ~65s):
 
 ```bash
-python -m pytest tests -q      # 82 tests: memory contract, auth, isolation,
-                               # structured travel memory, ranking, onboarding
+python -m pytest tests -q      # 175 tests: memory contract, auth, isolation,
+                               # structured travel memory, ranking, onboarding,
+                               # where-next scope and the write-grounding rule
 ```
+
+They need no keys and reach no network — and `tests/conftest.py` makes sure of
+the second part even when a real `.env` *is* present: `run_turn` opens a
+Langfuse trace before any agent is stubbed, so without that guard every test
+turn wrote a trace into the live Langfuse project and interleaved test messages
+with real ones.
 
 ---
 
@@ -671,7 +728,7 @@ Full extension design (and every bug found building it) is in
 | URL loads for a stranger in incognito | Needs the Railway deploy; no hostname is baked into the frontend build |
 | Core task works end to end | Verified locally against the live OpenAI API, including the full onboarding → discover → track → review loop |
 | Memory persists across a fresh session | **Verified** against a real process restart, plus tests and an eval case |
-| Eval suite passes / latest score shown | **34/35** on the full suite after the onboarding rework (`evals/results/12-full-after-onboarding-rework.md`). The onboarding cases specifically: **9/9 passing all 3 runs, 27/27 attempts** (`evals/results/11-onboarding-v2.md`). The one failure is the judge case `rag-backpacker-not-tourist`, which an A/B isolation run showed is flaky independently of this work (3/6 without the change, 7/11 with it) — the investigation is written up in [notes/06-eval-methodology.md](notes/06-eval-methodology.md). Re-verified after the 2026-09 dependency modernization (Section 7): **33/35** (`evals/results/modernization-v3-final.md`), after that pass's own eval run caught and fixed a real regression in the live-source disclosure guard — see [notes/01-agent-architecture.md](notes/01-agent-architecture.md) and [notes/09](notes/09-observability-and-tracing.md) for the full trail, kept in `evals/results/modernization-*.md` |
+| Eval suite passes / latest score shown | **34/35** on the full suite after the onboarding rework (`evals/results/12-full-after-onboarding-rework.md`). The onboarding cases specifically: **9/9 passing all 3 runs, 27/27 attempts** (`evals/results/11-onboarding-v2.md`). The one failure is the judge case `rag-backpacker-not-tourist`, which an A/B isolation run showed is flaky independently of this work (3/6 without the change, 7/11 with it) — the investigation is written up in [notes/06-eval-methodology.md](notes/06-eval-methodology.md). Re-verified after the 2026-09 dependency modernization (Section 7): **33/35** (`evals/results/modernization-v3-final.md`), after that pass's own eval run caught and fixed a real regression in the live-source disclosure guard — see [notes/01-agent-architecture.md](notes/01-agent-architecture.md) and [notes/09](notes/09-observability-and-tracing.md) for the full trail, kept in `evals/results/modernization-*.md`. The suite has since grown to 39 cases. The four added for bug report #3 (`scope-country-question-answered-with-countries`, `scope-visa-expiry-forces-a-country-answer`, `tracking-ignores-a-hypothetical-departure`, `tracking-does-not-relocate-you-on-a-placeless-turn`) were run against live OpenAI and Pinecone together with the two `discovery-*` cases they could have regressed: **6/6**, both judged cases scoring 5/5 (`evals/results/37-bug3-scope-and-grounding.md`). The full suite was then run twice against live OpenAI, Pinecone and Places — **37/39** before the Weather-specialist guard (`evals/results/38-after-bug3-fixes.md`) and **38/39** after it (`evals/results/41-final-after-all-fixes.md`). That guard fixed `season-nepal-monsoon`, which had been failing since run 36 for reasons that predate this work (decision 51). The one remaining failure is `rag-budget-numbers`, intermittent across the whole results history — failing in runs 25-27, passing in 28/31/36, and both failing and passing on re-runs today |
 | At least one fix from TRACE shipped | Twelve across three phases — four base-app (Section 8), six extension, and two from the onboarding rework's first eval run: a `set_social_style` write that silently no-opped for every brand-new account, and a dropped revisit ([notes/08-decisions-log.md](notes/08-decisions-log.md)) |
 | README covers problem/architecture/stack/demo | This file, plus [docs/EXTENSION.md](docs/EXTENSION.md) and [notes/](notes/00-index.md) for depth |
 | Backup recording exported | **Outstanding** — record once deployed |

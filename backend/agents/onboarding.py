@@ -652,10 +652,19 @@ async def answer_step(user_id: int, step_id: str, text: str) -> dict[str, Any]:
     # backend/tracing/langfuse_setup.py) captures as a full
     # chain/agent/generation tree with real model name and token usage, as
     # long as it runs while this Trace is open - which it does, below.
+    # One session for the whole onboarding flow, deliberately its own rather
+    # than the chat session: this runs on its own endpoint with its own trace
+    # name and tag. The ADK session below MUST match it - the
+    # auto-instrumentation carries the ADK session onto its spans and overwrites
+    # the trace's session id with it at ingestion, so a per-step ADK id
+    # ("onboard-route-1", "onboard-style-1", ...) scattered one onboarding flow
+    # across five Langfuse sessions. Same bug as the chat path's; see
+    # runner.adk_session_id and notes/09.
+    session_id = f"onboard-{user_id}"
     trace = Trace(
         name="onward.onboarding",
         user_id=str(user_id),
-        session_id=f"onboard-{user_id}",
+        session_id=session_id,
         input={"step_id": step_id, "answer": answer},
         tags=["onboarding"],
     )
@@ -670,7 +679,7 @@ async def answer_step(user_id: int, step_id: str, text: str) -> dict[str, Any]:
                     {"today": date.today().isoformat()},
                     answer,
                     str(user_id),
-                    f"onboard-{step_id}-{user_id}",
+                    session_id,
                 )
                 # The extractor has a real output_schema (OnboardingCapture,
                 # see above), so ADK already validated the model's JSON into a

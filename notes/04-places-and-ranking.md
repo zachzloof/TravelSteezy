@@ -191,3 +191,37 @@ reliably returns actual hostels like "The Yard Hostel," "Stamps Backpackers,"
   make up a hostel name," but it's paired with the honesty-focused eval cases
   (`honesty-unknown-destination`, `discovery-honest-about-unknown-origin`) that
   specifically test for confabulation under missing data.
+
+## Geocoding a town needs the country we already know it is in
+
+**What it catches:** searching the wrong continent, confidently.
+
+**The bug:** `client.geocode()` resolves a place name through Places text
+search, which takes a bare string and returns whatever scores highest
+*globally*. `geocode("Pai")` returns **"Public Administration International
+(PAI)", 56 Russell Sq, London** — a real organisation with a strong listing —
+so `get_places_recommendations("Pai", "bar")` centred its radius search on
+Bloomsbury and recommended a backpacker in northern Thailand Dishoom Covent
+Garden, Ronnie Scott's and the BFI IMAX. `find_hostels` partly escaped because
+it searches by text ("hostels and backpacker guesthouses in Pai") rather than
+by radius, but it still labelled its results with the London organisation's
+name.
+
+**How it surfaced, which is the interesting part:** it didn't, for as long as
+the `GOOGLE_PLACES_API_KEY` was dead. Every call was returning `401 API keys
+are not supported by this API`, the tools degraded honestly to
+`configured: false`, and the agents correctly said they had no live place data.
+Replacing the key on 2026-09-15 fixed the 401 and revealed this underneath.
+Worth remembering when reading `/health`: "configured" means a key is present,
+not that the key works or that what comes back is right.
+
+**The fix:** `place_tools._geocode()` appends the country the corpus already
+knows, via `route_data.resolve_country` — `"Pai"` → `"Pai, Thailand"`, which
+resolves correctly. A location that already names a country is passed through
+untouched, and so is one the corpus doesn't recognise: inventing a country for
+an unknown town would be a worse failure than the ambiguity. This is the same
+`resolve_country` theme as note 05's "city-awareness" section, now appearing in
+a fifth place. Pinned by `test_geocode_disambiguates_a_town_with_its_country`
+and `test_geocode_leaves_an_already_qualified_or_unknown_location_alone`, and
+verified live: Pai bars are now The Lost Texan, Spirit Bar and Rose's
+Roadhouse, all in Amphoe Pai, Mae Hong Son.

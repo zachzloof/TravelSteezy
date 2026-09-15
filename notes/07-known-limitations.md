@@ -26,6 +26,15 @@ decided rather than re-litigating it.
   mis-resolve a place name that happens to contain another place name as a
   substring (this hasn't been observed in practice with the current
   vocabulary, but it's a real edge case with a larger gazetteer).
+- **Question scope ("which country" vs "which town") is a regex, not a
+  classifier.** `coverage.wants_country_scope` matches the phrasings people
+  actually use for leaving a country, and is deliberately tuned to under-fire:
+  a phrasing it misses gives the old town-level answer (annoying), while a
+  false positive drags an ordinary town question into a country comparison
+  (worse, and harder to notice). Adding a `scope` field to `TurnParse` was
+  considered and rejected — see note 08, decision 43 — but if the misses turn
+  out to matter in practice, a cheap classifier signal *combined with* the
+  regex, not replacing it, is the next move.
 - **Area labels come from address-string parsing, not real neighbourhood
   boundaries.** Places API (New) doesn't return neighbourhood data on a
   nearby/text search. The label is honestly described as such in the tool's

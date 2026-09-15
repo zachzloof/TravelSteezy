@@ -81,6 +81,25 @@ without reading the note it points at.
   JSON; `_apply_memory_writes` / `tracking.apply_tracking` do the writing. Free text is
   mapped onto the five-point budget/pace/climate scales by `store.normalise_band`, never
   by trusting a model to emit a valid token. (`notes/02`)
+- **A place the traveller did not type is never written.** `tracking.mentioned_in`
+  grounds `visits`, `departures` and `profile_updates.current_location` in the raw
+  message, and a stated presence beats a departure inferred in the same turn. The
+  parser restates a location on nearly every turn, including turns naming nowhere, and
+  one stale restatement overwrote a traveller's own words. The write path being Python
+  does not make the extraction true. (`notes/02`, bug report #3)
+- **Scope is read from the question, not from how precisely the location was stored.**
+  `coverage.wants_country_scope` forces the country-level path for "which country
+  next" / "change country" / "my visa is running out", whatever the classifier said,
+  and a `discover` turn with no stored location goes to the tool-less concierge rather
+  than to an agent that could invent an origin. (`notes/05`)
+- **The Weather specialist always runs on a comparison.** `needs_weather` from the
+  parser is ignored there: it came back false for "a big trek in July, Nepal or Sri
+  Lanka?", no weather agent ran, and Nepal was ranked first in monsoon. (`notes/05`,
+  decision 51)
+- **Every agent in a turn shares one ADK session id** (`runner.adk_session_id`).
+  Per-agent ids get carried onto the auto-instrumented spans and overwrite the trace's
+  Langfuse session, scattering one conversation across several. Same rule in
+  `onboarding.py`. (`notes/09`)
 - **The `compare` fan-out is `asyncio.gather` over one `Runner` per specialist, not ADK's
   `ParallelAgent`.** `ParallelAgent` intermittently raised `aclose(): asynchronous generator
   is already running` and aborted the whole turn. Per-specialist Runners also isolate

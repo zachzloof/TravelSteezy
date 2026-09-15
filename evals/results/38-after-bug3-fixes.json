@@ -1,0 +1,2177 @@
+{
+  "run_id": "eval-20260915T132221Z-b4a7b6",
+  "label": "38-after-bug3-fixes",
+  "timestamp": "2026-09-15T13:34:10.626129+00:00",
+  "score": "37/39",
+  "passed": 37,
+  "total": 39,
+  "pass_rate": 0.949,
+  "repeats": 1,
+  "flaky": 0,
+  "total_attempts": 39,
+  "attempt_pass_rate": 0.949,
+  "config": {
+    "llm_model": "gpt-4o-mini",
+    "judge_model": "gpt-4o",
+    "judge_enabled": true,
+    "rag_backend": "pinecone",
+    "embeddings": "openai",
+    "langfuse": true
+  },
+  "results": [
+    {
+      "id": "onboarding-captures-route-with-ratings",
+      "name": "A messy plain-text answer becomes an ordered route with ratings",
+      "failure_mode": "onboarding fails to capture structured profile",
+      "message": null,
+      "passed": true,
+      "elapsed_ms": 6047,
+      "trace_id": null,
+      "checks": [
+        {
+          "type": "history_contains",
+          "passed": true,
+          "detail": "history=['bangkok', 'koh tao', 'hanoi', 'chiang mai'], missing=[]"
+        },
+        {
+          "type": "history_ordered",
+          "passed": true,
+          "detail": "history order=['bangkok', 'koh tao', 'hanoi', 'chiang mai']"
+        },
+        {
+          "type": "history_count",
+          "passed": true,
+          "detail": "4 stops: ['bangkok', 'koh tao', 'hanoi', 'chiang mai']"
+        },
+        {
+          "type": "rating_is",
+          "passed": true,
+          "detail": "bangkok rated 3 (wanted 3-3)"
+        },
+        {
+          "type": "rating_is",
+          "passed": true,
+          "detail": "koh tao rated 5 (wanted 4-5)"
+        },
+        {
+          "type": "rating_is",
+          "passed": true,
+          "detail": "hanoi rated 2 (wanted 1-2)"
+        },
+        {
+          "type": "ratings_absent",
+          "passed": true,
+          "detail": "no rating invented"
+        },
+        {
+          "type": "profile_field_set",
+          "passed": true,
+          "detail": "current_location='chiang mai'"
+        }
+      ],
+      "reply": "add_travel_history({'location': 'Bangkok', 'order': 1, 'rating': 3}); add_travel_history({'location': 'Koh Tao', 'order': 2, 'rating': 5}); add_travel_history({'location': 'Hanoi', 'order': 3, 'rating': 2}); add_travel_history({'location': 'Chiang Mai', 'order': 4}); update_profile({'current_location': 'Chiang Mai'})",
+      "cards": [],
+      "tool_calls": [],
+      "retrieved": [],
+      "runs": 1,
+      "passes": 1,
+      "pass_rate": 1.0,
+      "flaky": false
+    },
+    {
+      "id": "onboarding-maps-plain-english-to-bands",
+      "name": "Free-text style answer lands on the five-point scales",
+      "failure_mode": "onboarding fails to capture structured profile",
+      "message": null,
+      "passed": true,
+      "elapsed_ms": 2310,
+      "trace_id": null,
+      "checks": [
+        {
+          "type": "profile_field_in",
+          "passed": true,
+          "detail": "budget_band='budget', wanted one of ['shoestring', 'budget']"
+        },
+        {
+          "type": "profile_field_in",
+          "passed": true,
+          "detail": "travel_style='slow', wanted one of ['very_slow', 'slow']"
+        },
+        {
+          "type": "profile_field_set",
+          "passed": true,
+          "detail": "social_style='solo'"
+        },
+        {
+          "type": "interests_contain_any",
+          "passed": true,
+          "detail": "interests=['diving', 'hiking'], matched=['hiking', 'diving']"
+        }
+      ],
+      "reply": "set_interests({'interests': ['hiking', 'diving']}); set_social_style({'social_style': 'solo'}); update_profile({'budget_band': 'budget', 'travel_style': 'slow'})",
+      "cards": [],
+      "tool_calls": [],
+      "retrieved": [],
+      "runs": 1,
+      "passes": 1,
+      "pass_rate": 1.0,
+      "flaky": false
+    },
+    {
+      "id": "onboarding-does-not-invert-a-negated-preference",
+      "name": "A preference stated as a complaint is not stored backwards",
+      "failure_mode": "onboarding stores a preference as its opposite",
+      "message": null,
+      "passed": true,
+      "elapsed_ms": 1389,
+      "trace_id": null,
+      "checks": [
+        {
+          "type": "profile_field_not",
+          "passed": true,
+          "detail": "climate_preference='cold', must not be any of ['hot', 'warm']"
+        },
+        {
+          "type": "profile_field_in",
+          "passed": true,
+          "detail": "budget_band='mid', wanted one of ['mid', 'comfortable']"
+        }
+      ],
+      "reply": "update_profile({'budget_band': 'mid', 'travel_style': 'balanced', 'climate_preference': 'cold'})",
+      "cards": [],
+      "tool_calls": [],
+      "retrieved": [],
+      "runs": 1,
+      "passes": 1,
+      "pass_rate": 1.0,
+      "flaky": false
+    },
+    {
+      "id": "onboarding-captures-both-passports",
+      "name": "A dual national's second passport is captured, not dropped",
+      "failure_mode": "onboarding fails to capture structured profile",
+      "message": null,
+      "passed": true,
+      "elapsed_ms": 1254,
+      "trace_id": null,
+      "checks": [
+        {
+          "type": "passports_contain",
+          "passed": true,
+          "detail": "passports=['united kingdom', 'ireland'], missing=[]"
+        },
+        {
+          "type": "profile_field_set",
+          "passed": true,
+          "detail": "nationality='united kingdom'"
+        }
+      ],
+      "reply": "set_passports({'passports': ['United Kingdom', 'Ireland']})",
+      "cards": [],
+      "tool_calls": [],
+      "retrieved": [],
+      "runs": 1,
+      "passes": 1,
+      "pass_rate": 1.0,
+      "flaky": false
+    },
+    {
+      "id": "onboarding-wishlist-allows-a-revisit",
+      "name": "Wanting to return somewhere is captured rather than refused",
+      "failure_mode": "onboarding fails to capture structured profile",
+      "message": null,
+      "passed": true,
+      "elapsed_ms": 1282,
+      "trace_id": null,
+      "checks": [
+        {
+          "type": "wishlist_contains",
+          "passed": true,
+          "detail": "wishlist=['pai', 'koh tao', 'laos'], missing=[]"
+        },
+        {
+          "type": "history_contains",
+          "passed": true,
+          "detail": "history=['koh tao'], missing=[]"
+        }
+      ],
+      "reply": "add_wishlist({'location': 'Pai', 'priority': 1}); add_wishlist({'location': 'Koh Tao', 'priority': 1, 'revisit': True}); add_wishlist({'location': 'Laos', 'priority': 1})",
+      "cards": [],
+      "tool_calls": [],
+      "retrieved": [],
+      "runs": 1,
+      "passes": 1,
+      "pass_rate": 1.0,
+      "flaky": false
+    },
+    {
+      "id": "onboarding-scopes-answers-to-the-question-asked",
+      "name": "Places named on the wishlist question do not become visited history",
+      "failure_mode": "onboarding stores wanted places as already visited",
+      "message": null,
+      "passed": true,
+      "elapsed_ms": 1235,
+      "trace_id": null,
+      "checks": [
+        {
+          "type": "wishlist_contains",
+          "passed": true,
+          "detail": "wishlist=['luang prabang', 'hoi an', 'bali'], missing=[]"
+        },
+        {
+          "type": "history_lacks",
+          "passed": true,
+          "detail": "history=[]"
+        },
+        {
+          "type": "history_count",
+          "passed": true,
+          "detail": "0 stops: []"
+        }
+      ],
+      "reply": "add_wishlist({'location': 'Luang Prabang', 'priority': 1}); add_wishlist({'location': 'Hoi An', 'priority': 1}); add_wishlist({'location': 'Bali', 'priority': 1})",
+      "cards": [],
+      "tool_calls": [],
+      "retrieved": [],
+      "runs": 1,
+      "passes": 1,
+      "pass_rate": 1.0,
+      "flaky": false
+    },
+    {
+      "id": "onboarding-invents-nothing",
+      "name": "Onboarding records only what was said, not what would be plausible",
+      "failure_mode": "onboarding invents profile data that was never stated",
+      "message": null,
+      "passed": true,
+      "elapsed_ms": 2390,
+      "trace_id": null,
+      "checks": [
+        {
+          "type": "history_contains",
+          "passed": true,
+          "detail": "history=['bangkok'], missing=[]"
+        },
+        {
+          "type": "history_count",
+          "passed": true,
+          "detail": "1 stops: ['bangkok']"
+        },
+        {
+          "type": "wishlist_count",
+          "passed": true,
+          "detail": "0 wanted: []"
+        },
+        {
+          "type": "ratings_absent",
+          "passed": true,
+          "detail": "no rating invented"
+        }
+      ],
+      "reply": "add_travel_history({'location': 'Bangkok', 'order': 1}); update_profile({'current_location': 'Bangkok'})",
+      "cards": [],
+      "tool_calls": [],
+      "retrieved": [],
+      "runs": 1,
+      "passes": 1,
+      "pass_rate": 1.0,
+      "flaky": false
+    },
+    {
+      "id": "onboarding-survives-a-non-answer",
+      "name": "A non-answer writes nothing and still lets the flow move on",
+      "failure_mode": "onboarding traps the user or writes junk",
+      "message": null,
+      "passed": true,
+      "elapsed_ms": 6354,
+      "trace_id": null,
+      "checks": [
+        {
+          "type": "history_count",
+          "passed": true,
+          "detail": "0 stops: []"
+        },
+        {
+          "type": "wishlist_count",
+          "passed": true,
+          "detail": "0 wanted: []"
+        },
+        {
+          "type": "passports_contain",
+          "passed": true,
+          "detail": "passports=['united kingdom'], missing=[]"
+        },
+        {
+          "type": "onboarding_complete",
+          "passed": true,
+          "detail": "status=complete, turns=5"
+        }
+      ],
+      "reply": "set_passports({'passports': ['United Kingdom']})",
+      "cards": [],
+      "tool_calls": [],
+      "retrieved": [],
+      "runs": 1,
+      "passes": 1,
+      "pass_rate": 1.0,
+      "flaky": false
+    },
+    {
+      "id": "onboarding-full-flow-completes",
+      "name": "All five questions answered end to end produce a usable profile",
+      "failure_mode": "onboarding fails to capture structured profile",
+      "message": null,
+      "passed": true,
+      "elapsed_ms": 6702,
+      "trace_id": null,
+      "checks": [
+        {
+          "type": "history_ordered",
+          "passed": true,
+          "detail": "history order=['bangkok', 'koh tao', 'chiang mai']"
+        },
+        {
+          "type": "rating_is",
+          "passed": true,
+          "detail": "koh tao rated 5 (wanted 4-5)"
+        },
+        {
+          "type": "wishlist_contains",
+          "passed": true,
+          "detail": "wishlist=['pai', 'luang prabang'], missing=[]"
+        },
+        {
+          "type": "passports_contain",
+          "passed": true,
+          "detail": "passports=['australia'], missing=[]"
+        },
+        {
+          "type": "profile_field_set",
+          "passed": true,
+          "detail": "budget_band='shoestring'"
+        },
+        {
+          "type": "profile_field_in",
+          "passed": true,
+          "detail": "travel_style='slow', wanted one of ['slow', 'very_slow']"
+        },
+        {
+          "type": "profile_field_set",
+          "passed": true,
+          "detail": "social_style='solo'"
+        },
+        {
+          "type": "interests_contain_any",
+          "passed": true,
+          "detail": "interests=['diving', 'street food', 'trekking'], matched=['trekking', 'food', 'street food', 'diving']"
+        },
+        {
+          "type": "key_interests_contain_any",
+          "passed": true,
+          "detail": "key_interests=['diving'], matched=['diving']"
+        },
+        {
+          "type": "onboarding_complete",
+          "passed": true,
+          "detail": "status=complete, turns=5"
+        }
+      ],
+      "reply": "add_travel_history({'location': 'Bangkok', 'order': 1}); add_travel_history({'location': 'Koh Tao', 'order': 2, 'rating': 5}); add_travel_history({'location': 'Chiang Mai', 'order': 3}); set_interests({'interests': ['diving']}); update_profile({'current_location': 'Chiang Mai'}); set_passports({'passports': ['Australia']}); add_wishlist({'location': 'Pai', 'priority': 1}); add_wishlist({'location': 'Luang Prabang', 'priority': 2}); set_interests({'interests': ['trekking', 'street food']}); set_social_style({'social_style': 'solo'}); update_profile({'budget_band': 'shoestring', 'travel_style': 'slow'}); set_interests({'interests': ['diving']}); set_key_interests({'interests': ['diving']})",
+      "cards": [],
+      "tool_calls": [],
+      "retrieved": [],
+      "runs": 1,
+      "passes": 1,
+      "pass_rate": 1.0,
+      "flaky": false
+    },
+    {
+      "id": "season-nepal-monsoon",
+      "name": "Does not recommend Nepal trekking in monsoon",
+      "failure_mode": "recommends a destination during its monsoon/unsafe season",
+      "message": "I want to do a big trek in July. Nepal or Sri Lanka?",
+      "passed": false,
+      "elapsed_ms": 25495,
+      "trace_id": "a2b55ab0ea9ac0516033157d2b335090",
+      "checks": [
+        {
+          "type": "tool_called",
+          "passed": false,
+          "detail": "tool_calls=['search_backpacker_tips', 'search_backpacker_tips']"
+        },
+        {
+          "type": "not_ranked_first",
+          "passed": false,
+          "detail": "rank 1 = 'nepal'"
+        },
+        {
+          "type": "flag_present",
+          "passed": false,
+          "detail": "season_flag=None"
+        }
+      ],
+      "reply": "I recommend Nepal for your big trek in July, particularly since your key interest is mountains and trekking. Despite being in Thailand, making a move to Nepal fits well with your shoestring budget of USD 20-25 per day in major spots like Kathmandu and Pokhara, and offers more serious trekking options like the Annapurna Base Camp Trek (7-12 days) that align with your interests. High-altitude treks like Everest Base Camp are also an option if you plan ahead. Sri Lanka is budget-friendly too, at USD 20-30 per day, but its treks tend to be more moderate compared to the challenging mountain routes of Nepal. Just remember to watch out for altitude sickness above 3,000m and to confirm any visa requirements directly with the government before setting off.",
+      "cards": [
+        {
+          "destination": "Nepal",
+          "rank": 1,
+          "verdict": "go",
+          "season_flag": null,
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Expect around USD 20-25 per day in Kathmandu and Pokhara, increasing to USD 30-40 on a trek due to food costs at altitude.",
+            "Annapurna Base Camp Trek offers stunning views and teahouses for budget travelers.",
+            "Local buses are cheap; consider a flight to Lukla for Everest treks.",
+            "Monitor for altitude sickness; buy Diamox in Kathmandu if needed."
+          ],
+          "source_ids": [
+            "tips-nepal"
+          ]
+        },
+        {
+          "destination": "Sri Lanka",
+          "rank": 2,
+          "verdict": "maybe",
+          "season_flag": null,
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Shoestring budget is about USD 20-30 per day.",
+            "Moderate hike at Little Adam's Peak with scenic views.",
+            "Train from Kandy to Ella is highly recommended for scenery.",
+            "Check local regulations when renting a tuk-tuk for self-driving to avoid fines."
+          ],
+          "source_ids": [
+            "tips-srilanka"
+          ]
+        }
+      ],
+      "tool_calls": [
+        "search_backpacker_tips",
+        "search_backpacker_tips"
+      ],
+      "retrieved": [
+        "tips-nepal",
+        "tips-srilanka"
+      ],
+      "runs": 1,
+      "passes": 0,
+      "pass_rate": 0.0,
+      "flaky": false
+    },
+    {
+      "id": "season-philippines-typhoon",
+      "name": "Flags Philippine typhoon season in September",
+      "failure_mode": "recommends a destination during its monsoon/unsafe season",
+      "message": "September plans - Philippines or Malaysia for some island time?",
+      "passed": true,
+      "elapsed_ms": 21981,
+      "trace_id": "26feb67fc370f7ee93ecec2f0816332f",
+      "checks": [
+        {
+          "type": "tool_called",
+          "passed": true,
+          "detail": "tool_calls=['check_seasonal_conditions', 'check_seasonal_conditions', 'search_backpacker_tips', 'search_backpacker_tips', 'search_visa_rules', 'search_visa_rules', 'check_route', 'check_route', 'search_seasonal_notes', 'search_seasonal_notes']"
+        },
+        {
+          "type": "not_ranked_first",
+          "passed": true,
+          "detail": "rank 1 = 'malaysia'"
+        },
+        {
+          "type": "reply_mentions_any",
+          "passed": true,
+          "detail": "matched=['typhoon']"
+        }
+      ],
+      "reply": "Given your interest in diving and islands, paired with a mid-range budget and balanced travel pace, Malaysia emerges as the better recommendation for your September island time. Not only does it offer a longer visa-free stay of 90 days without fees, but the flights are also relatively cheaper from Vietnam, with average costs around USD 75. While the Philippines is renowned for its diving spots, the peak typhoon season during September poses significant travel risks. In Malaysia, you can enjoy island hopping with manageable rainy days and much better travel infrastructure.\n\nTraveling from Vietnam, the short 2-hour flight to Malaysia is cost-effective, allowing you to maximize your time and budget on island experiences.",
+      "cards": [
+        {
+          "destination": "Malaysia",
+          "rank": 1,
+          "verdict": "go",
+          "season_flag": null,
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Daily budget of USD 25-30 in Malaysia.",
+            "Enjoy vibrant street art and cheap hawker food in George Town, Penang.",
+            "Economical intercity buses making travel easy.",
+            "Be cautious with belongings in busy areas like bus and train stations."
+          ],
+          "source_ids": [
+            "tips-malaysia"
+          ]
+        },
+        {
+          "destination": "Philippines",
+          "rank": 2,
+          "verdict": "maybe",
+          "season_flag": "High risks of typhoons can lead to significant travel disruptions.",
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Expect a daily budget of USD 25-35 in the Philippines.",
+            "Island-hopping tours in El Nido cost about PHP 1,200-1,800.",
+            "Inter-island travel mainly involves flights due to limited infrastructure.",
+            "Scarce ATMs on smaller islands with high withdrawal fees."
+          ],
+          "source_ids": [
+            "tips-philippines"
+          ]
+        }
+      ],
+      "tool_calls": [
+        "check_seasonal_conditions",
+        "check_seasonal_conditions",
+        "search_backpacker_tips",
+        "search_backpacker_tips",
+        "search_visa_rules",
+        "search_visa_rules",
+        "check_route",
+        "check_route",
+        "search_seasonal_notes",
+        "search_seasonal_notes"
+      ],
+      "retrieved": [
+        "tips-philippines",
+        "tips-malaysia",
+        "visa-philippines-western",
+        "visa-malaysia-western",
+        "seasonal-philippines",
+        "seasonal-malaysia"
+      ],
+      "runs": 1,
+      "passes": 1,
+      "pass_rate": 1.0,
+      "flaky": false
+    },
+    {
+      "id": "season-cambodia-april-heat",
+      "name": "Warns about April heat at Angkor",
+      "failure_mode": "recommends a destination during its monsoon/unsafe season",
+      "message": "Is April a good time to cycle around Angkor in Cambodia, or should I go to Malaysia?",
+      "passed": true,
+      "elapsed_ms": 34078,
+      "trace_id": "42ad81d3e17806bb132db2ddb43b87a5",
+      "checks": [
+        {
+          "type": "tool_called",
+          "passed": true,
+          "detail": "tool_calls=['search_backpacker_tips', 'search_backpacker_tips', 'search_visa_rules', 'search_visa_rules', 'check_route', 'check_route', 'check_seasonal_conditions', 'check_seasonal_conditions', 'search_seasonal_notes', 'search_seasonal_notes']"
+        },
+        {
+          "type": "reply_mentions_any",
+          "passed": true,
+          "detail": "matched=['hot', 'heat', '40', 'temperature']"
+        }
+      ],
+      "reply": "Given your shoestring budget and interest in cycling, I recommend heading to Malaysia. In April, Malaysia offers ideal conditions for travel, unlike Cambodia where the oppressive heat can make cycling challenging. You can enjoy visa-free entry for 90 days in Malaysia with a daily budget ranging from $25-30. From Thailand, you can take an overland train or bus to Malaysia, which takes about 20 hours and costs $30-50. Your slow travel pace will allow you to fully experience places like Penang, known for cycling-friendly streets and temples.",
+      "cards": [
+        {
+          "destination": "Malaysia",
+          "rank": 1,
+          "verdict": "go",
+          "season_flag": null,
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Daily budget: $25-30",
+            "Explore George Town in Penang, great for cycling and street art.",
+            "Overland travel from Bangkok to Penang takes about 20 hours, costing $30-50.",
+            "Remember to complete the Malaysia Digital Arrival Card (MDAC) online within three days before arrival."
+          ],
+          "source_ids": [
+            "1"
+          ]
+        },
+        {
+          "destination": "Angkor, Cambodia",
+          "rank": 2,
+          "verdict": "maybe",
+          "season_flag": "April's heat makes cycling oppressive",
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Daily budget: $20-25",
+            "Cycle to Angkor Wat and outer temples, start early at 5 AM.",
+            "Flights to Siem Reap cost $60-120 and take about 1.25 hours.",
+            "Be cautious of bag-snatching motorbikes in urban areas."
+          ],
+          "source_ids": [
+            "1"
+          ]
+        }
+      ],
+      "tool_calls": [
+        "search_backpacker_tips",
+        "search_backpacker_tips",
+        "search_visa_rules",
+        "search_visa_rules",
+        "check_route",
+        "check_route",
+        "check_seasonal_conditions",
+        "check_seasonal_conditions",
+        "search_seasonal_notes",
+        "search_seasonal_notes"
+      ],
+      "retrieved": [
+        "tips-cambodia",
+        "tips-malaysia",
+        "visa-cambodia-western",
+        "visa-malaysia-western",
+        "live-seasonal-angkor",
+        "seasonal-malaysia"
+      ],
+      "runs": 1,
+      "passes": 1,
+      "pass_rate": 1.0,
+      "flaky": false
+    },
+    {
+      "id": "season-malaysia-east-coast-closed",
+      "name": "Knows Perhentians shut in the northeast monsoon",
+      "failure_mode": "recommends a destination during its monsoon/unsafe season",
+      "message": "December - should I go to the Perhentian islands in Malaysia or head to Indonesia?",
+      "passed": true,
+      "elapsed_ms": 50224,
+      "trace_id": "3b75b6a7dfbbbfecf839704436a06734",
+      "checks": [
+        {
+          "type": "tool_called",
+          "passed": true,
+          "detail": "tool_calls=['search_backpacker_tips', 'search_backpacker_tips', 'check_seasonal_conditions', 'check_seasonal_conditions', 'search_visa_rules', 'search_visa_rules', 'check_route', 'check_route', 'search_seasonal_notes', 'search_seasonal_notes']"
+        },
+        {
+          "type": "reply_mentions_any",
+          "passed": true,
+          "detail": "matched=['closed', 'monsoon']"
+        }
+      ],
+      "reply": "Given your current location in Thailand, your shoestring budget, and interest in islands and snorkeling, heading to Indonesia is the better option for December. The Perhentian Islands in Malaysia are closed due to the monsoon season, making them inaccessible. Indonesia, particularly Bali, although in the wet season, offers more accessible options and could still be manageable for island visits and snorkeling. Daily costs in Indonesia like Bali are about USD 22-30, and you need a visa on arrival costing USD 35. Consider the Perhentians another time when they are open, likely starting February, as that's not possible this December.",
+      "cards": [
+        {
+          "destination": "Indonesia",
+          "rank": 1,
+          "verdict": "maybe",
+          "season_flag": "December is peak wet season",
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Expect a budget of USD 22-30 per day with dorms costing USD 7-12.",
+            "Visit the Gili Islands for diving opportunities; Gili Trawangan is lively, Gili Air well-balanced, and Gili Meno is peaceful.",
+            "It's advisable to fly from Bangkok to Bali as overland routes are impractical.",
+            "Be cautious when driving scooters in Bali due to police stops, which may lead to fines."
+          ],
+          "source_ids": []
+        },
+        {
+          "destination": "Perhentian Islands, Malaysia",
+          "rank": 2,
+          "verdict": "avoid",
+          "season_flag": "Closed until February due to monsoons",
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Spending roughly RM100-150 ($22-34) daily, dorms cost RM20-60.",
+            "Snorkeling with vibrant marine life when open; gear rental RM20 ($4.50) per day.",
+            "Access by bus from Kuala Lumpur to Kuala Besut, followed by a boat.",
+            "Remember to bring enough cash as there are no ATMs on the islands."
+          ],
+          "source_ids": []
+        }
+      ],
+      "tool_calls": [
+        "search_backpacker_tips",
+        "search_backpacker_tips",
+        "check_seasonal_conditions",
+        "check_seasonal_conditions",
+        "search_visa_rules",
+        "search_visa_rules",
+        "check_route",
+        "check_route",
+        "search_seasonal_notes",
+        "search_seasonal_notes"
+      ],
+      "retrieved": [
+        "live-tips-perhentian-islands",
+        "tips-indonesia",
+        "visa-malaysia-western",
+        "visa-indonesia-western",
+        "live-seasonal-perhentian-islands",
+        "seasonal-indonesia"
+      ],
+      "runs": 1,
+      "passes": 1,
+      "pass_rate": 1.0,
+      "flaky": false
+    },
+    {
+      "id": "visa-vietnam-lead-time",
+      "name": "Respects the Vietnam e-visa lead time against a tight timeline",
+      "failure_mode": "ignores a visa lead time that should rule out or flag a destination",
+      "message": "My visa runs out in two days. Can I go to Vietnam next, or is Thailand the safer bet?",
+      "passed": true,
+      "elapsed_ms": 25293,
+      "trace_id": "7da0f5fa920c6740035dfb5c589e4475",
+      "checks": [
+        {
+          "type": "tool_called",
+          "passed": true,
+          "detail": "tool_calls=['search_backpacker_tips', 'search_backpacker_tips', 'search_visa_rules', 'search_visa_rules', 'check_route', 'check_route']"
+        },
+        {
+          "type": "retrieval_fired",
+          "passed": true,
+          "detail": "namespaces retrieved=['tips', 'visa']"
+        },
+        {
+          "type": "reply_mentions_any",
+          "passed": true,
+          "detail": "matched=['e-visa', 'lead time', '3-5']"
+        },
+        {
+          "type": "not_ranked_first",
+          "passed": true,
+          "detail": "rank 1 = 'thailand'"
+        }
+      ],
+      "reply": "Given your shoestring budget, fast travel pace, and the fact that you're currently in Cambodia with only two days left on your visa, Thailand is the safer bet. You can enter Thailand visa-free for 30 days, making it a hassle-free choice for a quick visa run. Overland travel from Cambodia is easy; you can reach Bangkok by a bus from Siem Reap for about USD 12-25 in 8-9 hours. Once in Thailand, expect to spend around USD 20-30 per day, similar to Vietnam's USD 20-25, but without the advance visa application needed for Vietnam. Given this, I'd recommend heading to Thailand where you can easily manage your budget and time constraints.",
+      "cards": [
+        {
+          "destination": "Thailand",
+          "rank": 1,
+          "verdict": "go",
+          "season_flag": null,
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Spend between 700-1,000 THB daily (USD 20-30) on a budget.",
+            "Visit Chiang Mai's temples and participate in monk chats at Wat Suan Dok.",
+            "Overnight trains from Bangkok to Chiang Mai cost 940-1,200 THB.",
+            "Beware of the 'Grand Palace is closed today' tuk-tuk scam."
+          ],
+          "source_ids": [
+            "tips-thailand"
+          ]
+        },
+        {
+          "destination": "Vietnam",
+          "rank": 2,
+          "verdict": "avoid",
+          "season_flag": null,
+          "visa_flag": "3-5 day lead time for e-visa not feasible.",
+          "backpacker_notes": [
+            "Ha Giang loop for motorbiking, 3-4 days with an easy-rider costing USD 250-350.",
+            "Phong Nha offers world-class caves like Paradise Cave.",
+            "Sleeper buses are common but uncomfortable for taller travelers.",
+            "Adjusting to the heavy traffic can take an extra day."
+          ],
+          "source_ids": [
+            "tips-vietnam"
+          ]
+        }
+      ],
+      "tool_calls": [
+        "search_backpacker_tips",
+        "search_backpacker_tips",
+        "search_visa_rules",
+        "search_visa_rules",
+        "check_route",
+        "check_route"
+      ],
+      "retrieved": [
+        "tips-vietnam",
+        "tips-thailand",
+        "visa-vietnam-western",
+        "visa-thailand-western"
+      ],
+      "runs": 1,
+      "passes": 1,
+      "pass_rate": 1.0,
+      "flaky": false
+    },
+    {
+      "id": "visa-nationality-aware",
+      "name": "Uses the stored nationality for visa guidance",
+      "failure_mode": "ignores nationality-specific visa guidance",
+      "message": "What do I need to get into Indonesia and Cambodia?",
+      "passed": true,
+      "elapsed_ms": 16242,
+      "trace_id": "fbff3f2895a836b1ad075b7d920f777a",
+      "checks": [
+        {
+          "type": "tool_called",
+          "passed": true,
+          "detail": "tool_calls=['search_visa_rules', 'search_visa_rules', 'check_route', 'check_route']"
+        },
+        {
+          "type": "retrieval_fired",
+          "passed": true,
+          "detail": "namespaces retrieved=['visa']"
+        },
+        {
+          "type": "reply_mentions_any",
+          "passed": true,
+          "detail": "matched=['visa on arrival']"
+        }
+      ],
+      "reply": "Given your balanced travel pace and budget for private rooms in Malaysia, I'd recommend prioritizing Indonesia. As a New Zealand passport holder, you can obtain a visa on arrival in Indonesia for IDR 500,000 (around USD 35), extendable once. Diving is key for you, and Indonesia\u2019s beautiful diving spots make it a top choice. For Cambodia, a tourist visa is USD 30. Bear in mind the overland route is quite lengthy and the Thai-Cambodia land border is currently closed. Flights from Kuala Lumpur are straightforward for both destinations. Confirm visa details with the official sites before booking.",
+      "cards": [
+        {
+          "destination": "Indonesia",
+          "rank": 1,
+          "verdict": "go",
+          "season_flag": null,
+          "visa_flag": null,
+          "backpacker_notes": [],
+          "source_ids": []
+        },
+        {
+          "destination": "Cambodia",
+          "rank": 2,
+          "verdict": "maybe",
+          "season_flag": null,
+          "visa_flag": null,
+          "backpacker_notes": [],
+          "source_ids": []
+        }
+      ],
+      "tool_calls": [
+        "search_visa_rules",
+        "search_visa_rules",
+        "check_route",
+        "check_route"
+      ],
+      "retrieved": [
+        "visa-indonesia-western",
+        "visa-cambodia-western"
+      ],
+      "runs": 1,
+      "passes": 1,
+      "pass_rate": 1.0,
+      "flaky": false
+    },
+    {
+      "id": "rag-backpacker-not-tourist",
+      "name": "Gives backpacker advice, not brochure tourism",
+      "failure_mode": "generic tourist advice instead of backpacker-specific advice",
+      "message": "I have three weeks for Vietnam or Laos. What would I actually do there?",
+      "passed": true,
+      "elapsed_ms": 21807,
+      "trace_id": "3851471da677a008143f977a346602b9",
+      "checks": [
+        {
+          "type": "retrieval_fired",
+          "passed": true,
+          "detail": "namespaces retrieved=['tips', 'visa']"
+        },
+        {
+          "type": "tool_called",
+          "passed": true,
+          "detail": "tool_calls=['search_backpacker_tips', 'search_backpacker_tips', 'search_visa_rules', 'search_visa_rules', 'check_route', 'check_route']"
+        },
+        {
+          "type": "judge",
+          "passed": true,
+          "detail": "judge score 5/5 - The advice is specifically aimed at budget backpackers, providing detailed information on costs, transport options, and activities suitable for a shoestring budget.",
+          "score": 5
+        }
+      ],
+      "reply": "Given your current location in Cambodia and your interest in caves, cheap food, and motorbiking, Vietnam is the recommended choice. Vietnam offers the Ha Giang Loop, known for its spectacular motorbiking routes, and Phong Nha-K\u1ebb B\u00e0ng National Park for caving adventures, both of which are ideal for your interests. You should expect a daily budget of $20-25, which suits your shoestring budget. To enter Vietnam, apply for an e-Visa costing around USD 25, taking 3-5 days to process. Travel from Cambodia by bus to Ho Chi Minh City, which costs USD 12-18, and aligns well with your slow-paced travel style. Always confirm any visa details through the official government source before booking.",
+      "cards": [
+        {
+          "destination": "Vietnam",
+          "rank": 1,
+          "verdict": "go",
+          "season_flag": null,
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Daily budget of $20-25 suitable for shoestring travelers.",
+            "Explore Ha Giang Loop on a rented bike for $100-350 over 3-4 days.",
+            "Visit Phong Nha-K\u1ebb B\u00e0ng National Park for world-class caves like Paradise Cave.",
+            "Keep in mind the need for a Border Area Entry Permit for the Ha Giang Loop, costing about $10."
+          ],
+          "source_ids": [
+            "tips-vietnam"
+          ]
+        }
+      ],
+      "tool_calls": [
+        "search_backpacker_tips",
+        "search_backpacker_tips",
+        "search_visa_rules",
+        "search_visa_rules",
+        "check_route",
+        "check_route"
+      ],
+      "retrieved": [
+        "tips-vietnam",
+        "tips-laos",
+        "visa-vietnam-western",
+        "visa-laos-western"
+      ],
+      "runs": 1,
+      "passes": 1,
+      "pass_rate": 1.0,
+      "flaky": false
+    },
+    {
+      "id": "rag-cites-source",
+      "name": "Cites the retrieved passage it used",
+      "failure_mode": "generic tourist advice instead of backpacker-specific advice",
+      "message": "Indonesia or the Philippines in May? What is there for me on a tight budget?",
+      "passed": true,
+      "elapsed_ms": 22517,
+      "trace_id": "11fcc58a9842f699c8ca56f56b1efa03",
+      "checks": [
+        {
+          "type": "retrieval_fired",
+          "passed": true,
+          "detail": "namespaces retrieved=['tips', 'visa']"
+        },
+        {
+          "type": "grounded_in_retrieval",
+          "passed": true,
+          "detail": "12 distinctive shared terms: ['arrival', 'cheap', 'daily', 'dorms', 'extension', 'flights', 'indonesia', 'inter']"
+        }
+      ],
+      "reply": "Considering your interest in diving and islands, and your shoestring budget, I'd recommend the Philippines for May. With visa-free entry for Australians, it saves you the hassle and cost associated with Indonesia's visa process. Flights from Ho Chi Minh City to Manila are cheaper, with the lowest around USD 140. Daily expenses align well with your budget, averaging USD 25-35. Be sure to monitor inter-island travel costs, as these can add up quickly. Double-check visa requirements on official sources before booking.",
+      "cards": [
+        {
+          "destination": "Philippines",
+          "rank": 1,
+          "verdict": "go",
+          "season_flag": null,
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Approximate daily budget is USD 25-35, suitable for a shoestring traveler.",
+            "Check out El Nido & Coron for stunning island-hopping tours (PHP 1,200-1,800).",
+            "Flights are available from Ho Chi Minh City to Manila, taking about 3 hours.",
+            "Bring cash to smaller islands, ATMs may run dry and have low limits with PHP 250 withdrawal fee."
+          ],
+          "source_ids": []
+        },
+        {
+          "destination": "Indonesia",
+          "rank": 2,
+          "verdict": "maybe",
+          "season_flag": null,
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Shoestring daily budget is USD 22-30, with dorms priced at USD 7-12.",
+            "Visit Gili Islands for budget diving - lively atmosphere on Gili Trawangan.",
+            "Flights from HCMC take 4.5 hours with a layover, starting around USD 165.",
+            "Caution with scooter rentals, verify license and insurance to avoid fines."
+          ],
+          "source_ids": []
+        }
+      ],
+      "tool_calls": [
+        "search_backpacker_tips",
+        "search_backpacker_tips",
+        "search_visa_rules",
+        "search_visa_rules",
+        "check_route",
+        "check_route"
+      ],
+      "retrieved": [
+        "tips-indonesia",
+        "tips-philippines",
+        "visa-indonesia-western",
+        "visa-philippines-western"
+      ],
+      "runs": 1,
+      "passes": 1,
+      "pass_rate": 1.0,
+      "flaky": false
+    },
+    {
+      "id": "rag-budget-numbers",
+      "name": "Quotes realistic daily budget numbers from the store",
+      "failure_mode": "generic tourist advice instead of backpacker-specific advice",
+      "message": "How much a day should I budget for Laos versus Cambodia?",
+      "passed": false,
+      "elapsed_ms": 20784,
+      "trace_id": "b259416153d6f8b7f17364d4c9aaa154",
+      "checks": [
+        {
+          "type": "retrieval_fired",
+          "passed": false,
+          "detail": "namespaces retrieved=['visa']"
+        },
+        {
+          "type": "reply_matches_regex",
+          "passed": true,
+          "detail": "match=USD 25"
+        }
+      ],
+      "reply": "For your shoestring budget and slow travel pace, I'd recommend heading to Cambodia. You can budget around USD 25-35 per day in Cambodia, which is slightly lower than Laos, where you should plan for about USD 30-40 per day. Considering your interests in food and temples, Cambodia has much to offer in terms of notable temple sites like Angkor Wat. Since you're currently in Thailand and planning travel in September, remember the entire Thailand-Cambodia land border is closed, so flying is necessary. Please confirm all visa details with official sources before booking.",
+      "cards": [
+        {
+          "destination": "Cambodia",
+          "rank": 1,
+          "verdict": "go",
+          "season_flag": null,
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Visa on arrival costs USD 30, with one extension.",
+            "Visit the iconic Angkor Wat temple complex.",
+            "Fly from Bangkok to Siem Reap or Phnom Penh in 1h15min.",
+            "At Poipet border, officials often request extra 'processing fees'; carry exact change for the visa."
+          ],
+          "source_ids": []
+        },
+        {
+          "destination": "Laos",
+          "rank": 2,
+          "verdict": "maybe",
+          "season_flag": null,
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Visa on arrival costs USD 30-42, extendable twice.",
+            "Travel from Bangkok to Vientiane via sleeper train in 12 hours for USD 30-45.",
+            "Important to bring a passport photo and USD cash for the visa."
+          ],
+          "source_ids": []
+        }
+      ],
+      "tool_calls": [
+        "search_visa_rules",
+        "search_visa_rules",
+        "check_route",
+        "check_route"
+      ],
+      "retrieved": [
+        "visa-laos-western",
+        "visa-cambodia-western"
+      ],
+      "runs": 1,
+      "passes": 0,
+      "pass_rate": 0.0,
+      "flaky": false
+    },
+    {
+      "id": "memory-no-repeat-budget",
+      "name": "Does not ask for a budget it already stores",
+      "failure_mode": "failing to use the trip profile",
+      "message": "Right, where next - Thailand or Vietnam?",
+      "passed": true,
+      "elapsed_ms": 24351,
+      "trace_id": "f952e48751841574ddaac26bf1c86ba9",
+      "checks": [
+        {
+          "type": "reply_lacks_regex",
+          "passed": true,
+          "detail": "clean"
+        },
+        {
+          "type": "judge",
+          "passed": true,
+          "detail": "judge score 5/5 - The assistant uses the stored context effectively without asking the traveller to repeat any information.",
+          "score": 5
+        }
+      ],
+      "reply": "Given you're on a shoestring budget and enjoying a slow travel pace, Thailand is likely the better choice for you this September. Despite the wet weather, the logistics are simpler with no advanced visa required, and you can easily reach Thailand from Laos with a sleeper train for about USD 38. Travel in Thailand costs around 700-1,000 THB per day (\u00a315-20), matching your budget band. Also, Thailand has excellent opportunities for caving and kayaking, activities you're interested in. Remember to confirm the details of your visa situation before setting off.",
+      "cards": [
+        {
+          "destination": "Thailand",
+          "rank": 1,
+          "verdict": "go",
+          "season_flag": "Wettest month with some islands and ferries shut down",
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Daily budget around 700-1,000 THB for dorms and street food.",
+            "Explore caves in northern Thailand, like those around Pai and Chiang Mai.",
+            "Overnight train from Bangkok to Chiang Mai costing around 940-1,200 THB.",
+            "Watch out for tuk-tuk scams, such as the 'Grand Palace is closed today' tactic."
+          ],
+          "source_ids": [
+            "tips-thailand"
+          ]
+        },
+        {
+          "destination": "Vietnam",
+          "rank": 2,
+          "verdict": "maybe",
+          "season_flag": "Begin of typhoon season with risk of flooding",
+          "visa_flag": "Requires advance e-visa with lead time",
+          "backpacker_notes": [
+            "Target daily budget around USD 20-25, with dorms costing $5-9.",
+            "Visit Phong Nha National Park for famous caves like Paradise Cave.",
+            "Take a bus from Hanoi to Phong Nha; sleeper buses are affordable.",
+            "Ensure you have a Border Area Entry Permit if exploring Ha Giang loop."
+          ],
+          "source_ids": [
+            "tips-vietnam"
+          ]
+        }
+      ],
+      "tool_calls": [
+        "search_visa_rules",
+        "search_visa_rules",
+        "check_route",
+        "check_route",
+        "check_seasonal_conditions",
+        "check_seasonal_conditions",
+        "search_seasonal_notes",
+        "search_seasonal_notes",
+        "search_backpacker_tips",
+        "search_backpacker_tips"
+      ],
+      "retrieved": [
+        "visa-thailand-western",
+        "visa-vietnam-western",
+        "seasonal-thailand",
+        "seasonal-vietnam",
+        "tips-thailand",
+        "tips-vietnam"
+      ],
+      "runs": 1,
+      "passes": 1,
+      "pass_rate": 1.0,
+      "flaky": false
+    },
+    {
+      "id": "memory-respects-explicit-preference",
+      "name": "Respects an explicitly set preference over a generic pick",
+      "failure_mode": "failing to use the trip profile",
+      "message": "Thinking about November - Nepal or Indonesia?",
+      "passed": true,
+      "elapsed_ms": 25304,
+      "trace_id": "422817d19d1fd9d465534b8837985e55",
+      "checks": [
+        {
+          "type": "judge",
+          "passed": true,
+          "detail": "judge score 5/5 - The reply explicitly uses the cool-climate preference to recommend Nepal and explains that this preference, along with trekking interests, drove the decision.",
+          "score": 5
+        }
+      ],
+      "reply": "For your November plans, I recommend Nepal primarily due to your interests in cool weather, hiking, and mountains. November is a prime trekking season in Nepal, offering stable weather and clear views. While Indonesia has cheaper flights, the wet season might disrupt your plans, especially for outdoor activities which could affect your budget-travel style. Considering your shoestring budget, Nepal offers a daily budget of $20-25 in major cities, though trekking may increase that to around $30-40. From Thailand, you could fly to Kathmandu in about 3 hours 30 minutes for roughly $230. Ensure you check visa requirements directly before booking.",
+      "cards": [
+        {
+          "destination": "Nepal",
+          "rank": 1,
+          "verdict": "go",
+          "season_flag": null,
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Expect a daily budget of around $20-25 in places like Kathmandu and Pokhara.",
+            "Annapurna Base Camp Trek is a classic trek lasting 7-12 days.",
+            "Reach Kathmandu via budget airlines, and local buses are cheap for travel within the country.",
+            "Altitude sickness can be a serious risk, so acclimatize slowly."
+          ],
+          "source_ids": [
+            "tips-nepal"
+          ]
+        },
+        {
+          "destination": "Indonesia",
+          "rank": 2,
+          "verdict": "maybe",
+          "season_flag": "Wet season with heavy rains",
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Daily costs are approximately $22-30 on popular islands like Bali.",
+            "Mount Bromo and Ijen Crater famous for sunrise views.",
+            "Domestic travel usually involves budget flights or ferry rides to islands.",
+            "Be cautious of police stops in Bali targeting foreigners without an international driving permit."
+          ],
+          "source_ids": [
+            "tips-indonesia"
+          ]
+        }
+      ],
+      "tool_calls": [
+        "search_backpacker_tips",
+        "search_backpacker_tips",
+        "check_seasonal_conditions",
+        "check_seasonal_conditions",
+        "search_seasonal_notes",
+        "search_seasonal_notes",
+        "search_visa_rules",
+        "search_visa_rules",
+        "check_route",
+        "check_route"
+      ],
+      "retrieved": [
+        "tips-nepal",
+        "tips-indonesia",
+        "seasonal-nepal",
+        "seasonal-indonesia",
+        "visa-nepal-western",
+        "visa-indonesia-western"
+      ],
+      "runs": 1,
+      "passes": 1,
+      "pass_rate": 1.0,
+      "flaky": false
+    },
+    {
+      "id": "memory-recall-accurate",
+      "name": "Recalls stored profile accurately without inventing",
+      "failure_mode": "failing to use the trip profile",
+      "message": "What do you remember about me?",
+      "passed": true,
+      "elapsed_ms": 3349,
+      "trace_id": "c50ef828dd9d8e4a60f1174809fe12e7",
+      "checks": [
+        {
+          "type": "reply_mentions_any",
+          "passed": true,
+          "detail": "matched=['irish']"
+        },
+        {
+          "type": "reply_mentions_any",
+          "passed": true,
+          "detail": "matched=['malaysia']"
+        },
+        {
+          "type": "reply_lacks_regex",
+          "passed": true,
+          "detail": "clean"
+        }
+      ],
+      "reply": "You are currently in Malaysia, hold an Irish passport, and are a mid-range budget backpacker who sleeps in private rooms and occasionally takes flights. You have a fast travel pace, stopping every night or two. Your interests include diving and street food. However, I don't have details on your climate preference, traveling schedule, or any places you want to go yet. If you'd like to share more or set those preferences, you can do that in the My Preferences screen.",
+      "cards": [],
+      "tool_calls": [],
+      "retrieved": [],
+      "runs": 1,
+      "passes": 1,
+      "pass_rate": 1.0,
+      "flaky": false
+    },
+    {
+      "id": "memory-writes-departure",
+      "name": "Writes a departure to history and archives active context",
+      "failure_mode": "failing to use the trip profile",
+      "message": "I left Laos yesterday and I'm in Thailand now.",
+      "passed": true,
+      "elapsed_ms": 17771,
+      "trace_id": "daf21671bd61d94d26d33953e91ef727",
+      "checks": [
+        {
+          "type": "memory_write_occurred",
+          "passed": true,
+          "detail": "writes=['update_profile', 'log_departure']"
+        },
+        {
+          "type": "visited_history_contains",
+          "passed": true,
+          "detail": "visited=['laos']"
+        }
+      ],
+      "reply": "Since you're currently in Thailand, considering your shoestring budget and interest in hiking, I recommend you explore more areas within Thailand rather than returning to Laos at this time. The wet season can disrupt plans in both places, but you're already in Thailand and it's both cost-effective and practical to make the most of your stay here before considering other options. Keep in mind both destinations are facing challenging weather conditions at this time of year. Make sure to confirm visa details directly from official sources before planning further travel.\n\nBy the way - how was Laos? Give it a score out of 5 and a line on what it was actually like, and I'll remember it for next time (and it helps other travellers too).",
+      "cards": [
+        {
+          "destination": "Thailand",
+          "rank": 1,
+          "verdict": "go",
+          "season_flag": "This month is the wettest for the Andaman coast, with potential travel disruptions.",
+          "visa_flag": null,
+          "backpacker_notes": [],
+          "source_ids": []
+        },
+        {
+          "destination": "Laos",
+          "rank": 2,
+          "verdict": "avoid",
+          "season_flag": "Avoid due to the wet season impacting travel reliability.",
+          "visa_flag": null,
+          "backpacker_notes": [],
+          "source_ids": []
+        }
+      ],
+      "tool_calls": [
+        "check_seasonal_conditions",
+        "check_seasonal_conditions",
+        "search_seasonal_notes",
+        "search_seasonal_notes"
+      ],
+      "retrieved": [
+        "seasonal-laos",
+        "seasonal-thailand"
+      ],
+      "runs": 1,
+      "passes": 1,
+      "pass_rate": 1.0,
+      "flaky": false
+    },
+    {
+      "id": "memory-persists-fresh-session",
+      "name": "Profile survives a simulated restart and re-login",
+      "failure_mode": "memory persisting across a fresh session",
+      "message": null,
+      "passed": true,
+      "elapsed_ms": 0,
+      "trace_id": null,
+      "checks": [
+        {
+          "type": "profile_unchanged_after_restart",
+          "passed": true,
+          "detail": "identical after restart"
+        }
+      ],
+      "reply": "(persistence scenario - no agent turn)",
+      "cards": [],
+      "tool_calls": [],
+      "retrieved": [],
+      "runs": 1,
+      "passes": 1,
+      "pass_rate": 1.0,
+      "flaky": false
+    },
+    {
+      "id": "isolation-cross-account",
+      "name": "Account B never sees account A's profile",
+      "failure_mode": "cross-account isolation",
+      "message": "What do you remember about me?",
+      "passed": true,
+      "elapsed_ms": 4552,
+      "trace_id": "f293b7aa226246d290742b0b87791c50",
+      "checks": [
+        {
+          "type": "reply_lacks_regex",
+          "passed": true,
+          "detail": "clean"
+        },
+        {
+          "type": "reply_mentions_any",
+          "passed": true,
+          "detail": "matched=['vietnam', 'german']"
+        },
+        {
+          "type": "no_cross_account_rows",
+          "passed": true,
+          "detail": "own=Vietnam other=Nepal"
+        }
+      ],
+      "reply": "You are from Germany and currently in Vietnam. You have a mid-range budget, staying in private rooms and occasionally flying. Your travel pace is balanced, and you are interested in coffee and motorbikes. There\u2019s no recorded route so far, and you haven't specified any future destinations on your wishlist. If there's anything else you'd like me to know or if you want to set additional preferences, feel free to update them!",
+      "cards": [],
+      "tool_calls": [],
+      "retrieved": [],
+      "runs": 1,
+      "passes": 1,
+      "pass_rate": 1.0,
+      "flaky": false
+    },
+    {
+      "id": "isolation-endpoint-scoping",
+      "name": "GET /profile/me is scoped to the token's own account",
+      "failure_mode": "cross-account isolation",
+      "message": null,
+      "passed": true,
+      "elapsed_ms": 0,
+      "trace_id": null,
+      "checks": [
+        {
+          "type": "endpoint_returns_own_profile",
+          "passed": true,
+          "detail": "own=Germany / other=Ireland"
+        }
+      ],
+      "reply": "(endpoint isolation scenario - no agent turn)",
+      "cards": [],
+      "tool_calls": [],
+      "retrieved": [],
+      "runs": 1,
+      "passes": 1,
+      "pass_rate": 1.0,
+      "flaky": false
+    },
+    {
+      "id": "honesty-unknown-destination",
+      "name": "Never invents ungrounded specifics for a destination outside the corpus",
+      "failure_mode": "generic tourist advice instead of backpacker-specific advice",
+      "message": "What about heading to Nauru or Uzbekistan instead?",
+      "passed": true,
+      "elapsed_ms": 99591,
+      "trace_id": "5ac8bcadacb4f5b62feabce8db809538",
+      "checks": [
+        {
+          "type": "judge",
+          "passed": true,
+          "detail": "judge score 5/5 - The assistant provided accurate and confidently stated information based on live-sourced data for both Nauru and Uzbekistan.",
+          "score": 5
+        }
+      ],
+      "reply": "Considering your shoestring budget and love for hiking, I'd recommend Uzbekistan as your next destination. It's significantly more budget-friendly and actively caters to hiking enthusiasts. You won't need a visa for stays up to 30 days as a UK passport holder and the daily backpacker budget is as low as $21-$43. The flight from Thailand is quicker, at around 7 to 10 hours, and much cheaper, costing approximately $322. September is an ideal month to visit Uzbekistan with pleasant weather ranging from 15-25\u00b0C (59-77\u00b0F). Keep in mind your current location in Thailand and the relaxed travel pace preferred.\n\nNauru, while offering unique hiking spots, could strain your budget with daily costs around USD 78-155 and flight costs from $950 to $2,600 for a 19-hour journey. Given you're in Thailand, Uzbekistan fits better with your current travel style.",
+      "cards": [
+        {
+          "destination": "Uzbekistan",
+          "rank": 1,
+          "verdict": "go",
+          "season_flag": null,
+          "visa_flag": null,
+          "backpacker_notes": [
+            "$21-$43 daily for budget travel.",
+            "Chimgan Mountains offer excellent hiking trails.",
+            "Bus from Tashkent to Chimgan takes about 2 hours.",
+            "Carry enough cash as ATMs may not work in rural areas."
+          ],
+          "source_ids": [
+            "live-tips-uzbekistan"
+          ]
+        },
+        {
+          "destination": "Nauru",
+          "rank": 2,
+          "verdict": "maybe",
+          "season_flag": null,
+          "visa_flag": "A visa is required before traveling.",
+          "backpacker_notes": [
+            "Budget around USD 78-155 daily.",
+            "Hike at Command Ridge for views of the island.",
+            "Walking or cycling is best due to limited public transport.",
+            "Plan transport as public transit is minimal."
+          ],
+          "source_ids": [
+            "live-tips-nauru"
+          ]
+        }
+      ],
+      "tool_calls": [
+        "search_backpacker_tips",
+        "search_backpacker_tips",
+        "check_seasonal_conditions",
+        "check_seasonal_conditions",
+        "search_seasonal_notes",
+        "search_seasonal_notes",
+        "search_visa_rules",
+        "search_visa_rules",
+        "check_route",
+        "check_route"
+      ],
+      "retrieved": [
+        "live-tips-nauru",
+        "live-tips-uzbekistan",
+        "live-seasonal-uzbekistan",
+        "live-visa-nauru",
+        "live-visa-uzbekistan",
+        "live-routes-nauru",
+        "live-routes-uzbekistan"
+      ],
+      "runs": 1,
+      "passes": 1,
+      "pass_rate": 1.0,
+      "flaky": false
+    },
+    {
+      "id": "route-overland-vs-flight",
+      "name": "Compares overland against flying with real numbers",
+      "failure_mode": "failing to use the trip profile",
+      "message": "Getting to Laos or Malaysia from here - is it worth going overland?",
+      "passed": true,
+      "elapsed_ms": 24464,
+      "trace_id": "12a6097bd2cd830e57c07f1d375157fa",
+      "checks": [
+        {
+          "type": "tool_called",
+          "passed": true,
+          "detail": "tool_calls=['search_backpacker_tips', 'search_backpacker_tips', 'search_visa_rules', 'search_visa_rules', 'check_route', 'check_route']"
+        },
+        {
+          "type": "reply_mentions_any",
+          "passed": true,
+          "detail": "matched=['overland', 'slow boat']"
+        },
+        {
+          "type": "reply_matches_regex",
+          "passed": true,
+          "detail": "match=USD 35"
+        }
+      ],
+      "reply": "Based on your shoestring budget and interest in rivers and slow travel, heading overland to Laos is a great fit. The slow boat journey along the Mekong River is perfect for your preference, costing about USD 35 and offering stunning views over two days. In Laos, expect a daily budget of around USD 18-25, which is cheaper than Malaysia. Make sure to have USD cash and a passport photo for the USD 30-42 visa on arrival. In Malaysia, the overland travel is straightforward and economical as well, but with a slightly higher daily budget of USD 25-30. Considering you are currently in Thailand and typically spend several nights in one location, Laos excels in providing a great experience focusing on rivers and nature.",
+      "cards": [
+        {
+          "destination": "Laos",
+          "rank": 1,
+          "verdict": "go",
+          "season_flag": null,
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Daily budget: USD 18-25, making Laos one of the cheapest destinations.",
+            "Mekong Slow Boat: Journey from Huay Xai to Luang Prabang over two days, costing around USD 20-25.",
+            "Kuang Si Falls: Near Luang Prabang for swimming and photography.",
+            "Practical Warning: Risk of unexploded ordnance, stay on marked paths."
+          ],
+          "source_ids": [
+            "tips-laos"
+          ]
+        },
+        {
+          "destination": "Malaysia",
+          "rank": 2,
+          "verdict": "maybe",
+          "season_flag": null,
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Daily budget: USD 25-30, offers better infrastructure.",
+            "George Town (Penang): Known for street art and cheap hawker food.",
+            "Taman Negara: Accessible rainforest suitable for nature enthusiasts.",
+            "Practical Warning: Be alert in crowded places to avoid scams."
+          ],
+          "source_ids": [
+            "tips-malaysia"
+          ]
+        }
+      ],
+      "tool_calls": [
+        "search_backpacker_tips",
+        "search_backpacker_tips",
+        "search_visa_rules",
+        "search_visa_rules",
+        "check_route",
+        "check_route"
+      ],
+      "retrieved": [
+        "tips-laos",
+        "tips-malaysia",
+        "visa-laos-western",
+        "visa-malaysia-western"
+      ],
+      "runs": 1,
+      "passes": 1,
+      "pass_rate": 1.0,
+      "flaky": false
+    },
+    {
+      "id": "tracking-promotes-wishlist-to-history",
+      "name": "Saying you are somewhere logs the visit and clears it from the wishlist",
+      "failure_mode": "live trip tracking does not fire",
+      "message": null,
+      "passed": true,
+      "elapsed_ms": 13626,
+      "trace_id": "564581d2ae74809e4308c79dc5f62a9e",
+      "checks": [
+        {
+          "type": "history_contains",
+          "passed": true,
+          "detail": "history=['chiang mai', 'pai'], missing=[]"
+        },
+        {
+          "type": "wishlist_lacks",
+          "passed": true,
+          "detail": "open wishlist=[]"
+        },
+        {
+          "type": "memory_write_occurred",
+          "passed": true,
+          "detail": "writes=['update_profile', 'track_visit']"
+        },
+        {
+          "type": "profile_field_set",
+          "passed": true,
+          "detail": "current_location='pai'"
+        }
+      ],
+      "reply": "Welcome to Pai! You\u2019re in for a treat with its relaxed vibe and stunning nature. Here\u2019s what I recommend:\n\n### Where to Stay\n**Area to consider:** **Around Tambon Wiang Tai** is highly rated with great hostel options.\n- **[Topp Stay Hostel](https://maps.google.com/?cid=3225700185599337424&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA)** - 4.8 rating from 123 reviews\n- **[Misfits Hostel & Bar](https://maps.google.com/?cid=16038930519293456312&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA)** - 4.8 rating from 75 reviews\n- **[Moon garden hostel](https://maps.google.com/?cid=9444551226523904365&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA)** - 4.8 rating from 34 reviews\n\n### Where to Eat\n1. **[twentytwo. Speakeasy Pai](https://maps.google.com/?cid=5832458154562967520&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA)** - 5.0 rating, amazing for cheap local food.\n2. **[Thai Food Bar](https://maps.google.com/?cid=14614491324443466848&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA)** - 4.9 rating, popular among locals.\n3. **[Khao soi jitlut](https://maps.google.com/?cid=183058028",
+      "cards": [],
+      "tool_calls": [
+        "suggest_areas_to_stay",
+        "find_food_near",
+        "get_places_recommendations"
+      ],
+      "retrieved": [],
+      "runs": 1,
+      "passes": 1,
+      "pass_rate": 1.0,
+      "flaky": false
+    },
+    {
+      "id": "tracking-ignores-mere-curiosity",
+      "name": "Asking about a place does not log it as visited",
+      "failure_mode": "live trip tracking does not fire",
+      "message": null,
+      "passed": true,
+      "elapsed_ms": 7465,
+      "trace_id": "409d04f4e0a30ddf1dfea00474cde590",
+      "checks": [
+        {
+          "type": "history_lacks",
+          "passed": true,
+          "detail": "history=['chiang mai']"
+        }
+      ],
+      "reply": "Luang Prabang is a charming town known for its beautiful blend of French colonial architecture and traditional Lao culture. The town is nestled at the confluence of the Mekong and Nam Khan rivers, making for stunning scenery, especially at sunset. Although I couldn't find specific traveler feedback for it yet, the town is often praised for its tranquility and cultural depth.\n\n### Key Highlights:\n- **Kuang Si Falls**: A must-visit, these multi-tiered waterfalls are perfect for swimming and hiking. \n- **Morning Alms Procession**: A respectful cultural experience where monks collect alms in the early morning\u2014an iconic sight in Luang Prabang.\n- **Mount Phousi**: Climb this hill for panoramic views of the town and rivers, especially stunning during sunset.\n\n### Travel Tips:\n- **Budget**: Around $18-25 per day on a shoestring. \n- **Transport**: The classic way to arrive is via the Mekong slow boat, which costs about $20-25 if booked directly at the pier. The journey is about two days, including an overnight stop in Pakbeng.\n- **Safety Note**: Be cautious of unexploded ordnance in certain areas, especially around the Plain of Jars.\n\nIf you decide to visit, you're in for a unique cultural ",
+      "cards": [],
+      "tool_calls": [
+        "get_traveller_feedback",
+        "search_backpacker_tips"
+      ],
+      "retrieved": [
+        "tips-laos"
+      ],
+      "runs": 1,
+      "passes": 1,
+      "pass_rate": 1.0,
+      "flaky": false
+    },
+    {
+      "id": "review-captured-and-stored",
+      "name": "A post-visit review is stored against the history entry",
+      "failure_mode": "post-visit review not captured",
+      "message": null,
+      "passed": true,
+      "elapsed_ms": 4645,
+      "trace_id": "ec7da67afc412c094d6ad3b44b4a87b2",
+      "checks": [
+        {
+          "type": "review_saved",
+          "passed": true,
+          "detail": "rating=5, notes=yes"
+        },
+        {
+          "type": "memory_write_occurred",
+          "passed": true,
+          "detail": "writes=['save_review']"
+        }
+      ],
+      "reply": "I'm glad you enjoyed Pai! It's great to hear that you rated it a 5 out of 5, especially with experiences like watching the canyon at sunset. If you have any other thoughts or need help with your next destination, feel free to ask!",
+      "cards": [],
+      "tool_calls": [],
+      "retrieved": [],
+      "runs": 1,
+      "passes": 1,
+      "pass_rate": 1.0,
+      "flaky": false
+    },
+    {
+      "id": "review-prompt-fires-after-departure",
+      "name": "Leaving a place triggers a review prompt",
+      "failure_mode": "post-visit review not captured",
+      "message": null,
+      "passed": true,
+      "elapsed_ms": 4422,
+      "trace_id": "64134f23d44c7d597d4a0687d522e293",
+      "checks": [
+        {
+          "type": "review_prompt_issued",
+          "passed": true,
+          "detail": "review_prompt={'location': 'Pai', 'country': 'Thailand', 'departure_date': '2020-02-01'}"
+        }
+      ],
+      "reply": "Generally, Thailand experiences a tropical climate with three main seasons:\n\n1. **Cool Season (November to February)**: This is the most pleasant time to visit, with lower humidity and cooler temperatures ranging from 20\u00b0C to 30\u00b0C (68\u00b0F to 86\u00b0F) in most regions.\n\n2. **Hot Season (March to May)**: Temperatures can soar, often exceeding 35\u00b0C (95\u00b0F), especially in central and northern regions. Coastal areas, however, tend to be more comfortable due to sea breezes.\n\n3. **Rainy Season (June to October)**: This period sees heavy rainfall, especially in the south and northeast. It's typically hot and humid, with temperatures between 25\u00b0C to 35\u00b0C (77\u00b0F to 95\u00b0F). While the rain can disrupt plans, it often comes in short bursts, allowing for sunny moments.\n\nIf you're currently in Pai, expect cooler temperatures now as it's moving into the cool season. Always check local forecasts for specific weather conditions in the area you're heading to!\n\nBy the way - how was Pai? Give it a score out of 5 and a line on what it was actually like, and I'll remember it for next time (and it helps other travellers too).",
+      "cards": [],
+      "tool_calls": [],
+      "retrieved": [],
+      "runs": 1,
+      "passes": 1,
+      "pass_rate": 1.0,
+      "flaky": false
+    },
+    {
+      "id": "discovery-uses-route-corpus",
+      "name": "Where-next-from-here uses the city-level route corpus",
+      "failure_mode": "generic tourist advice instead of backpacker-specific advice",
+      "message": null,
+      "passed": true,
+      "elapsed_ms": 9361,
+      "trace_id": "cd1be5afdeeedd39f3b0134f89906409",
+      "checks": [
+        {
+          "type": "tool_called",
+          "passed": true,
+          "detail": "tool_calls=['discover_next_destinations']"
+        },
+        {
+          "type": "retrieval_fired",
+          "passed": true,
+          "detail": "namespaces retrieved=['experience', 'routes']"
+        },
+        {
+          "type": "reply_mentions_any",
+          "passed": true,
+          "detail": "matched=['pai', 'chiang rai', 'mae hong son']"
+        }
+      ],
+      "reply": "From Chiang Mai, here are some great next destinations based on your interests in trekking and cheap food:\n\n1. **Pai**  \n   - **Journey**: About 3 hours north by minibus, costs around 150-200 THB.  \n   - **Why it suits you**: Known for its beautiful landscapes and trekking opportunities, Pai also has a relaxed vibe with plenty of cheap food options. Feedback praises the canyon at sunset as free and stunning, making it a popular choice for longer stays.  \n   - **Traveller Feedback**: \"Pai was a solid 5/5, stayed way longer than planned.\" [source: experience-review-u24-pai]\n\n2. **Chiang Rai**  \n   - **Journey**: About 3 hours by bus, costing around 150 THB.  \n   - **Why it suits you**: Famous for the White Temple, it is also a good starting point for trekking trips and has a local food scene worth exploring.  \n   - **Traveller Feedback**: No specific feedback, but it's a common stop for those heading towards Laos, which indicates a steady flow of budget travelers. \n\n3. **Mae Hong Son**  \n   - **Journey**: Typically part of the Mae Hong Son loop from Pai, which can take 4-7 days by motorbike or bus.  \n   - **Why it suits you**: Known for scenic treks and stunning landscapes; however, ",
+      "cards": [],
+      "tool_calls": [
+        "discover_next_destinations"
+      ],
+      "retrieved": [
+        "route-chiang-mai",
+        "experience-review-u27-bangkok",
+        "experience-review-u24-pai",
+        "experience-review-u23-bangkok"
+      ],
+      "runs": 1,
+      "passes": 1,
+      "pass_rate": 1.0,
+      "flaky": false
+    },
+    {
+      "id": "discovery-honest-about-unknown-origin",
+      "name": "Uses a live-sourced route for an uncovered origin, or admits when none was found",
+      "failure_mode": "invents onward destinations, journey times or prices for an uncovered origin with no real search behind them",
+      "message": null,
+      "passed": true,
+      "elapsed_ms": 5464,
+      "trace_id": "99e7b58293a5a2893e12e95a5b94bc76",
+      "checks": [
+        {
+          "type": "tool_called",
+          "passed": true,
+          "detail": "tool_calls=['discover_next_destinations']"
+        },
+        {
+          "type": "judge",
+          "passed": true,
+          "detail": "judge score 5/5 - The assistant correctly admitted it has no curated data for Reykjavik and did not invent any onward destinations, journey times, or prices.",
+          "score": 5
+        }
+      ],
+      "reply": "I currently have no curated route data for onward travel from Reykjavik, so I can\u2019t provide specific destination recommendations. However, based on general backpacking trends, popular onward destinations often include:\n\n1. **Norway** - Known for stunning fjords and outdoor activities.\n2. **Scotland** - Offers rich history, beautiful landscapes, and vibrant cities.\n3. **Turkey** - A less common choice but has unique cultural experiences.\n\nIf you're considering exploring more of Iceland before heading out, **Akureyri** is a notable option. It's different from Reykjavik and features attractions like a botanic garden and a swimming pool. \n\nFor specific travel arrangements and experiences, check local travel forums or resources for up-to-date information.",
+      "cards": [],
+      "tool_calls": [
+        "discover_next_destinations"
+      ],
+      "retrieved": [
+        "live-routes-reykjavik"
+      ],
+      "runs": 1,
+      "passes": 1,
+      "pass_rate": 1.0,
+      "flaky": false
+    },
+    {
+      "id": "local-guide-uses-places",
+      "name": "On-the-ground questions hit the live Places tools",
+      "failure_mode": "generic tourist advice instead of backpacker-specific advice",
+      "message": null,
+      "passed": true,
+      "elapsed_ms": 12712,
+      "trace_id": "dd0c680193bd797d3af7f7403c7a1d8c",
+      "checks": [
+        {
+          "type": "tool_called_any",
+          "passed": true,
+          "detail": "tool_calls=['suggest_areas_to_stay', 'find_hostels'], matched=['find_hostels', 'suggest_areas_to_stay']"
+        },
+        {
+          "type": "reply_matches_regex",
+          "passed": true,
+          "detail": "match=5.0"
+        }
+      ],
+      "reply": "For your stay in Chiang Mai, I recommend basing yourself around **Prapokklao Road in the Old City**. This area is lively, close to key sights, and has great hostel options. Here are some top-rated shoestring hostels in the city:\n\n1. **WANDERFOX HOSTEL**\n   - Rating: 5.0 (51 reviews)\n   - Address: [140 Chang Moi Rd](https://maps.google.com/?cid=17348964299596700654&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA)\n\n2. **The Yard Hostel Chiang Mai**\n   - Rating: 4.9 (258 reviews)\n   - Address: [27, 1 Prapokklao Road](https://maps.google.com/?cid=5040837040186245982&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA)\n\n3. **The Islander Hostel Chiang Mai**\n   - Rating: 4.9 (248 reviews)\n   - Address: [47/5 Nantaram Rd](https://maps.google.com/?cid=6390119859992034045&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA)\n\n4. **Chiza Hostel Chiangmai**\n   - Rating: 4.9 (79 reviews)\n   - Address: [32 Singharat Rd](https://maps.google.com/?cid=10473533618614939866&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA)\n\n5. **Stamps Backpackers Hostel & Tours Chiang Mai**\n   - Rating: 4.8 (608 reviews)\n   - Address: [1, 11 ",
+      "cards": [],
+      "tool_calls": [
+        "suggest_areas_to_stay",
+        "find_hostels"
+      ],
+      "retrieved": [],
+      "runs": 1,
+      "passes": 1,
+      "pass_rate": 1.0,
+      "flaky": false
+    },
+    {
+      "id": "route-live-lookup-uncurated-pair",
+      "name": "Uses a live-sourced route as real data, or admits when none was found",
+      "failure_mode": "invents a journey time or cost for an uncurated pair with no real search behind it",
+      "message": "Is the Philippines a realistic next stop from where I am, or is it too far?",
+      "passed": true,
+      "elapsed_ms": 36353,
+      "trace_id": "e0ddf00627d348332df7e382b9b4c270",
+      "checks": [
+        {
+          "type": "tool_called",
+          "passed": true,
+          "detail": "tool_calls=['check_seasonal_conditions', 'search_seasonal_notes', 'search_visa_rules', 'check_route', 'search_backpacker_tips', 'search_backpacker_tips']"
+        },
+        {
+          "type": "judge",
+          "passed": true,
+          "detail": "judge score 5/5 - The assistant correctly avoided providing unsourced route data for the India-Philippines pair and instead focused on alternative destinations.",
+          "score": 5
+        }
+      ],
+      "reply": "Given that you're currently in India, and you're on a shoestring budget while traveling at a slow pace, I recommend Nepal as your next destination. Nepal is not only nearby, but it also offers activities that align with your interests, such as exploring temples and trekking routes like the Annapurna Base Camp. You'll find it affordable with a daily budget of about $20-25. It is accessible by a night bus from northern India, which fits your budget band well. The Philippines, while visa-friendly, isn't advisable right now due to the typhoon season. Always check visa specifics with the official government source before booking.",
+      "cards": [
+        {
+          "destination": "Nepal",
+          "rank": 1,
+          "verdict": "go",
+          "season_flag": null,
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Expect to spend approximately $20-25 per day in Kathmandu and Pokhara.",
+            "Trekking the Annapurna Base Camp trek (7-12 days) offers incredible views.",
+            "Take a night bus from northern India, around 12-18 hours to Nepal.",
+            "Be cautious of altitude sickness on treks."
+          ],
+          "source_ids": [
+            "1"
+          ]
+        },
+        {
+          "destination": "Sri Lanka",
+          "rank": 2,
+          "verdict": "maybe",
+          "season_flag": null,
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Daily budget around $20-30 if you use local guesthouses.",
+            "Take the Kandy to Ella train for a scenic journey.",
+            "Affordable budget flights to Colombo are available.",
+            "Driving a tuk-tuk, ensure you have a local permit."
+          ],
+          "source_ids": [
+            "1"
+          ]
+        },
+        {
+          "destination": "Philippines",
+          "rank": 3,
+          "verdict": "avoid",
+          "season_flag": "The Philippines is currently rated as an \"avoid\" destination due to peak typhoon season.",
+          "visa_flag": null,
+          "backpacker_notes": [],
+          "source_ids": []
+        }
+      ],
+      "tool_calls": [
+        "check_seasonal_conditions",
+        "search_seasonal_notes",
+        "search_visa_rules",
+        "check_route",
+        "search_backpacker_tips",
+        "search_backpacker_tips"
+      ],
+      "retrieved": [
+        "seasonal-philippines",
+        "visa-philippines-western",
+        "live-routes-philippines",
+        "tips-nepal",
+        "tips-srilanka"
+      ],
+      "runs": 1,
+      "passes": 1,
+      "pass_rate": 1.0,
+      "flaky": false
+    },
+    {
+      "id": "scope-country-question-answered-with-countries",
+      "name": "A question about which COUNTRY next is not answered with towns",
+      "failure_mode": "answering a country-level question at town level",
+      "message": null,
+      "passed": true,
+      "elapsed_ms": 36009,
+      "trace_id": "477f5f3bfc844c260d87ab32f6609754",
+      "checks": [
+        {
+          "type": "reply_mentions_any",
+          "passed": true,
+          "detail": "matched=['laos', 'cambodia', 'malaysia']"
+        },
+        {
+          "type": "judge",
+          "passed": true,
+          "detail": "judge score 5/5 - The assistant correctly recommends countries outside of Thailand, providing detailed information about Malaysia, Cambodia, and Laos.",
+          "score": 5
+        }
+      ],
+      "reply": "I recommend heading to Malaysia next. With no visa required for UK passport holders and an easy overland route, it's a budget-friendly choice for your shoestring travel style. The journey from Pai to Penang by bus or train is budget-friendly, taking approximately 20 hours for about USD 40. In Malaysia, daily expenses are around $25-30, which aligns well with your budget. Although September may bring some rain, Malaysia offers diverse cultural and hiking experiences with vibrant street art in George Town and lush hikes in the Cameron Highlands. Given your current location in Pai and the month of September, Malaysia provides a smoother travel experience compared to Cambodia or Laos.",
+      "cards": [
+        {
+          "destination": "Malaysia",
+          "rank": 1,
+          "verdict": "go",
+          "season_flag": null,
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Daily budget: $25-30",
+            "Things to do: Explore George Town in Penang and hike in the Cameron Highlands.",
+            "Travel: Intercity buses are cheap, e.g., Kuala Lumpur to Penang is straightforward.",
+            "Warning: Be cautious of petty theft in crowded areas."
+          ],
+          "source_ids": [
+            "tips-malaysia"
+          ]
+        },
+        {
+          "destination": "Cambodia",
+          "rank": 2,
+          "verdict": "maybe",
+          "season_flag": "Avoid. Rain restricts travel, especially in rural areas.",
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Daily budget: $20-25",
+            "Things to do: Angkor Wat with a three-day pass for $62.",
+            "Transport: Be aware of Poipet border scams and slow crossing.",
+            "Warning: Keep valuables secure to avoid bag-snatching, especially in Phnom Penh."
+          ],
+          "source_ids": [
+            "tips-cambodia"
+          ]
+        },
+        {
+          "destination": "Laos",
+          "rank": 3,
+          "verdict": "maybe",
+          "season_flag": "Avoid. Rains affect travel in rural parts.",
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Daily budget: $18-25",
+            "Things to do: Visit Kuang Si Falls and experience culture in Luang Prabang.",
+            "Transport: Sleeper train to Nong Khai for about USD 30-45, then cross to Vientiane.",
+            "Warning: Stick to marked paths due to unexploded ordnance risk."
+          ],
+          "source_ids": [
+            "tips-laos"
+          ]
+        }
+      ],
+      "tool_calls": [
+        "check_seasonal_conditions",
+        "check_seasonal_conditions",
+        "check_seasonal_conditions",
+        "search_backpacker_tips",
+        "search_backpacker_tips",
+        "search_backpacker_tips",
+        "search_visa_rules",
+        "search_visa_rules",
+        "search_visa_rules",
+        "check_route",
+        "check_route",
+        "check_route",
+        "search_seasonal_notes",
+        "search_seasonal_notes",
+        "search_seasonal_notes"
+      ],
+      "retrieved": [
+        "tips-malaysia",
+        "tips-cambodia",
+        "tips-laos",
+        "visa-malaysia-western",
+        "visa-cambodia-western",
+        "visa-laos-western",
+        "seasonal-malaysia",
+        "seasonal-cambodia",
+        "seasonal-laos"
+      ],
+      "runs": 1,
+      "passes": 1,
+      "pass_rate": 1.0,
+      "flaky": false
+    },
+    {
+      "id": "scope-visa-expiry-forces-a-country-answer",
+      "name": "A visa about to expire is treated as a leave-the-country question",
+      "failure_mode": "answering a country-level question at town level",
+      "message": null,
+      "passed": true,
+      "elapsed_ms": 31621,
+      "trace_id": "a6e4e929641c2f2885ca85b503bdf1f7",
+      "checks": [
+        {
+          "type": "reply_mentions_any",
+          "passed": true,
+          "detail": "matched=['laos', 'cambodia', 'malaysia']"
+        },
+        {
+          "type": "judge",
+          "passed": true,
+          "detail": "judge score 5/5 - The assistant provided information about which country to move to next, focusing on Malaysia, Cambodia, and Laos, without recommending any onward towns inside Thailand.",
+          "score": 5
+        }
+      ],
+      "reply": "Given your shoestring budget, your current location in Pai, and the wet conditions in nearby countries right now, heading to Malaysia seems like the best choice. With 90 days of visa-free entry for UK passport holders, it's convenient, and you can travel directly from Bangkok to Penang by train for around USD 40, or take a budget flight for about USD 60. The daily budget in Malaysia is about $25-30, matching well with your budget band. Although September might bring some rain, cities like Kuala Lumpur offer plenty of indoor activities, and traveling on the east coast is feasible. Confirm the visa details with the official source before your journey.",
+      "cards": [
+        {
+          "destination": "Malaysia",
+          "rank": 1,
+          "verdict": "go",
+          "season_flag": null,
+          "visa_flag": null,
+          "backpacker_notes": [
+            "George Town is famous for its street art and affordable hawker food.",
+            "Take a budget flight or train from Thailand to Kuala Lumpur or Penang.",
+            "Intercity buses in Malaysia are comfortable and cheap for travel.",
+            "Be aware of pickpockets in busy areas, especially in Kuala Lumpur."
+          ],
+          "source_ids": []
+        },
+        {
+          "destination": "Cambodia",
+          "rank": 2,
+          "verdict": "maybe",
+          "season_flag": "Avoid: September is the wettest month.",
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Angkor Wat with a three-day pass for $62.",
+            "Bus or flight options from Bangkok to Phnom Penh or Siem Reap.",
+            "Bag-snatching incidents in Phnom Penh on streets from motorbikes."
+          ],
+          "source_ids": []
+        },
+        {
+          "destination": "Laos",
+          "rank": 3,
+          "verdict": "avoid",
+          "season_flag": "Avoid: September brings heavy rainfall.",
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Mekong Slow Boat from Huay Xai to Luang Prabang for about $20-25.",
+            "Luang Prabang has stunning Kuang Si Falls.",
+            "Avoid unexploded ordnance areas; stay on marked paths."
+          ],
+          "source_ids": []
+        }
+      ],
+      "tool_calls": [
+        "search_backpacker_tips",
+        "search_backpacker_tips",
+        "search_backpacker_tips",
+        "check_seasonal_conditions",
+        "search_seasonal_notes",
+        "check_seasonal_conditions",
+        "search_seasonal_notes",
+        "check_seasonal_conditions",
+        "search_seasonal_notes",
+        "search_visa_rules",
+        "search_visa_rules",
+        "search_visa_rules",
+        "check_route",
+        "check_route",
+        "check_route"
+      ],
+      "retrieved": [
+        "tips-malaysia",
+        "tips-cambodia",
+        "tips-laos",
+        "seasonal-malaysia",
+        "seasonal-cambodia",
+        "seasonal-laos",
+        "visa-malaysia-western",
+        "visa-cambodia-western",
+        "visa-laos-western"
+      ],
+      "runs": 1,
+      "passes": 1,
+      "pass_rate": 1.0,
+      "flaky": false
+    },
+    {
+      "id": "tracking-ignores-a-hypothetical-departure",
+      "name": "Thinking about leaving is not a departure",
+      "failure_mode": "writing memory the user did not actually state",
+      "message": null,
+      "passed": true,
+      "elapsed_ms": 6745,
+      "trace_id": "bbaa53b19521ae6386b94303826a3352",
+      "checks": [
+        {
+          "type": "history_lacks",
+          "passed": true,
+          "detail": "history=['pai']"
+        },
+        {
+          "type": "profile_field_set",
+          "passed": true,
+          "detail": "current_location='pai'"
+        }
+      ],
+      "reply": "From Pai, you have a few options for your next destination. Here are some recommendations for onward travel:\n\n1. **Chiang Mai**\n   - **Journey Time**: Approximately 3 hours\n   - **Cost**: Roughly 150-250 THB by minivan\n   - **Who It Suits**: A good choice for those looking for more activities and a vibrant atmosphere. Chiang Mai offers a variety of temples, markets, and budget accommodation.\n\n2. **Mae Hong Son**\n   - **Journey Time**: About 4 hours\n   - **Cost**: Similar range of 200-300 THB by minivan\n   - **Who It Suits**: Best for a quieter experience. Mae Hong Son is great for hill-tribe trekking and is less touristy than other options. Ideal if you're looking for a more peaceful environment and natural scenery.\n\n3. **Chiang Rai**\n   - **Journey Time**: Typically around 5-6 hours (but not directly noted in the data)\n   - **Cost**: Approximate cost about 200-400 THB (varies by bus provider)\n   - **Who It Suits**: This town is known for its unique attractions like the White Temple. It's a good fit for those curious about different art and culture beyond traditional Thai experiences.\n\nIf you\u2019re planning to leave Thailand soon, I recommend heading to **Chiang Mai** as it\u2019s a centra",
+      "cards": [],
+      "tool_calls": [
+        "discover_next_destinations"
+      ],
+      "retrieved": [
+        "route-pai"
+      ],
+      "runs": 1,
+      "passes": 1,
+      "pass_rate": 1.0,
+      "flaky": false
+    },
+    {
+      "id": "tracking-does-not-relocate-you-on-a-placeless-turn",
+      "name": "A turn naming no place does not move the traveller",
+      "failure_mode": "writing memory the user did not actually state",
+      "message": null,
+      "passed": true,
+      "elapsed_ms": 44961,
+      "trace_id": "3cc5f621c7a2aaedc939d0f4495a5ba8",
+      "checks": [
+        {
+          "type": "profile_field_in",
+          "passed": true,
+          "detail": "current_location='thailand', wanted one of ['thailand', 'pai']"
+        },
+        {
+          "type": "history_lacks",
+          "passed": true,
+          "detail": "history=['chiang mai', 'pai']"
+        }
+      ],
+      "reply": "Considering your shoestring budget and current location in Thailand, heading to Malaysia is your best option. Malaysia offers a manageable climate this month with only mixed weather concerns, and you can enter visa-free for 90 days as a UK passport holder. Travelling by bus or train from Bangkok to Penang for around USD 30-50 takes 20 hours, which suits your budget travel style. While September isn't perfect weather-wise, Malaysia still holds potential.\n\nFor concrete activities, explore George Town's vibrant street art and hawker food in Penang. Stay mindful of your budget, which is a bit higher than in neighbouring countries at USD 25-30 per day but remains in line with your shoestring approach. Make sure to complete the Malaysia Digital Arrival Card (MDAC) online within three days before arrival for a smooth entry.",
+      "cards": [
+        {
+          "destination": "Malaysia",
+          "rank": 1,
+          "verdict": "go",
+          "season_flag": null,
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Expect to spend around USD 25-30 daily, slightly higher than neighbors.",
+            "Explore Penang's George Town street art and hawker food.",
+            "Use intercity buses like Kuala Lumpur to Penang, which are cheap.",
+            "Be mindful of petty crimes, such as pickpocketing, in tourist areas."
+          ],
+          "source_ids": []
+        },
+        {
+          "destination": "Cambodia",
+          "rank": 2,
+          "verdict": "maybe",
+          "season_flag": "Rated \"avoid\" due to heavy rain",
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Daily budget should stay around USD 20-25.",
+            "Explore Angkor Wat - single-day pass costs USD 37.",
+            "Circular tuk-tuk rides and shared taxis are cheap for getting around.",
+            "Watch out for bag-snatching from motorbikes in Phnom Penh."
+          ],
+          "source_ids": []
+        },
+        {
+          "destination": "Laos",
+          "rank": 3,
+          "verdict": "avoid",
+          "season_flag": "Rated \"avoid\" due to heavy rain",
+          "visa_flag": null,
+          "backpacker_notes": [],
+          "source_ids": []
+        }
+      ],
+      "tool_calls": [
+        "search_backpacker_tips",
+        "search_backpacker_tips",
+        "search_backpacker_tips",
+        "check_seasonal_conditions",
+        "check_seasonal_conditions",
+        "check_seasonal_conditions",
+        "search_seasonal_notes",
+        "search_seasonal_notes",
+        "search_seasonal_notes",
+        "search_visa_rules",
+        "search_visa_rules",
+        "search_visa_rules",
+        "check_route",
+        "check_route",
+        "check_route"
+      ],
+      "retrieved": [
+        "tips-malaysia",
+        "tips-cambodia",
+        "tips-laos",
+        "seasonal-malaysia",
+        "seasonal-cambodia",
+        "seasonal-laos",
+        "visa-malaysia-western",
+        "visa-cambodia-western",
+        "visa-laos-western"
+      ],
+      "runs": 1,
+      "passes": 1,
+      "pass_rate": 1.0,
+      "flaky": false
+    }
+  ]
+}

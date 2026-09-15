@@ -1,0 +1,437 @@
+{
+  "run_id": "eval-20260915T130409Z-b09536",
+  "label": "37-bug3-scope-and-grounding",
+  "timestamp": "2026-09-15T13:07:07.822802+00:00",
+  "score": "6/6",
+  "passed": 6,
+  "total": 6,
+  "pass_rate": 1.0,
+  "repeats": 1,
+  "flaky": 0,
+  "total_attempts": 6,
+  "attempt_pass_rate": 1.0,
+  "config": {
+    "llm_model": "gpt-4o-mini",
+    "judge_model": "gpt-4o",
+    "judge_enabled": true,
+    "rag_backend": "pinecone",
+    "embeddings": "openai",
+    "langfuse": true
+  },
+  "results": [
+    {
+      "id": "discovery-uses-route-corpus",
+      "name": "Where-next-from-here uses the city-level route corpus",
+      "failure_mode": "generic tourist advice instead of backpacker-specific advice",
+      "message": null,
+      "passed": true,
+      "elapsed_ms": 29515,
+      "trace_id": "f2b2981a8ff372c43a0665d8524b4b75",
+      "checks": [
+        {
+          "type": "tool_called",
+          "passed": true,
+          "detail": "tool_calls=['discover_next_destinations']"
+        },
+        {
+          "type": "retrieval_fired",
+          "passed": true,
+          "detail": "namespaces retrieved=['experience', 'routes']"
+        },
+        {
+          "type": "reply_mentions_any",
+          "passed": true,
+          "detail": "matched=['pai', 'chiang rai', 'mae hong son']"
+        }
+      ],
+      "reply": "Here are some great options for your next stop from Chiang Mai, focusing on your interests in trekking and cheap food:\n\n1. **Pai**\n   - **Journey**: About 3 hours north by minibus, costing around 150-200 THB.\n   - **Highlights**: A small hippie town known for its stunning sunset views at the canyon. Many backpackers plan a short stay but end up lingering longer due to its charm.\n   - **Suitability**: Excellent for trekking and enjoying cheap food in a relaxed atmosphere.\n   - Traveler Feedback: Rated 5/5 by travelers who loved its beauty and vibe.\n\n2. **Chiang Rai**\n   - **Journey**: Approximately 3 hours by bus for around 150 THB.\n   - **Highlights**: Known for attractions like the White Temple and as a gateway to the Laos border. \n   - **Suitability**: Good for exploring unique architecture and local food.\n   - A solid option if you're looking for a bit of sightseeing.\n\n3. **Mae Hong Son**\n   - **Journey**: Part of the Mae Hong Son loop that you can explore for several days, often via motorbike.\n   - **Highlights**: Known for its beautiful mountains and trekking opportunities. It offers a mix of culture and nature.\n   - **Suitability**: Great if you enjoy trekking and scenic view",
+      "cards": [],
+      "tool_calls": [
+        "discover_next_destinations"
+      ],
+      "retrieved": [
+        "route-chiang-mai",
+        "experience-review-u27-bangkok",
+        "experience-review-u24-pai",
+        "experience-review-u23-bangkok"
+      ],
+      "runs": 1,
+      "passes": 1,
+      "pass_rate": 1.0,
+      "flaky": false
+    },
+    {
+      "id": "discovery-honest-about-unknown-origin",
+      "name": "Uses a live-sourced route for an uncovered origin, or admits when none was found",
+      "failure_mode": "invents onward destinations, journey times or prices for an uncovered origin with no real search behind them",
+      "message": null,
+      "passed": true,
+      "elapsed_ms": 16272,
+      "trace_id": "8f7128f227f81ee20fa493a9663b44d8",
+      "checks": [
+        {
+          "type": "tool_called",
+          "passed": true,
+          "detail": "tool_calls=['discover_next_destinations']"
+        },
+        {
+          "type": "judge",
+          "passed": true,
+          "detail": "judge score 5/5 - The assistant correctly admitted it has no specific route data for Reykjavik and did not invent any onward destinations.",
+          "score": 5
+        }
+      ],
+      "reply": "I currently have no specific route data for where to go next from Reykjavik. However, common onward destinations for backpackers include:\n\n1. **Akureyri, Iceland** - This town offers a different experience from Reykjavik with unique attractions like a botanic garden and a swimming pool. You might consider exploring more of Iceland before heading to another country.\n\n2. **Norway** - A great option if you're looking to explore breathtaking fjords and scenic landscapes.\n\n3. **Scotland** - Rich in culture and history, offering beautiful countryside and vibrant cities.\n\n4. **Other parts of the UK** - Various destinations you may want to explore further.\n\nIf you're looking to leave Iceland, these international options might be appealing. Consider your budget and preferences as you plan your next move!",
+      "cards": [],
+      "tool_calls": [
+        "discover_next_destinations"
+      ],
+      "retrieved": [
+        "live-routes-reykjavik"
+      ],
+      "runs": 1,
+      "passes": 1,
+      "pass_rate": 1.0,
+      "flaky": false
+    },
+    {
+      "id": "scope-country-question-answered-with-countries",
+      "name": "A question about which COUNTRY next is not answered with towns",
+      "failure_mode": "answering a country-level question at town level",
+      "message": null,
+      "passed": true,
+      "elapsed_ms": 49602,
+      "trace_id": "065885095cca2f71397cfac7244134f9",
+      "checks": [
+        {
+          "type": "reply_mentions_any",
+          "passed": true,
+          "detail": "matched=['laos', 'cambodia', 'malaysia']"
+        },
+        {
+          "type": "judge",
+          "passed": true,
+          "detail": "judge score 5/5 - The assistant correctly suggests countries outside of Thailand, providing detailed information on Malaysia, Cambodia, and Laos.",
+          "score": 5
+        }
+      ],
+      "reply": "Considering your slow travel pace and shoestring budget while you're in Pai, I recommend heading to Malaysia next. The primary reason is the decent weather and the accessibility of cultural and hiking experiences even in September. You'll have a budget of about USD 25-30 per day and can reach Malaysia overland from Bangkok with a trip costing around USD 30-50. Don't forget to complete the Malaysia Digital Arrival Card online before you go. This decision weighs in your current location, interests, and travel schedule.",
+      "cards": [
+        {
+          "destination": "Malaysia",
+          "rank": 1,
+          "verdict": "go",
+          "season_flag": null,
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Expect a daily budget of USD 25-30. Check out Penang's George Town for street art and hawker food.",
+            "Cameron Highlands offers affordable tea plantation walks.",
+            "Intercity buses like KL to Penang are comfortable and economical.",
+            "Beware of pickpockets in busy areas."
+          ],
+          "source_ids": []
+        },
+        {
+          "destination": "Cambodia",
+          "rank": 2,
+          "verdict": "avoid",
+          "season_flag": "This is rated as an avoid destination for September due to heavy rains.",
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Daily budget aim for USD 20-25 with the Angkor pass costing USD 37.",
+            "Caution in Phnom Penh for bag-snatching from moving bikes.",
+            "Affordable buses connect major cities."
+          ],
+          "source_ids": []
+        },
+        {
+          "destination": "Laos",
+          "rank": 3,
+          "verdict": "avoid",
+          "season_flag": "This is rated as an avoid destination due to rainy season.",
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Slow Boat journey from Huay Xai to Luang Prabang costs USD 20-25.",
+            "Be cautious of unexploded ordnance; avoid certain risky areas.",
+            "Kuang Si Falls offers beautiful hiking and relaxation."
+          ],
+          "source_ids": []
+        }
+      ],
+      "tool_calls": [
+        "search_backpacker_tips",
+        "search_backpacker_tips",
+        "search_backpacker_tips",
+        "check_seasonal_conditions",
+        "check_seasonal_conditions",
+        "check_seasonal_conditions",
+        "search_visa_rules",
+        "search_visa_rules",
+        "search_visa_rules",
+        "check_route",
+        "check_route",
+        "check_route",
+        "search_seasonal_notes",
+        "search_seasonal_notes",
+        "search_seasonal_notes"
+      ],
+      "retrieved": [
+        "tips-malaysia",
+        "tips-cambodia",
+        "tips-laos",
+        "visa-malaysia-western",
+        "visa-cambodia-western",
+        "visa-laos-western",
+        "seasonal-malaysia",
+        "seasonal-cambodia",
+        "seasonal-laos"
+      ],
+      "runs": 1,
+      "passes": 1,
+      "pass_rate": 1.0,
+      "flaky": false
+    },
+    {
+      "id": "scope-visa-expiry-forces-a-country-answer",
+      "name": "A visa about to expire is treated as a leave-the-country question",
+      "failure_mode": "answering a country-level question at town level",
+      "message": null,
+      "passed": true,
+      "elapsed_ms": 30821,
+      "trace_id": "85e356f1554f75f28a3ebb2a6f702b3c",
+      "checks": [
+        {
+          "type": "reply_mentions_any",
+          "passed": true,
+          "detail": "matched=['laos', 'cambodia', 'malaysia']"
+        },
+        {
+          "type": "judge",
+          "passed": true,
+          "detail": "judge score 5/5 - The assistant recommends countries outside of Thailand, such as Malaysia, Cambodia, and Laos, which aligns with the rubric's requirement to suggest a new country.",
+          "score": 5
+        }
+      ],
+      "reply": "Based on your shoestring budget and slow travel pace, I recommend heading to Malaysia. You can enter Malaysia visa-free for up to 90 days, which makes it an excellent choice given your current visa situation in Pai, Thailand, with the deadline at the end of September. Overland travel to Malaysia from Bangkok typically costs between USD 30-50 and takes about 20 hours. This fits your budget and travel style. Plus, despite heavier rain on the west coast in September, the infrastructure is decent and travel conditions are manageable. Make sure to check the local weather as you travel.",
+      "cards": [
+        {
+          "destination": "Malaysia",
+          "rank": 1,
+          "verdict": "go",
+          "season_flag": null,
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Daily Budget: Approximately $25-30.",
+            "Things to Do: George Town, Penang for street art and hawker food.",
+            "Getting There: Overland from Bangkok to Penang takes around 20 hours and costs $30-50.",
+            "Warning: Be cautious of petty theft in busy areas."
+          ],
+          "source_ids": [
+            "tips-malaysia"
+          ]
+        },
+        {
+          "destination": "Cambodia",
+          "rank": 2,
+          "verdict": "maybe",
+          "season_flag": "September is the wettest month, affecting rural travel conditions.",
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Daily Budget: Expect to spend around $20-25.",
+            "Things to Do: Explore Angkor Wat with a 3-day pass for $62.",
+            "Getting There: Bus from Bangkok to Siem Reap takes about 8-9 hours and costs $12-25.",
+            "Warning: Be cautious of bag-snatching in Phnom Penh."
+          ],
+          "source_ids": [
+            "tips-cambodia"
+          ]
+        },
+        {
+          "destination": "Laos",
+          "rank": 3,
+          "verdict": "avoid",
+          "season_flag": "Heavy rain affects travel reliability.",
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Daily Budget: $18-25.",
+            "Things to Do: Mekong Slow Boat from Huay Xai to Luang Prabang costs $20-25.",
+            "Getting There: Train from Bangkok to Vientiane takes about 12 hours and costs $30-45.",
+            "Warning: Watch out for unexploded ordnance, stay on marked paths."
+          ],
+          "source_ids": [
+            "tips-laos"
+          ]
+        }
+      ],
+      "tool_calls": [
+        "search_backpacker_tips",
+        "search_backpacker_tips",
+        "search_backpacker_tips",
+        "check_seasonal_conditions",
+        "search_seasonal_notes",
+        "check_seasonal_conditions",
+        "search_seasonal_notes",
+        "check_seasonal_conditions",
+        "search_seasonal_notes",
+        "search_visa_rules",
+        "search_visa_rules",
+        "search_visa_rules",
+        "check_route",
+        "check_route",
+        "check_route"
+      ],
+      "retrieved": [
+        "tips-malaysia",
+        "tips-cambodia",
+        "tips-laos",
+        "seasonal-malaysia",
+        "seasonal-cambodia",
+        "seasonal-laos",
+        "visa-malaysia-western",
+        "visa-cambodia-western",
+        "visa-laos-western"
+      ],
+      "runs": 1,
+      "passes": 1,
+      "pass_rate": 1.0,
+      "flaky": false
+    },
+    {
+      "id": "tracking-ignores-a-hypothetical-departure",
+      "name": "Thinking about leaving is not a departure",
+      "failure_mode": "writing memory the user did not actually state",
+      "message": null,
+      "passed": true,
+      "elapsed_ms": 6089,
+      "trace_id": "8e45c09636750008f65f8cba6fb64a46",
+      "checks": [
+        {
+          "type": "history_lacks",
+          "passed": true,
+          "detail": "history=['pai']"
+        },
+        {
+          "type": "profile_field_set",
+          "passed": true,
+          "detail": "current_location='pai'"
+        }
+      ],
+      "reply": "From Pai, you have a few options for onward travel:\n\n1. **Chiang Mai**  \n   - **Journey**: About 3 hours by bus.  \n   - **Cost**: Roughly 150-200 THB.  \n   - **Who it suits**: A good option if you're looking for more vibrant city life, markets, and a range of activities from temples to nightlife.\n\n2. **Mae Hong Son**  \n   - **Journey**: Around 4 hours by bus.  \n   - **Cost**: Similar 150-200 THB range.  \n   - **Who it suits**: A quieter destination, ideal for those interested in hill-tribe trekking and a serene atmosphere.\n\n3. **Chiang Rai**  \n   - **Journey**: Not mentioned from Pai, but likely involves going back to Chiang Mai first.  \n   - **Who it suits**: Known for its unique temples, but more of a detour unless on your wishlist.\n\nChiang Mai is often the preferred choice after Pai, so you may want to consider that depending on your next desired experiences. [route-pai]",
+      "cards": [],
+      "tool_calls": [
+        "discover_next_destinations"
+      ],
+      "retrieved": [
+        "route-pai"
+      ],
+      "runs": 1,
+      "passes": 1,
+      "pass_rate": 1.0,
+      "flaky": false
+    },
+    {
+      "id": "tracking-does-not-relocate-you-on-a-placeless-turn",
+      "name": "A turn naming no place does not move the traveller",
+      "failure_mode": "writing memory the user did not actually state",
+      "message": null,
+      "passed": true,
+      "elapsed_ms": 38055,
+      "trace_id": "3e24943c644ff51d5f01c3e6d1965e21",
+      "checks": [
+        {
+          "type": "profile_field_in",
+          "passed": true,
+          "detail": "current_location='thailand', wanted one of ['thailand', 'pai']"
+        },
+        {
+          "type": "history_lacks",
+          "passed": true,
+          "detail": "history=['chiang mai', 'pai']"
+        }
+      ],
+      "reply": "Given your shoestring budget and current location in Thailand, I'd recommend heading to Malaysia. While the weather in Malaysia is mixed in September, it's still accessible and offers some great spots to explore. You can travel overland from Bangkok to Penang or Kuala Lumpur for about USD 30-50 over a 20-hour journey. Once in Malaysia, your daily budget will be around USD 25-30. Don't forget to complete the Malaysia Digital Arrival Card online before your trip. Cambodia and Laos are less ideal due to the heavy rain and travel difficulties this month. Enjoy your journey and safe travels!",
+      "cards": [
+        {
+          "destination": "Malaysia",
+          "rank": 1,
+          "verdict": "go",
+          "season_flag": null,
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Daily budget approximately USD 25-30.",
+            "Explore George Town, Penang for street art and hawker food.",
+            "Intercity buses are budget-friendly.",
+            "Potential tourist spot scams, check prices beforehand."
+          ],
+          "source_ids": [
+            "tips-malaysia"
+          ]
+        },
+        {
+          "destination": "Cambodia",
+          "rank": 2,
+          "verdict": "avoid",
+          "season_flag": "Significant transportation disruptions due to rain.",
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Daily budget approximately USD 20-25.",
+            "Visit Angkor Wat for USD 37 (one-day pass).",
+            "Buses like Giant Ibis are reliable.",
+            "Beware of bag-snatching in Phnom Penh."
+          ],
+          "source_ids": [
+            "tips-cambodia"
+          ]
+        },
+        {
+          "destination": "Laos",
+          "rank": 3,
+          "verdict": "avoid",
+          "season_flag": "Heavy rain affecting mobility significantly.",
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Daily budget approximately USD 18-25.",
+            "The Mekong Slow Boat experience for USD 20-25.",
+            "New China-Laos railway connects cities efficiently.",
+            "Watch out for unexploded ordnance; stay on marked paths."
+          ],
+          "source_ids": [
+            "tips-laos"
+          ]
+        }
+      ],
+      "tool_calls": [
+        "search_backpacker_tips",
+        "search_backpacker_tips",
+        "search_backpacker_tips",
+        "search_visa_rules",
+        "search_visa_rules",
+        "search_visa_rules",
+        "check_route",
+        "check_route",
+        "check_route",
+        "check_seasonal_conditions",
+        "check_seasonal_conditions",
+        "check_seasonal_conditions",
+        "search_seasonal_notes",
+        "search_seasonal_notes",
+        "search_seasonal_notes"
+      ],
+      "retrieved": [
+        "tips-malaysia",
+        "tips-cambodia",
+        "tips-laos",
+        "visa-malaysia-western",
+        "visa-cambodia-western",
+        "visa-laos-western",
+        "seasonal-malaysia",
+        "seasonal-cambodia",
+        "seasonal-laos"
+      ],
+      "runs": 1,
+      "passes": 1,
+      "pass_rate": 1.0,
+      "flaky": false
+    }
+  ]
+}

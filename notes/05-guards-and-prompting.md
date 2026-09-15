@@ -79,9 +79,11 @@ matters:
 - If the town isn't a route origin but its **country** is covered
   (`resolve_country("Thailand")` succeeds), return a message saying route data
   exists at country level but we need to know which *town* for hop-by-hop
-  detail, and list which towns we do have — because someone whose stored
-  location is just "Thailand" is not an uncovered traveller, they're a
-  traveller we need one more detail from.
+  detail — because someone whose stored location is just "Thailand" is not an
+  uncovered traveller, they're a traveller we need one more detail from. This
+  branch used to end by listing every town held, which read as a menu to pick
+  from; it now forbids choosing one instead (see "No location at all is not a
+  licence to pick one" below).
 - Otherwise, a hard block: "NO ROUTE DATA HELD FOR {origin}... you MUST NOT
   name onward destinations, journey times, prices or attractions."
 
@@ -92,6 +94,90 @@ regression: a traveller whose profile said `current_location: "Thailand"`
 into the "no data" branch and the discovery agent asked a clarifying question
 instead of answering — which lost the traveller their answer for no reason.
 The runner now has an explicit fallback for this case (see below).
+
+## Question SCOPE: `coverage.wants_country_scope`
+
+**What it catches:** answering "which **country** should I go to next" with a
+list of towns inside the country the traveller is trying to leave.
+
+**The bug report:** #3, 2026-09-14 (`test1234`). Standing in Pai, the traveller
+asked three times, in three phrasings — "my visa is running out at the end of
+the month, what country should i go to next?", "which country should i go to
+next", "i want to change country" — and got Chiang Mai, Mae Hong Son and Chiang
+Rai every time. The visa phrasing makes it worse than unhelpful: the answer to
+"my permission to be in this country expires" was three suggestions for staying
+in it.
+
+**Why it happened, and why it is a design bug rather than a model failure:**
+the scope of a "where next" answer was decided entirely by the *granularity of
+the stored location*. A town in `ROUTE_GRAPH` → the town-level `discovery_agent`;
+a country → the country-level comparison fallback below. The word "country" in
+the question reached no decision anywhere in the pipeline: `TurnParse` has no
+scope field, `intent: discover` covers both, and the `discovery_agent` holds
+only `discover_next_destinations` and `get_traveller_feedback`, so once the turn
+arrived there a country-level answer was not available at any price. Reproduced
+deterministically with the agents stubbed — the routing alone is enough.
+
+**How it works:** `coverage.wants_country_scope(message)` is a regex over the
+message, in code, checked in `runner.py` alongside the existing
+two-destinations-means-`compare` override. It matches the question asked at
+country granularity ("which/what/another/next country", "change country",
+"crossing the border", "visa run") and the constraint that forces that
+granularity anyway ("my visa is running out", "overstaying"). When it fires on
+a `discover` turn, the turn takes the country-level path regardless of how
+precisely the location is recorded — the traveller's town is still passed to
+the specialists, so `routes.lookup` and the visa tools resolve legs from where
+they actually are.
+
+It applies to `discover` turns and to `local` turns that name no destination —
+the reported "i want to change country" was classified `local`, so gating it on
+`discover` alone would have missed the exact turn the traveller complained
+about. `review` and `memory` are deliberately left alone: "Thailand was the
+best country I've been to" is a review, and rewriting it into a comparison
+would be its own bug.
+
+Deliberately **not** matched: a bare country name (travellers name countries
+constantly in questions that are still about towns), and "countryside".
+
+## No location at all is not a licence to pick one
+
+Same bug report, the other half.
+
+**Where the Chiang Mai answer actually came from** — written down because the
+first diagnosis was wrong, and the wrong version is the more intuitive one.
+From the reply alone ("here are some great options from Chiang Mai", carrying
+the genuine `route-chiang-mai` journey times and prices, for a town the
+traveller never mentioned) it looks exactly like an agent inventing an origin
+and getting lucky with the retrieval. It was not. The Langfuse trace for that
+turn (`3650cac7e23a…`, 2026-09-14 16:53:59) shows the `discovery_agent`
+behaving correctly end to end: it was handed `current_location: Chiang Mai` and
+answered from it, honestly. The lie was upstream, in the *parse* of that same
+turn — the turn parser emitted a visit to Chiang Mai for a message that named
+nowhere, and the write path stored it. See "the grounding rule" in
+notes/02-memory-and-schema.md. **An agent's honesty guard cannot save a turn
+whose memory is already wrong**, and no amount of prompt-level hardening here
+would have caught this one.
+
+The reachable-with-no-location state was real all the same, and nothing in code
+stopped the town-level agent taking a turn it had no origin for. Both changes
+below therefore stand on their own — as defence in depth for a state the
+write-path fix makes much rarer, not as the fix for this report:
+
+- **Control flow, in `runner.py`:** a `discover` turn with no recorded location
+  goes to the `concierge`, which holds no tools at all, so the worst it can do
+  is ask where they are. The town-level agent never gets the turn.
+- **`route_note`, for the two location-unknown branches:** the "unknown" branch
+  is now a hard block naming the specific move that was made ("not from their
+  route history, not from their wishlist, not from anywhere in this prompt"),
+  and the country-level branch **no longer lists the towns held**. That list was
+  meant as "here is what we could answer with if you tell us the town", but a
+  list of towns inside a prompt that also says "we don't know which town" reads
+  as a menu. A guard that hands over the candidates it is trying to rule out is
+  not a guard, whether or not it was the cause on this particular turn.
+
+Covered by `tests/test_where_next_scope.py` (38 tests, 35 of which fail against
+the pre-fix code) and eval cases `scope-country-question-answered-with-countries`
+and `scope-visa-expiry-forces-a-country-answer`.
 
 ## The country-level-origin routing fallback
 
@@ -105,6 +191,15 @@ which") and re-routes the turn through the ordinary `compare` pipeline against
 those neighbour countries instead. This means "where next" from a
 country-granularity profile still produces a real, useful comparison rather
 than a dead-end clarifying question.
+
+Since bug report #3 this same branch is entered whenever
+`wants_country_scope` fires, not only when the stored location happens to be a
+country. Its one remaining dead end is now handled explicitly: if the pool of
+onward countries is empty (nothing on the wishlist, and an origin country with
+no overland neighbour in `COUNTRY_NEIGHBOURS` — Japan, Australia, Mongolia),
+the turn goes to the `concierge` with a code-written `route_note` saying
+exactly that, rather than falling through to the town-level agent and answering
+a country question with towns again.
 
 ## City-awareness as a recurring theme
 
@@ -131,6 +226,21 @@ classified it as, because routing a genuine comparison question to an agent
 without visa/route tools (as happened with `visa-nationality-aware`) produces
 wrong answers with no code-level way to catch it after the fact — the fix has
 to be upstream, at dispatch time.
+
+## The Weather specialist is not skippable
+
+The fourth guard of the same family as the intent override and the
+country-scope override: a decision the model was making, taken off it in code.
+`turn_parser` chooses which specialists a turn needs, and on the compare path
+its `needs_weather` flag is no longer read - the Weather specialist always runs.
+
+It returned `needs_weather: false` for "I want to do a big trek in July. Nepal
+or Sri Lanka?", which is a question *about the season*. No `weather_agent` span
+appears in that trace at all, the Decision-Weigher got an empty seasonal report,
+and Nepal - in monsoon - was ranked first. Nothing errored; the answer was just
+confidently wrong about the thing this app exists to get right. The other two
+flags stay advisory. Eval case `season-nepal-monsoon`, and the full history is
+in note 08, decision 51.
 
 ## What a guard does *not* do
 

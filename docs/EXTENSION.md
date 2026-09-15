@@ -197,10 +197,41 @@ The important negative rule: **asking about a place is not visiting it.** "What
 is Luang Prabang like? I might go one day" must not log a visit. That distinction
 is stated in the parser prompt and has its own eval case.
 
+The harder negative rule, added after bug report #3: **a place the traveller did
+not type is not a visit either.** `tracking.mentioned_in()` checks every
+`visits` and `departures` entry, and `profile_updates.current_location`, against
+the raw message before anything is written. The parser turned out to restate a
+`visits` entry on nearly every turn — four consecutive messages naming no place
+at all ("any parties?", "where should i go next") each produced `visits: [Pai]`
+— which was harmless while it echoed the right place and overwrote a traveller's
+stated location the one time it echoed a stale one. Compound values ("Bali,
+Indonesia") match on any part; a caller with no message to check against
+(onboarding) fails open.
+
 Re-mentioning somewhere already known is not a memory write either. An earlier
 version logged `track_visit` on every turn that named the current town, which
 filled the "just remembered" panel with noise. `add_travel_history` now reports
 whether anything actually changed, and only real changes reach the audit log.
+
+Two granularity rules sit on top of that, both from bug report #3
+(2026-09-14):
+
+- **Naming the country you are already in is a confirmation, not a move.**
+  "I'm in Thailand now" from a traveller already recorded in Pai keeps `Pai` as
+  `current_location` and adds no row: appending the country to a town-level
+  route reads as a new stop ("Bangkok → Chiang Mai → Pai → Thailand"), and
+  replacing the town with the country silently coarsens everything downstream
+  that keys off where they are. A country they are *not* in is a real move and
+  still lands normally (`I left Laos yesterday and I'm in Thailand now`).
+- **Planning to leave is not leaving.** "Thinking of leaving Thailand" writes
+  no departure. A premature one closes the country out in `visited_history`,
+  asks them to review somewhere they are still standing in, and clears the
+  active location out from under the next turn. Eval case
+  `tracking-ignores-a-hypothetical-departure`.
+
+Leaving a country now also clears a town inside it: `store.archive_country`
+resolves a stored town through `resolve_country`, so a departure from Thailand
+ends "you are in Pai". A town departure still only clears that exact town.
 
 ---
 
@@ -277,6 +308,15 @@ tool says so.
 
 **Hostel search uses text search, not the `lodging` type.** Places API (New) has
 no hostel type, and `lodging` returns hotels - the wrong answer for this app.
+
+**Every tool geocodes through `place_tools._geocode`, which appends the country
+the corpus already knows.** Places text search takes a bare string and returns
+the strongest global match, so `geocode("Pai")` resolved to an organisation on
+Russell Square in London and `get_places_recommendations("Pai", "bar")`
+recommended Dishoom Covent Garden to a traveller in Mae Hong Son. `"Pai,
+Thailand"` resolves correctly. Locations that already name a country, or that
+the corpus does not recognise, are passed through unchanged. See
+[notes/04](../notes/04-places-and-ranking.md).
 
 **Caching and retries.** `places_cache` keys on a hash of the query with a 24h
 TTL, so a demo re-asking the same question does not re-bill. A repeat lookup goes

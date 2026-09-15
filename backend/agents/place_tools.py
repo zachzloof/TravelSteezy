@@ -40,6 +40,36 @@ PLACE_TYPE_MAP: dict[str, list[str]] = {
 HOSTEL_WORDS = ("hostel", "backpacker", "guesthouse", "guest house", "dorm")
 
 
+def _geocode(location: str) -> dict[str, Any] | None:
+    """Geocode a town, disambiguated by the country we already know it is in.
+
+    Places text search takes a bare string and will happily resolve a
+    backpacker town to whatever scores highest globally. ``geocode("Pai")``
+    returned "Public Administration International (PAI)" on Russell Square in
+    LONDON, so ``get_places_recommendations("Pai", "bar")`` centred its search
+    there and recommended a traveller in northern Thailand Dishoom Covent
+    Garden and Ronnie Scott's. Found 2026-09-15, immediately after a dead
+    Places key was replaced - the 401s had been hiding it, which is the more
+    honest failure of the two.
+
+    ``KNOWN_CITIES`` already knows Pai is in Thailand, so the fix is to say so:
+    "Pai, Thailand" resolves correctly. A location that already names its
+    country, or one the corpus does not recognise, is passed through untouched
+    (an unknown town is a coverage problem, not a disambiguation one).
+    """
+    from backend.rag.route_data import resolve_country
+
+    location = (location or "").strip()
+    if not location:
+        return None
+    if "," in location:
+        return client.geocode(location)
+    country = resolve_country(location)
+    if not country or country == location.lower():
+        return client.geocode(location)
+    return client.geocode(f"{location}, {country.title()}")
+
+
 def _unavailable(tool: str, args: dict[str, Any], reason: str) -> dict[str, Any]:
     result = {
         "configured": False,
@@ -88,7 +118,7 @@ def get_places_recommendations(
             "No live place data: GOOGLE_PLACES_API_KEY is not configured on this deployment.",
         )
 
-    centre = client.geocode(location)
+    centre = _geocode(location)
     if not centre or centre.get("latitude") is None:
         return _unavailable(
             "get_places_recommendations", args, f"Could not locate {location!r}."
@@ -147,7 +177,7 @@ def find_hostels(
         out["booking_links"] = affiliate.booking_links(location)
         return out
 
-    centre = client.geocode(location)
+    centre = _geocode(location)
     lat = centre.get("latitude") if centre else None
     lon = centre.get("longitude") if centre else None
 
@@ -200,7 +230,7 @@ def find_food_near(
             "No live food data: GOOGLE_PLACES_API_KEY is not configured.",
         )
 
-    centre = client.geocode(location)
+    centre = _geocode(location)
     lat = centre.get("latitude") if centre else None
     lon = centre.get("longitude") if centre else None
 
@@ -239,7 +269,7 @@ def suggest_areas_to_stay(location: str, radius_meters: int = 5000) -> dict[str,
             "No live area data: GOOGLE_PLACES_API_KEY is not configured.",
         )
 
-    centre = client.geocode(location)
+    centre = _geocode(location)
     lat = centre.get("latitude") if centre else None
     lon = centre.get("longitude") if centre else None
 

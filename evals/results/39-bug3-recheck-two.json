@@ -1,0 +1,178 @@
+{
+  "run_id": "eval-20260915T133445Z-88630e",
+  "label": "39-bug3-recheck-two",
+  "timestamp": "2026-09-15T13:35:55.677740+00:00",
+  "score": "1/2",
+  "passed": 1,
+  "total": 2,
+  "pass_rate": 0.5,
+  "repeats": 1,
+  "flaky": 0,
+  "total_attempts": 2,
+  "attempt_pass_rate": 0.5,
+  "config": {
+    "llm_model": "gpt-4o-mini",
+    "judge_model": "gpt-4o",
+    "judge_enabled": true,
+    "rag_backend": "pinecone",
+    "embeddings": "openai",
+    "langfuse": true
+  },
+  "results": [
+    {
+      "id": "season-nepal-monsoon",
+      "name": "Does not recommend Nepal trekking in monsoon",
+      "failure_mode": "recommends a destination during its monsoon/unsafe season",
+      "message": "I want to do a big trek in July. Nepal or Sri Lanka?",
+      "passed": false,
+      "elapsed_ms": 42532,
+      "trace_id": "c20c30f1100bde1c2727277af2a9d1d3",
+      "checks": [
+        {
+          "type": "tool_called",
+          "passed": false,
+          "detail": "tool_calls=['search_backpacker_tips', 'search_backpacker_tips', 'search_visa_rules', 'search_visa_rules', 'check_route', 'check_route']"
+        },
+        {
+          "type": "not_ranked_first",
+          "passed": false,
+          "detail": "rank 1 = 'nepal'"
+        },
+        {
+          "type": "flag_present",
+          "passed": true,
+          "detail": "season_flag='July is monsoon season, so be prepared for rain and possible delays.'"
+        }
+      ],
+      "reply": "For a big trek in July, Nepal is the standout choice, primarily due to its renowned trekking routes which align well with your interest in mountains and trekking. Keep in mind your shoestring budget and balanced pace: In cities like Kathmandu and Pokhara, plan on spending around USD 20-25 per day, while trekking might push it to USD 30-40. You'll need a visa on arrival costing USD 50 for 30 days, and flights from Bangkok last around 3.5 hours, averaging USD 230 one-way. Nepal requires a bit more investment in preparation, such as paying for trekking permits and a guide, but it offers some of the best trekking in the world. In contrast, Sri Lanka also has trekking options but on a smaller scale and might be less challenging if you are seeking serious elevation gains. It offers a more straightforward and inexpensive visa process with its free ETA for 30 days.",
+      "cards": [
+        {
+          "destination": "Nepal",
+          "rank": 1,
+          "verdict": "go",
+          "season_flag": "July is monsoon season, so be prepared for rain and possible delays.",
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Daily budget around USD 20-25 in cities like Kathmandu and Pokhara; trekking may increase it to USD 30-40.",
+            "Annapurna Base Camp Trek takes 7-12 days; known for stunning views with teahouse accommodation.",
+            "Flights from Bangkok to Kathmandu take 3.5 hours and cost approximately USD 230.",
+            "Be cautious of altitude sickness above 3,000m; medication like Diamox is available in Thamel [tips-nepal]."
+          ],
+          "source_ids": [
+            "tips-nepal"
+          ]
+        },
+        {
+          "destination": "Sri Lanka",
+          "rank": 2,
+          "verdict": "maybe",
+          "season_flag": "monsoon season can affect travel plans",
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Manage on USD 20-30 daily, even cheaper outside major towns.",
+            "Little Adam's Peak in Ella offers stunning views for a 1-2 hour trek.",
+            "Buses are very cheap for getting around, though often crowded.",
+            "Ensure you have a local permit if renting a tuk-tuk to avoid fines [tips-srilanka]."
+          ],
+          "source_ids": [
+            "tips-srilanka"
+          ]
+        }
+      ],
+      "tool_calls": [
+        "search_backpacker_tips",
+        "search_backpacker_tips",
+        "search_visa_rules",
+        "search_visa_rules",
+        "check_route",
+        "check_route"
+      ],
+      "retrieved": [
+        "tips-nepal",
+        "tips-srilanka",
+        "visa-nepal-western",
+        "visa-srilanka-western"
+      ],
+      "runs": 1,
+      "passes": 0,
+      "pass_rate": 0.0,
+      "flaky": false
+    },
+    {
+      "id": "rag-budget-numbers",
+      "name": "Quotes realistic daily budget numbers from the store",
+      "failure_mode": "generic tourist advice instead of backpacker-specific advice",
+      "message": "How much a day should I budget for Laos versus Cambodia?",
+      "passed": true,
+      "elapsed_ms": 25503,
+      "trace_id": "6bb5b98a35e0312a948617f7c9fbdf7e",
+      "checks": [
+        {
+          "type": "retrieval_fired",
+          "passed": true,
+          "detail": "namespaces retrieved=['tips', 'visa']"
+        },
+        {
+          "type": "reply_matches_regex",
+          "passed": true,
+          "detail": "match=USD 18"
+        }
+      ],
+      "reply": "For your planned visit in September, I'd recommend you head to Laos. It's a bit more aligned with your shoestring budget and interests in food and temples. In Laos, you can budget around USD 18-25 per day, which suits your budget-friendly style. Your route from Thailand is ideal for this journey as the two-day slow boat from Huay Xai to Luang Prabang costs about USD 20-25. Cambodia is also economical, with a budget range of USD 20-25 per day, and has incredible temple sites, but the overall expenses are slightly higher. Ensure you have exact cash for visas across both borders and stay safe, especially around scam-prone areas. Enjoy the rich cultural and scenic experiences in these countries!",
+      "cards": [
+        {
+          "destination": "Laos",
+          "rank": 1,
+          "verdict": "go",
+          "season_flag": null,
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Expect to budget USD 18-25 per day.",
+            "Visit Kuang Si Falls, a stunning multi-tier waterfall.",
+            "Travel by two-day slow boat on the Mekong River from Huay Xai to Luang Prabang for USD 20-25.",
+            "Be cautious of unexploded ordnance, especially around the Plain of Jars.",
+            "tips-laos"
+          ],
+          "source_ids": [
+            "tips-laos"
+          ]
+        },
+        {
+          "destination": "Cambodia",
+          "rank": 2,
+          "verdict": "maybe",
+          "season_flag": null,
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Plan for a budget of USD 20-25 per day.",
+            "Explore Angkor Wat with a three-day pass for USD 62.",
+            "Overland travel from Bangkok to Siem Reap costs USD 12-25.",
+            "Be cautious of bag-snatching in Phnom Penh.",
+            "tips-cambodia"
+          ],
+          "source_ids": [
+            "tips-cambodia"
+          ]
+        }
+      ],
+      "tool_calls": [
+        "search_backpacker_tips",
+        "search_backpacker_tips",
+        "search_visa_rules",
+        "search_visa_rules",
+        "check_route",
+        "check_route"
+      ],
+      "retrieved": [
+        "tips-laos",
+        "tips-cambodia",
+        "visa-laos-western",
+        "visa-cambodia-western"
+      ],
+      "runs": 1,
+      "passes": 1,
+      "pass_rate": 1.0,
+      "flaky": false
+    }
+  ]
+}

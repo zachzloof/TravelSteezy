@@ -45,6 +45,58 @@ closest it gets is the tools in `tools.py` / `place_tools.py`, which are all
 *reads* (RAG search, Places lookups) or *computed lookups* (`check_route`,
 `check_seasonal_conditions`), never writes.
 
+### What that principle does NOT buy you: the grounding rule
+
+"The model never writes, it only reports what it heard" sounds like it settles
+the trust question. It does not, and bug report #3 (2026-09-14) is the proof.
+Every write in that conversation went through the Python path exactly as
+designed. The database still ended up asserting something the traveller had
+never said, because **nothing checked that what the model reported hearing was
+actually in the message.**
+
+From the Langfuse traces for that conversation, the `visits` list the parser
+produced per turn:
+
+| Message | `visits` emitted |
+|---|---|
+| "what things should i do? give me some ideas" | `[Pai]` |
+| "any temples, cool hikes, sights to drive too?" | `[Pai]` |
+| "any parties?" | `[Pai]` |
+| "where should i go next?" | `[Pai]` |
+| "where should i go next" | `[Chiang Mai]` |
+
+Not one of those messages names a place. The parser restates the location it
+believes the traveller is in, on nearly every turn, and `apply_tracking`
+faithfully writes it — `add_travel_history` plus
+`update_profile(current_location=...)`. That was invisible for as long as it
+echoed the right place: re-writing "Pai" over "Pai" changes nothing, and the
+no-op audit fix below even keeps it out of the write log. On the last row it
+echoed a *stale* town from the route history — thirteen seconds after the
+traveller had said "i'm in thailand now" — and overwrote their own statement
+with it. The next message in the conversation was "i never said i was in chiang
+mai?". They hadn't. Note also the shape it emitted: `{"location": "Chiang Mai",
+"location_type": "city", "country": "Thailand"}`, which is the literal example
+in the parser prompt's own `visits` rule.
+
+So `tracking.mentioned_in(location, message)` now gates the writes that assert
+a place: `visits`, `departures`, and `profile_updates.current_location`. If the
+traveller did not type the name, it is not written, and the drop is logged.
+Compound values ("Bali, Indonesia") match on any part; a caller with no message
+to check against (onboarding) fails open rather than dropping everything.
+
+Two things worth keeping in mind when extending this:
+
+- **The check is on the one input that could be checked.** Budget band, pace
+  and climate preference are inferences from prose and there is no string to
+  match; a place name is a token the traveller either typed or did not. Don't
+  generalise the rule past that.
+- **A contradiction inside one parse is resolved in favour of presence.** The
+  final turn of the report was parsed as `current_location: Thailand` *and* a
+  departure from Thailand dated that day, from the sentence "i said i was in
+  thailand? i want to change country". The departure won and cleared the
+  location the same sentence had just set. A stated presence now beats an
+  inferred departure in the same turn.
+
 ## `travel_history` supersedes `visited_history` — migration, not replacement
 
 The original schema had one country-level append-only table,
@@ -133,6 +185,51 @@ to a town). Reusing it rather than writing new clearing logic kept this a
 one-function-call fix. Two regression tests
 (`test_leaving_a_town_does_not_pollute_country_history`,
 `test_leaving_a_country_still_logs_at_country_level`) pin both branches.
+
+### The other half of the same bug: leaving Thailand ≠ still being in Pai
+
+"If `current_location` matches this string" is a raw string comparison, and
+that is the half that stayed broken. A traveller recorded in **Pai** who left
+**Thailand** kept `current_location: "Pai"` — the app went on answering as
+though they were still in a town of the country they had just left, which is
+how bug report #3 (2026-09-14) ended up giving onward-hop advice from northern
+Thailand to somebody trying to leave the region.
+
+`archive_country` now resolves through `route_data.resolve_country`, in one
+direction only:
+
+- archiving a **country** clears a stored town inside it (leaving Thailand
+  clears Pai)
+- archiving a **town** still only clears that exact town — resolving both sides
+  would make "left Chiang Mai" wrongly clear a stored location of Pai, since
+  both resolve to Thailand
+
+This is the fourth appearance of the theme recorded in
+notes/05-guards-and-prompting.md ("any table or guard keyed by destination
+should go through `resolve_country` from day one"); `archive_country` was the
+last place still comparing destination strings directly. Pinned by
+`test_leaving_a_country_clears_a_town_inside_it` and
+`test_leaving_a_town_does_not_clear_a_different_town`.
+
+### The departure write path that was never running
+
+`runner._apply_memory_writes` carried its own departure loop, keyed on
+`departure["country"]`, which looked like the live write path (the docstring
+says "THE WRITE PATH") and never once executed: `ParsedDeparture` has no
+`country` field, and ADK's strict output schema strips anything the model emits
+that is not on the model, so `departure.get("country")` was always `None` and
+the guard immediately above the write always skipped. Deleted rather than
+repaired — `tracking.apply_tracking` already does it, and does it with the
+town/country distinction above. `test_parsed_departures_carry_no_country_field`
+pins the schema fact so the loop cannot be "restored" by someone reading the
+old code as a gap.
+
+The corollary: `tracking.apply_tracking` is now provably the *only* path that
+writes visits, departures and reviews, and `_apply_structured_writes` wraps it
+in a catch-all so a tracking failure cannot cost the traveller their answer.
+That trade is still right, but the failure is no longer invisible — it logs
+with a traceback and records an error span on the turn's trace, rather than a
+`logger.warning` nobody is tailing.
 
 ## `update_profile` deliberately can't clear a field
 

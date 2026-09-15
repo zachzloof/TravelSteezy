@@ -1,0 +1,242 @@
+{
+  "run_id": "eval-20260915T133730Z-82b452",
+  "label": "40-bug3-weather-guard",
+  "timestamp": "2026-09-15T13:38:46.450044+00:00",
+  "score": "2/3",
+  "passed": 2,
+  "total": 3,
+  "pass_rate": 0.667,
+  "repeats": 1,
+  "flaky": 0,
+  "total_attempts": 3,
+  "attempt_pass_rate": 0.667,
+  "config": {
+    "llm_model": "gpt-4o-mini",
+    "judge_model": "gpt-4o",
+    "judge_enabled": true,
+    "rag_backend": "pinecone",
+    "embeddings": "openai",
+    "langfuse": true
+  },
+  "results": [
+    {
+      "id": "season-nepal-monsoon",
+      "name": "Does not recommend Nepal trekking in monsoon",
+      "failure_mode": "recommends a destination during its monsoon/unsafe season",
+      "message": "I want to do a big trek in July. Nepal or Sri Lanka?",
+      "passed": true,
+      "elapsed_ms": 20820,
+      "trace_id": "e4de05e87d844cf26ccd7778387d8a71",
+      "checks": [
+        {
+          "type": "tool_called",
+          "passed": true,
+          "detail": "tool_calls=['check_seasonal_conditions', 'check_seasonal_conditions', 'search_seasonal_notes', 'search_seasonal_notes']"
+        },
+        {
+          "type": "not_ranked_first",
+          "passed": true,
+          "detail": "rank 1 = 'sri lanka'"
+        },
+        {
+          "type": "flag_present",
+          "passed": true,
+          "detail": "season_flag='Avoid due to peak monsoon'"
+        }
+      ],
+      "reply": "I recommend heading to Sri Lanka in July for your trekking adventure. The main reason is the weather on the east coast which is favorable for trekking and surfing at this time. With your shoestring budget, you'll appreciate the affordable options in Sri Lanka, and you can enjoy trekking in places like Arugam Bay. Keep in mind that your budget pace balances well here, and the east coast will offer a good climate. Nepal, unfortunately, falls into its peak monsoon season in July, making trekking potentially dangerous and miserable with risks of landslides and flight cancellations. Enjoy your trip and make sure to relax as per your balanced travel pace in the lovely east coast climate.",
+      "cards": [
+        {
+          "destination": "Sri Lanka",
+          "rank": 1,
+          "verdict": "go",
+          "season_flag": null,
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Trekking and surfing at Arugam Bay",
+            "Affordable dorms available starting at $5 per night on the east coast",
+            "Low-cost local buses for getting around, typical fares under $5",
+            "Be cautious of touts trying to overcharge at tourist hotspots"
+          ],
+          "source_ids": []
+        },
+        {
+          "destination": "Nepal",
+          "rank": 2,
+          "verdict": "avoid",
+          "season_flag": "Avoid due to peak monsoon",
+          "visa_flag": null,
+          "backpacker_notes": [],
+          "source_ids": []
+        }
+      ],
+      "tool_calls": [
+        "check_seasonal_conditions",
+        "check_seasonal_conditions",
+        "search_seasonal_notes",
+        "search_seasonal_notes"
+      ],
+      "retrieved": [
+        "seasonal-nepal",
+        "seasonal-srilanka"
+      ],
+      "runs": 1,
+      "passes": 1,
+      "pass_rate": 1.0,
+      "flaky": false
+    },
+    {
+      "id": "season-philippines-typhoon",
+      "name": "Flags Philippine typhoon season in September",
+      "failure_mode": "recommends a destination during its monsoon/unsafe season",
+      "message": "September plans - Philippines or Malaysia for some island time?",
+      "passed": true,
+      "elapsed_ms": 30825,
+      "trace_id": "f8109002b8172e8141093ae733f7fa8a",
+      "checks": [
+        {
+          "type": "tool_called",
+          "passed": true,
+          "detail": "tool_calls=['check_seasonal_conditions', 'check_seasonal_conditions', 'search_seasonal_notes', 'search_seasonal_notes', 'search_visa_rules', 'search_visa_rules', 'check_route', 'check_route', 'search_backpacker_tips', 'search_backpacker_tips']"
+        },
+        {
+          "type": "not_ranked_first",
+          "passed": true,
+          "detail": "rank 1 = 'malaysia'"
+        },
+        {
+          "type": "reply_mentions_any",
+          "passed": true,
+          "detail": "matched=['typhoon']"
+        }
+      ],
+      "reply": "I recommend Malaysia over the Philippines for your September travel plans, primarily because of the weather. Malaysia has a \"mixed\" rating, with places like Kuala Lumpur, Penang, and Langkawi still accessible, despite some rain and possible haze. This fits well with your mid-range budget, as flights from Vietnam are cheaper, averaging around USD 75. Also, Malaysia offers visa-free entry for up to 90 days, allowing for a leisurely exploration pace.\n\nHere\u2019s a snapshot: In Malaysia, you can enjoy island destinations like Langkawi and cultural spots in Penang, keeping your daily costs between USD 25-30. Confirm visas with official sources before booking. Dive into Malaysia's rich culture and islands without seasonal disruptions!",
+      "cards": [
+        {
+          "destination": "Malaysia",
+          "rank": 1,
+          "verdict": "go",
+          "season_flag": null,
+          "visa_flag": null,
+          "backpacker_notes": [
+            "A daily budget here ranges from USD 25-30, making it slightly more affordable than the Philippines.",
+            "George Town, Penang offers vibrant street art, clan jetties, and some of the best hawker food.",
+            "The intercity bus system is efficient; for example, a bus from Kuala Lumpur to Penang can cost around RM 35-50 (about USD 7-12).",
+            "Keep an eye on belongings in crowded areas, especially around tourist hubs."
+          ],
+          "source_ids": []
+        },
+        {
+          "destination": "Philippines",
+          "rank": 2,
+          "verdict": "avoid",
+          "season_flag": "Typhoon peak",
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Expect a daily budget of around USD 25-35 due to inter-island flight and boat costs.",
+            "El Nido and Coron offer stunning island-hopping tours priced around PHP 1,200-1,800.",
+            "Domestic flights with Cebu Pacific are often best for inter-island travel; budget around PHP 1,500-3,000 per major flight.",
+            "Be mindful of cash availability; smaller island ATMs may run out and charge fees."
+          ],
+          "source_ids": []
+        }
+      ],
+      "tool_calls": [
+        "check_seasonal_conditions",
+        "check_seasonal_conditions",
+        "search_seasonal_notes",
+        "search_seasonal_notes",
+        "search_visa_rules",
+        "search_visa_rules",
+        "check_route",
+        "check_route",
+        "search_backpacker_tips",
+        "search_backpacker_tips"
+      ],
+      "retrieved": [
+        "seasonal-philippines",
+        "seasonal-malaysia",
+        "visa-philippines-western",
+        "visa-malaysia-western",
+        "tips-philippines",
+        "tips-malaysia"
+      ],
+      "runs": 1,
+      "passes": 1,
+      "pass_rate": 1.0,
+      "flaky": false
+    },
+    {
+      "id": "rag-budget-numbers",
+      "name": "Quotes realistic daily budget numbers from the store",
+      "failure_mode": "generic tourist advice instead of backpacker-specific advice",
+      "message": "How much a day should I budget for Laos versus Cambodia?",
+      "passed": false,
+      "elapsed_ms": 22674,
+      "trace_id": "bcf5ef0ca7e56b14a4b196be680ac3b5",
+      "checks": [
+        {
+          "type": "retrieval_fired",
+          "passed": false,
+          "detail": "namespaces retrieved=['seasonal', 'visa']"
+        },
+        {
+          "type": "reply_matches_regex",
+          "passed": true,
+          "detail": "match=USD 20"
+        }
+      ],
+      "reply": "Given your shoestring budget and interest in food and temples, Cambodia might be the better choice right now. With a budget of roughly USD 20-35 per day for food, dorm accommodation, and local activities, it offers a slightly cheaper daily cost compared to Laos, where you'd budget about USD 25-40 per day. You're currently in Thailand, and an overland bus to Cambodia costs about USD 12-25, making it a cost-effective option. Do remember, though, that September is the wettest month for both countries, so expect rains and possible travel delays. Always confirm visa details from official sources before making plans.",
+      "cards": [
+        {
+          "destination": "Cambodia",
+          "rank": 1,
+          "verdict": "maybe",
+          "season_flag": "September is the wettest month, expect heavy rain and possible travel delays.",
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Budget USD 20-35 per day for daily expenses.",
+            "Bus from Bangkok to Siem Reap takes about 8-9 hours.",
+            "Visa on arrival for USD 30, extendable once.",
+            "Poipet border known for scams; carry exact cash."
+          ],
+          "source_ids": []
+        },
+        {
+          "destination": "Laos",
+          "rank": 2,
+          "verdict": "maybe",
+          "season_flag": "September is particularly wet, affecting travel.",
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Budget USD 25-40 per day for daily expenses.",
+            "Travel via sleeper train to Vientiane or Mekong slow boat to Luang Prabang.",
+            "Visa on arrival for USD 30-42, extendable twice.",
+            "Bring USD cash to avoid poor exchange rates."
+          ],
+          "source_ids": []
+        }
+      ],
+      "tool_calls": [
+        "check_seasonal_conditions",
+        "check_seasonal_conditions",
+        "search_seasonal_notes",
+        "search_seasonal_notes",
+        "search_visa_rules",
+        "search_visa_rules",
+        "check_route",
+        "check_route"
+      ],
+      "retrieved": [
+        "seasonal-laos",
+        "seasonal-cambodia",
+        "visa-laos-western",
+        "visa-cambodia-western"
+      ],
+      "runs": 1,
+      "passes": 0,
+      "pass_rate": 0.0,
+      "flaky": false
+    }
+  ]
+}

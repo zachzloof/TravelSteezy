@@ -20,12 +20,13 @@ That distinction is enforced in the parser prompt and re-checked here.
 from __future__ import annotations
 
 import logging
+import re
 from datetime import date
 from typing import Any
 
 from backend.memory import store, travel
 from backend.rag import experience as experience_store
-from backend.rag.route_data import KNOWN_CITIES
+from backend.rag.route_data import KNOWN_CITIES, resolve_country
 from backend.rag.seed_data import KNOWN_DESTINATIONS
 
 SUPPORTED_COUNTRIES = set(KNOWN_DESTINATIONS)
@@ -44,17 +45,137 @@ def _country_for(location: str, given: str | None) -> str | None:
     return KNOWN_CITIES.get((location or "").strip().lower())
 
 
-def apply_tracking(user_id: int, parse: dict[str, Any]) -> list[dict[str, Any]]:
+def _normalise(text: str) -> str:
+    """Lowercase and collapse punctuation/whitespace, for substring matching.
+
+    Keeps unicode word characters rather than stripping to ASCII: a traveller
+    typing "Malmö" or a Thai place name in Thai script should still match
+    itself, and both sides of the comparison go through this same function, so
+    the only thing that matters is that it is consistent.
+    """
+    return re.sub(r"\W+", " ", (text or "").lower(), flags=re.UNICODE).strip()
+
+
+def mentioned_in(location: str, message: str) -> bool:
+    """Did the traveller actually name this place in THIS message?
+
+    THE GROUNDING RULE. Reconstructed from bug report #3's Langfuse traces
+    (2026-09-14): the turn parser emits a `visits` entry on almost every turn,
+    echoing whatever it believes the current location to be, even when the
+    message names nowhere at all -
+
+        "what things should i do? give me some ideas"   -> visits: [Pai]
+        "any parties?"                                  -> visits: [Pai]
+        "where should i go next"                        -> visits: [Chiang Mai]
+
+    That was invisible while it echoed the right place. On the last one it
+    echoed a STALE town out of the route history - thirteen seconds after the
+    traveller had said "i'm in thailand now" - and `apply_tracking` wrote it
+    over their own statement as though they had said it. The next message was
+    "i never said i was in chiang mai?". They hadn't. The parser had, and the
+    shape it emitted (city, Chiang Mai, arrival_date today) is the literal
+    example from its own prompt.
+
+    A location the traveller did not type cannot become a visit or a departure.
+    This is the same principle as every other guard here - a cheap
+    deterministic check beats trusting the extraction - applied to the one
+    input that had none: which place the model claims was named.
+
+    Compound strings ("Bali, Indonesia") match on any part, so a parser that
+    helpfully expands a town into "town, country" still lands. Parts shorter
+    than three characters are ignored, since they match almost anything.
+    """
+    if not message:
+        # No message to check against (a caller that predates this rule, e.g.
+        # onboarding). Fail open rather than silently dropping every write.
+        return True
+    haystack = f" {_normalise(message)} "
+    candidates = [location] + [p for p in re.split(r"[,/]", location or "")]
+    for candidate in candidates:
+        needle = _normalise(candidate)
+        if len(needle) >= 3 and f" {needle} " in haystack:
+            return True
+    return False
+
+
+def _stated_presence(parse: dict[str, Any], message: str) -> set[str]:
+    """Places this turn says the traveller IS in, as country keys where known.
+
+    Used to drop a contradictory departure: at 16:54:38 in the same report the
+    parser read "i said i was in thailand? i want to change country" as both
+    `current_location: Thailand` AND a departure from Thailand dated that day,
+    and the departure won - wiping the location a sentence that explicitly
+    stated it had just set. A statement of presence beats an inferred
+    departure, every time.
+    """
+    here: set[str] = set()
+    for visit in _entries(parse, "visits"):
+        location = str(visit["location"]).strip()
+        if mentioned_in(location, message):
+            here.add(location.lower())
+            here.add(resolve_country(location) or location.lower())
+    stated = str((parse.get("profile_updates") or {}).get("current_location") or "").strip()
+    if stated and mentioned_in(stated, message):
+        here.add(stated.lower())
+        here.add(resolve_country(stated) or stated.lower())
+    return {h for h in here if h}
+
+
+def _is_country(location: str, location_type: str | None) -> bool:
+    """Is this entry a whole country rather than a town?
+
+    Trusts the parser's ``location_type`` when it says so, and re-checks the
+    name against the covered-country list either way - the parser labels
+    country-level mentions "city" often enough that the label alone is not a
+    safe test.
+    """
+    return (
+        str(location_type or "").strip().lower() == "country"
+        or (location or "").strip().lower() in SUPPORTED_COUNTRIES
+    )
+
+
+def apply_tracking(
+    user_id: int, parse: dict[str, Any], message: str = ""
+) -> list[dict[str, Any]]:
     """Apply every structured travel write implied by one parsed turn.
+
+    ``message`` is the traveller's raw text, used to ground place-level writes
+    in what they actually said - see ``mentioned_in``. It defaults to empty for
+    callers with no message to check against, which fails open.
 
     Returns a list of write records for the UI's "just remembered" panel.
     """
     writes: list[dict[str, Any]] = []
+    present_in = _stated_presence(parse, message)
 
     # ---- visits: append to the route, promote off the wishlist ---------------
     for visit in _entries(parse, "visits"):
         location = str(visit["location"]).strip()
+        if not mentioned_in(location, message):
+            logger.info(
+                "dropping ungrounded visit %r for user %s - not named in the message",
+                location, user_id,
+            )
+            continue
         country = _country_for(location, visit.get("country"))
+
+        # "I'm in Thailand now" when we already have them in Pai is a
+        # CONFIRMATION, not a move. Treating it as a fresh visit appended
+        # "Thailand" to a town-level route ("Bangkok -> Chiang Mai -> Pai ->
+        # Thailand", as though the country were the next stop) and overwrote
+        # the precise stored town with the vaguer country - which then took
+        # "where next" off the town-level path entirely. Reported in bug report
+        # #3, 2026-09-14. A country-level visit that names a DIFFERENT country
+        # from the one they are in is a real move and still lands normally
+        # (eval case memory-writes-departure: "I left Laos yesterday and I'm in
+        # Thailand now").
+        if _is_country(location, visit.get("location_type")):
+            current = store.get_profile(user_id).get("current_location") or ""
+            if current and resolve_country(current) == location.strip().lower():
+                travel.touch_location_mention(user_id, current)
+                continue
+
         result = travel.add_travel_history(
             user_id,
             location=location,
@@ -140,6 +261,23 @@ def apply_tracking(user_id: int, parse: dict[str, Any]) -> list[dict[str, Any]]:
         location = str(departure["location"]).strip()
         departure_date = departure.get("departure_date") or date.today().isoformat()
 
+        if not mentioned_in(location, message):
+            logger.info(
+                "dropping ungrounded departure %r for user %s - not named in the message",
+                location, user_id,
+            )
+            continue
+        # A place they have just said they are IN cannot also be one they have
+        # left this turn. "i said i was in thailand? i want to change country"
+        # was parsed as both, and the departure won - clearing the location the
+        # same sentence had set (bug report #3).
+        if present_in & {location.lower(), resolve_country(location) or location.lower()}:
+            logger.info(
+                "dropping departure %r for user %s - the same turn states they are there",
+                location, user_id,
+            )
+            continue
+
         # Make sure the place is in the route before we close it out - people
         # often only mention somewhere when they are leaving it.
         travel.add_travel_history(
@@ -153,11 +291,7 @@ def apply_tracking(user_id: int, parse: dict[str, Any]) -> list[dict[str, Any]]:
         # Only a COUNTRY departure belongs in the country-level log. Passing a
         # town name here wrote "Pai" into visited_history as though it were a
         # country, and leaving Pai does not mean leaving Thailand.
-        is_country = (
-            str(departure.get("location_type") or "").lower() == "country"
-            or location.strip().lower() in SUPPORTED_COUNTRIES
-        )
-        if is_country:
+        if _is_country(location, departure.get("location_type")):
             store.log_departure(
                 user_id, country=location, departure_date=departure_date, source="agent"
             )

@@ -69,6 +69,30 @@ STATE_KEYS = (
 )
 
 
+def adk_session_id(user_id: int | str) -> str:
+    """The ADK session id every agent in one turn runs under.
+
+    It is deliberately the SAME string for all of them, and deliberately the
+    same string ``run_turn`` gives its Langfuse trace.
+
+    It used to be one per agent - "parse-2", "local-2", "discover-2",
+    "weigh-2-1" - which read as helpful labelling and quietly broke session
+    grouping in Langfuse. The OpenInference instrumentation carries the ADK
+    session onto its spans, and at ingestion the LAST agent to run overwrites
+    the trace's session id with it, so one conversation scattered across four
+    "sessions" named after whichever agent happened to answer, and no session
+    in Langfuse showed the actual conversation. Verified by experiment against
+    the live project, both before and after - see notes/08, decision 47.
+
+    Nothing depended on those ids being distinct: ``_run_agent`` builds its own
+    ``InMemorySessionService`` per call, so two agents are isolated by holding
+    separate service instances, not by the id string. Which agent ran is still
+    visible in the span name (``agent_run [local_guide]``) and in this app's
+    own per-agent timing panel.
+    """
+    return f"user-{user_id}"
+
+
 async def _run_agent(
     agent: LlmAgent,
     state: dict[str, Any],
@@ -124,13 +148,28 @@ async def _run_agent(
 # --------------------------------------------------------------------------- #
 # parsing + the explicit write step
 # --------------------------------------------------------------------------- #
-def _apply_memory_writes(user_id: int, parse: dict[str, Any]) -> list[dict[str, Any]]:
+def _apply_memory_writes(
+    user_id: int, parse: dict[str, Any], message: str = ""
+) -> list[dict[str, Any]]:
     """THE WRITE PATH. Explicit calls, one per thing the user told us."""
     writes: list[dict[str, Any]] = []
 
     raw_updates = parse.get("profile_updates")
     updates = dict(raw_updates) if isinstance(raw_updates, dict) else {}
     if updates:
+        # current_location is grounded in the traveller's own words, same rule
+        # and same reason as tracking's visits and departures: the parser
+        # re-states a location on nearly every turn, and one stale re-statement
+        # silently overwrote what the traveller had just told us (bug report
+        # #3). Every other profile field is a preference they stated in prose
+        # and cannot be checked this way; this one is a place name, so it can.
+        stated_location = str(updates.get("current_location") or "").strip()
+        if stated_location and not tracking.mentioned_in(stated_location, message):
+            logger.info(
+                "dropping ungrounded current_location %r for user %s - not named in the message",
+                stated_location, user_id,
+            )
+            updates.pop("current_location", None)
         # "interests" is turn_parser's one free-text field that is NOT a
         # trip_profile column: it has to go through travel.set_interests (the
         # structured, weighted, KEY-aware store), never store.update_profile,
@@ -152,34 +191,35 @@ def _apply_memory_writes(user_id: int, parse: dict[str, Any]) -> list[dict[str, 
             store.update_profile(user_id, updates, source="agent")
             writes.append({"operation": "update_profile", "payload": updates, "source": "agent"})
 
-    for departure in parse.get("departures") or []:
-        if not isinstance(departure, dict):
-            continue
-        country = departure.get("country")
-        if not country:
-            continue
-        store.log_departure(
-            user_id,
-            country=country,
-            departure_date=departure.get("departure_date"),
-            source="agent",
-        )
-        writes.append(
-            {
-                "operation": "log_departure",
-                "payload": {"country": country, "departure_date": departure.get("departure_date")},
-                "source": "agent",
-            }
-        )
+    # Departures are NOT written here. This function used to carry its own
+    # departure loop keyed on departure["country"], but ParsedDeparture (see
+    # graph.py) has no country field and ADK's strict output schema strips any
+    # the model emits, so `country` was always None and the loop's guard always
+    # skipped - unreachable code that read like the live write path. The real
+    # one is tracking.apply_tracking below, which additionally gets the
+    # town-vs-country distinction right (leaving Pai is not leaving Thailand).
     return writes
 
 
-def _apply_structured_writes(user_id: int, parse: dict[str, Any]) -> list[dict[str, Any]]:
-    """The extension's write path: visits, wishlist, reviews. Never kills a turn."""
+def _apply_structured_writes(
+    user_id: int, parse: dict[str, Any], message: str = "", trace: Trace | None = None
+) -> list[dict[str, Any]]:
+    """The extension's write path: visits, wishlist, reviews, departures.
+
+    Never kills a turn - a tracking failure must not cost the traveller their
+    answer. It IS reported though: this is the only path that writes visits,
+    departures and reviews, so swallowing an exception here silently loses
+    everything the traveller just told us, and a log line nobody is tailing was
+    the only trace of it.
+    """
     try:
-        return tracking.apply_tracking(user_id, parse)
+        return tracking.apply_tracking(user_id, parse, message)
     except Exception as exc:  # noqa: BLE001
-        logger.warning("tracking writes failed for user %s: %s", user_id, exc)
+        logger.exception("tracking writes failed for user %s", user_id)
+        if trace is not None:
+            trace.note(
+                "memory.tracking_failed", f"{type(exc).__name__}: {exc}", status="error"
+            )
         return []
 
 
@@ -353,7 +393,7 @@ async def run_turn(user_id: int, message: str, username: str = "") -> dict[str, 
             try:
                 text, final_state, _ = await _run_agent(
                     graph.make_turn_parser(), base_state, message,
-                    str(user_id), f"parse-{user_id}",
+                    str(user_id), adk_session_id(user_id),
                 )
                 # turn_parser has a real output_schema (see graph.py), so ADK
                 # already validated the model's JSON and put a clean dict in
@@ -373,8 +413,8 @@ async def run_turn(user_id: int, message: str, username: str = "") -> dict[str, 
 
         # ---- 3. WHEN WE WRITE: explicit memory writes ------------------------
         with trace.span("memory.write", input=parse.get("profile_updates")) as mem_write:
-            writes = _apply_memory_writes(user_id, parse)
-            writes += _apply_structured_writes(user_id, parse)
+            writes = _apply_memory_writes(user_id, parse, message)
+            writes += _apply_structured_writes(user_id, parse, message, trace)
             mem_write.update(output={"writes": writes})
         trace.set_span_summary("memory.write", f"{len(writes)} write(s)")
 
@@ -442,15 +482,51 @@ async def run_turn(user_id: int, message: str, username: str = "") -> dict[str, 
         elif intent == "compare" and not candidates:
             intent = "discover" if profile.get("current_location") else "memory"
 
-        # Town-level discovery needs a town. If we only know the country, fall back
-        # to the country-level comparison path rather than stalling the turn to ask
-        # which town they are in - that dead end lost the traveller their answer.
+        # WHICH SCOPE a "where next" is answered at is decided here, in code.
+        #
+        # Two separate things force the country-level path:
+        #   * the question itself is about leaving the country - "which country
+        #     next", "I want to change country", "my visa is running out"
+        #     (coverage.wants_country_scope). Reported 2026-09-14 (test1234):
+        #     asked three times, in three phrasings, which COUNTRY to go to
+        #     next - once with a visa about to expire - and answered every time
+        #     with towns inside the country they were trying to leave, because
+        #     the word "country" reached no decision anywhere in this pipeline.
+        #     Scope used to be a pure side effect of how precisely the stored
+        #     location happened to be recorded.
+        #   * the stored location is a country rather than a town, so town-level
+        #     hops do not exist for it anyway - the original reason this branch
+        #     exists. Falling back to a country comparison beats stalling the
+        #     turn to ask which town they are in; that dead end lost the
+        #     traveller their answer.
+        country_scope = coverage.wants_country_scope(message)
+        # "i want to change country" was classified `local` in the reported
+        # conversation, not `discover`, so gating this on `discover` alone would
+        # have missed the exact turn the traveller complained about. A
+        # country-scoped question with nowhere named is a where-next question
+        # whatever the classifier called it. `review` and `memory` are left
+        # alone: "Thailand was the best country I've been to" is a review, and
+        # rewriting it into a comparison would be its own bug.
+        if country_scope and intent == "local" and not candidates:
+            intent = "discover"
+            trace.note("routing.country_scope", "local -> discover (country question)")
         if intent == "discover":
             from backend.agents import climate, routes
             from backend.rag.route_data import ROUTE_GRAPH, resolve_country
 
             here = (profile.get("current_location") or "").strip().lower()
-            if here and here not in ROUTE_GRAPH:
+            if not here:
+                # No town, no country, nothing to route from. The town-level
+                # discovery agent used to take this turn anyway, and with a
+                # route history in its prompt it simply picked a town out of it
+                # and answered as though the traveller were still there - real
+                # curated hops for a place they never named (bug report #3).
+                # The concierge holds no retrieval tools at all, so the worst it
+                # can do is ask where they are, which is the only honest answer
+                # available with no origin.
+                intent = "memory"
+                trace.note("routing.location_unknown", "asked where they are")
+            elif country_scope or here not in ROUTE_GRAPH:
                 here_country = resolve_country(here) or here
                 neighbours = coverage.nearby_country_options(here_country)
 
@@ -583,6 +659,28 @@ async def run_turn(user_id: int, message: str, username: str = "") -> dict[str, 
                     parse["needs_weather"] = True
                     parse["needs_logistics"] = True
                     parse["needs_recommendations"] = True
+                elif country_scope:
+                    # They asked about countries and there is no country pool to
+                    # answer with: an empty wishlist, and an origin country with
+                    # no overland neighbour in the corpus (Japan, Australia,
+                    # Mongolia - see COUNTRY_NEIGHBOURS). Handing this to the
+                    # town-level agent would answer a country question with
+                    # towns again, which is the whole bug. Say what we hold and
+                    # ask, rather than quietly changing the subject.
+                    intent = "memory"
+                    state["route_note"] = (
+                        f"COUNTRY-LEVEL QUESTION, NO ONWARD COUNTRIES HELD. They are "
+                        f"asking about leaving {here_country.title()}, and this app "
+                        f"holds no onward-country options from there and has nothing "
+                        f"on their wishlist to weigh instead. Say that plainly, say "
+                        f"what you would need from them (somewhere they are "
+                        f"considering, or a wishlist entry), and do NOT name "
+                        f"countries, routes, flights or prices from your own knowledge."
+                    )
+                    trace.note(
+                        "routing.no_country_options",
+                        f"no onward countries held for {here_country}",
+                    )
 
         if intent == "local":
             reply, cards, fired = await _run_local_guide(state, message, user_id, trace)
@@ -640,7 +738,7 @@ async def _run_local_guide(
     """On-the-ground questions about one town: where to stay, eat, go."""
     with trace.local_step("agent.local_guide"):
         text, _, tool_calls = await _run_agent(
-            graph.make_local_guide(), state, message, str(user_id), f"local-{user_id}"
+            graph.make_local_guide(), state, message, str(user_id), adk_session_id(user_id)
         )
     trace.set_span_summary("agent.local_guide", f"{len(tool_calls)} tool call(s)")
     return (
@@ -656,7 +754,7 @@ async def _run_discovery(
     """Open "where next from here", answered at town level from the route corpus."""
     with trace.local_step("agent.discovery"):
         text, _, tool_calls = await _run_agent(
-            graph.make_discovery_agent(), state, message, str(user_id), f"discover-{user_id}"
+            graph.make_discovery_agent(), state, message, str(user_id), adk_session_id(user_id)
         )
     trace.set_span_summary("agent.discovery", f"{len(tool_calls)} tool call(s)")
     return (
@@ -671,7 +769,7 @@ async def _run_concierge(
 ) -> tuple[str, list[dict[str, Any]], list[str]]:
     with trace.local_step("agent.concierge"):
         text, _, _ = await _run_agent(
-            graph.make_concierge(), state, message, str(user_id), f"concierge-{user_id}"
+            graph.make_concierge(), state, message, str(user_id), adk_session_id(user_id)
         )
     return text.strip() or "I'm not sure how to help with that yet.", [], ["concierge"]
 
@@ -726,7 +824,7 @@ async def _run_one_specialist(
         try:
             with trace.local_step(agent.name):
                 text, final_state, tool_calls = await _run_agent(
-                    agent, state, message, str(user_id), f"{agent.name}-{user_id}-{attempt}"
+                    agent, state, message, str(user_id), adk_session_id(user_id)
                 )
                 output = str(final_state.get(key) or text or "")
 
@@ -756,8 +854,22 @@ async def _run_comparison(
     """Stage 1: run the relevant specialists concurrently.
     Stage 2: hand their reports to the Decision-Weigher.
     """
+    # The Weather specialist is NOT optional on a comparison. The other two
+    # flags stay advisory - the parser is usually right that a pure "what would
+    # I actually do there" question needs no route lookup - but season is the
+    # input this app exists to get right, and skipping it is silent: the weigher
+    # simply receives no seasonal report and ranks on everything else.
+    #
+    # Caught by eval case season-nepal-monsoon ("I want to do a big trek in
+    # July. Nepal or Sri Lanka?"), which regressed when the specialists were
+    # rolled back to gpt-4o-mini (run 36, and still failing in run 38): the
+    # parser returned needs_weather:false for a question whose whole subject is
+    # the season, no weather_agent span appears in the trace at all, and Nepal -
+    # in monsoon, the single destination the case exists to rule out - was
+    # ranked first. A stronger model got this right, which is exactly why it
+    # cannot be left to the model.
     specialists = graph.build_specialists(
-        needs_weather=parse.get("needs_weather", True) is not False,
+        needs_weather=True,
         needs_logistics=parse.get("needs_logistics", True) is not False,
         needs_recommendations=parse.get("needs_recommendations", True) is not False,
     )
@@ -847,7 +959,7 @@ async def _run_comparison(
             try:
                 text, final_state, _ = await _run_agent(
                     graph.make_decision_weigher(), weigher_state, message,
-                    str(user_id), f"weigh-{user_id}-{attempt}",
+                    str(user_id), adk_session_id(user_id),
                 )
             except Exception as exc:  # noqa: BLE001
                 logger.warning("decision_weigher attempt %d failed: %s", attempt, exc)

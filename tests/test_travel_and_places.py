@@ -443,6 +443,46 @@ def test_hostel_search_still_returns_booking_links_without_a_key(app_env):
 
 
 # --------------------------------------------------------------------------- #
+# geocoding a town needs the country we already know it is in
+# --------------------------------------------------------------------------- #
+def test_geocode_disambiguates_a_town_with_its_country(app_env, monkeypatch):
+    """geocode("Pai") resolved to an organisation on Russell Square in LONDON,
+    so a traveller in northern Thailand was recommended Dishoom Covent Garden.
+    The corpus already knows Pai is in Thailand - say so."""
+    import backend.agents.place_tools as place_tools
+
+    importlib.reload(place_tools)
+    seen: list[str] = []
+    monkeypatch.setattr(
+        place_tools.client, "geocode", lambda q: seen.append(q) or {"latitude": 1, "longitude": 2}
+    )
+
+    place_tools._geocode("Pai")
+    place_tools._geocode("Chiang Mai")
+
+    assert seen == ["Pai, Thailand", "Chiang Mai, Thailand"]
+
+
+def test_geocode_leaves_an_already_qualified_or_unknown_location_alone(app_env, monkeypatch):
+    """A string that already names its country is passed through untouched, and
+    so is a town the corpus does not recognise - that is a coverage gap, not a
+    disambiguation one, and inventing a country for it would be worse."""
+    import backend.agents.place_tools as place_tools
+
+    importlib.reload(place_tools)
+    seen: list[str] = []
+    monkeypatch.setattr(
+        place_tools.client, "geocode", lambda q: seen.append(q) or {"latitude": 1, "longitude": 2}
+    )
+
+    place_tools._geocode("Pai, Thailand")
+    place_tools._geocode("Nowhereville")
+    place_tools._geocode("Thailand")
+
+    assert seen == ["Pai, Thailand", "Nowhereville", "Thailand"]
+
+
+# --------------------------------------------------------------------------- #
 # city detection
 # --------------------------------------------------------------------------- #
 def test_city_detection_prefers_the_longest_match():
