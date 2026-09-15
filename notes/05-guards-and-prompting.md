@@ -227,20 +227,27 @@ without visa/route tools (as happened with `visa-nationality-aware`) produces
 wrong answers with no code-level way to catch it after the fact — the fix has
 to be upstream, at dispatch time.
 
-## The Weather specialist is not skippable
+## The specialists are not skippable
 
 The fourth guard of the same family as the intent override and the
 country-scope override: a decision the model was making, taken off it in code.
-`turn_parser` chooses which specialists a turn needs, and on the compare path
-its `needs_weather` flag is no longer read - the Weather specialist always runs.
+`turn_parser` says which specialists a turn needs; on the compare path those
+`needs_*` flags are no longer read, and all three specialists always run.
 
 It returned `needs_weather: false` for "I want to do a big trek in July. Nepal
-or Sri Lanka?", which is a question *about the season*. No `weather_agent` span
-appears in that trace at all, the Decision-Weigher got an empty seasonal report,
-and Nepal - in monsoon - was ranked first. Nothing errored; the answer was just
-confidently wrong about the thing this app exists to get right. The other two
-flags stay advisory. Eval case `season-nepal-monsoon`, and the full history is
-in note 08, decision 51.
+or Sri Lanka?" — a question *about the season*. No `weather_agent` span appears
+in that trace at all, the Decision-Weigher got an empty seasonal report, and
+Nepal, in monsoon, was ranked first. Making only Weather mandatory then exposed
+the same thing one layer down: `needs_recommendations: false` for "How much a
+day should I budget for Laos versus Cambodia?", so the agent holding the `tips`
+corpus — where the budget numbers are — never ran either.
+
+Both failures are silent. Nothing errors, no empty report is flagged; the
+weigher simply ranks on whatever it was given. That is what makes this worth a
+guard rather than a better prompt: the symptom is a confident answer missing
+one of the three inputs it claims to have weighed. Eval cases
+`season-nepal-monsoon` and `rag-budget-numbers`; full history in note 08,
+decisions 51 and 52.
 
 ## What a guard does *not* do
 

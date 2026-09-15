@@ -92,10 +92,12 @@ without reading the note it points at.
   next" / "change country" / "my visa is running out", whatever the classifier said,
   and a `discover` turn with no stored location goes to the tool-less concierge rather
   than to an agent that could invent an origin. (`notes/05`)
-- **The Weather specialist always runs on a comparison.** `needs_weather` from the
-  parser is ignored there: it came back false for "a big trek in July, Nepal or Sri
-  Lanka?", no weather agent ran, and Nepal was ranked first in monsoon. (`notes/05`,
-  decision 51)
+- **All three specialists run on a comparison.** The parser's `needs_*` flags are
+  recorded but not read there. It returned `needs_weather: false` for "a big trek in
+  July, Nepal or Sri Lanka?" (no weather agent ran; Nepal ranked first in monsoon) and
+  `needs_recommendations: false` for a question purely about budget (the agent holding
+  the budget corpus never ran). Both fail silently — the weigher just ranks on what it
+  was given. (`notes/05`, decisions 51-52)
 - **Every agent in a turn shares one ADK session id** (`runner.adk_session_id`).
   Per-agent ids get carried onto the auto-instrumented spans and overwrite the trace's
   Langfuse session, scattering one conversation across several. Same rule in

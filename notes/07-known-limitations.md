@@ -62,6 +62,25 @@ decided rather than re-litigating it.
   data was captured," which is reasonable but hasn't been exercised in an eval
   case.
 
+## Things left as they are, on purpose, with the reason
+
+- **`/health`'s `configured` flags mean "a key is set", not "the key works".**
+  Proving otherwise needs a live call per dependency per health check, which
+  costs real API quota on an endpoint meant to be cheap and frequently polled.
+  This is a real gap rather than a theoretical one: a `GOOGLE_PLACES_API_KEY`
+  went bad at some point and returned `401 API keys are not supported by this
+  API` on every call for an unknown period, while `/health` reported
+  `places: {configured: true}` throughout. Nothing broke — the place tools
+  degraded honestly and the agents said they had no live data — which is also
+  why nobody noticed. The README says so explicitly now. If this ever needs
+  fixing properly, the shape is a cached liveness probe (one real call per
+  dependency per N minutes, result cached), not a call per request.
+- **`openinference-instrumentation-google-adk==0.1.27` sometimes collapses
+  several tool calls from one LLM turn into a single `(merged tools)` span,**
+  losing which tool was called with what. Upstream limitation, not this app's
+  code; it is visible in most compare-turn traces. Worth re-checking whenever
+  that dependency is bumped — see note 09.
+
 ## Known gaps in eval coverage
 
 - **No eval case directly tests the Places-tool retry/backoff logic** against

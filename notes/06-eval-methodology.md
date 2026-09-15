@@ -262,3 +262,26 @@ general rule: **before accepting or dismissing a regression on a nondeterministi
 case, get a rate, then A/B the one change that could plausibly explain it.** A
 before/after comparison where only one side was measured repeatedly is not a
 comparison.
+
+## "Flaky" is a diagnosis, and it has to be earned
+
+`rag-backpacker-not-tourist` above is genuinely flaky: an A/B isolation run
+showed it failing at similar rates with and without the change being tested,
+and its assertion is a judge score on prose.
+
+`rag-budget-numbers` looked exactly the same from the outside - passing on one
+run, failing on the next, passing on a re-run - and was treated as flaky for
+sixteen runs. It was a real defect: `turn_parser` intermittently returned
+`needs_recommendations: false`, the specialist that owns the budget corpus
+never ran, and the `tips` retrieval the case asserts could not happen. The
+trigger was nondeterministic; the bug was not. See note 08, decision 52.
+
+The distinction matters because the two call for opposite responses - one is a
+reason to re-run, the other is a reason to read a trace - and the cheap test
+that separates them is this: **look at what actually ran on a failing attempt
+before calling it noise.** A failure whose trace is missing an agent, a tool
+call or a retrieval is a defect, however intermittently it shows up. Only a
+failure where everything ran and the output was merely judged differently has
+earned the word flaky. The per-run pass rate that `--repeat` gives you measures
+how often a case fails; it says nothing about why, and it cannot make that call
+for you.

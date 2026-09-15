@@ -1,0 +1,352 @@
+{
+  "run_id": "eval-20260915T150545Z-08803b",
+  "label": "42-all-specialists-on-compare",
+  "timestamp": "2026-09-15T15:07:31.993941+00:00",
+  "score": "4/4",
+  "passed": 4,
+  "total": 4,
+  "pass_rate": 1.0,
+  "repeats": 1,
+  "flaky": 0,
+  "total_attempts": 4,
+  "attempt_pass_rate": 1.0,
+  "config": {
+    "llm_model": "gpt-4o-mini",
+    "judge_model": "gpt-4o",
+    "judge_enabled": true,
+    "rag_backend": "pinecone",
+    "embeddings": "openai",
+    "langfuse": true
+  },
+  "results": [
+    {
+      "id": "season-nepal-monsoon",
+      "name": "Does not recommend Nepal trekking in monsoon",
+      "failure_mode": "recommends a destination during its monsoon/unsafe season",
+      "message": "I want to do a big trek in July. Nepal or Sri Lanka?",
+      "passed": true,
+      "elapsed_ms": 42027,
+      "trace_id": "10f5b135674b5e7edac4743c401f718c",
+      "checks": [
+        {
+          "type": "tool_called",
+          "passed": true,
+          "detail": "tool_calls=['search_backpacker_tips', 'search_backpacker_tips', 'check_seasonal_conditions', 'check_seasonal_conditions', 'search_seasonal_notes', 'search_seasonal_notes', 'search_visa_rules', 'search_visa_rules', 'check_route', 'check_route']"
+        },
+        {
+          "type": "not_ranked_first",
+          "passed": true,
+          "detail": "rank 1 = 'sri lanka'"
+        },
+        {
+          "type": "flag_present",
+          "passed": true,
+          "detail": "season_flag=\"July trekking is rated 'avoid' due to monsoon.\""
+        }
+      ],
+      "reply": "Given your interest in trekking, you'll find that Sri Lanka is your better option this July. July in Nepal is peak monsoon season, which can make trekking unpleasant and risky. However, the east coast of Sri Lanka, including areas like Arugam Bay, offers excellent trekking experiences this month. Your shoestring budget is well suited to Sri Lanka, with a daily budget of $20-30 and the flight from Bangkok costing around $210. Also, Sri Lanka requires an ETA visa that is free for UK nationals. Make sure you focus on the east coast of Sri Lanka for trekking to avoid the rainy south and west coasts.",
+      "cards": [
+        {
+          "destination": "Sri Lanka",
+          "rank": 1,
+          "verdict": "go",
+          "season_flag": null,
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Daily budget of $20-30 allows for shoestring travel. [source: tips-srilanka]",
+            "Ella to Little Adam's Peak offers a beautiful hike with rewarding views.",
+            "Public buses are very cheap but can be overcrowded.",
+            "Confirm permits for self-driving tuk-tuks to avoid legal issues."
+          ],
+          "source_ids": [
+            "tips-srilanka"
+          ]
+        },
+        {
+          "destination": "Nepal",
+          "rank": 2,
+          "verdict": "avoid",
+          "season_flag": "July trekking is rated 'avoid' due to monsoon.",
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Teahouse trek can cost $30-40 daily at high altitude. [source: tips-nepal]",
+            "TIMS card costs and area permits cost around $40-$45 for Annapurna.",
+            "Flight to Kathmandu costs around $230 from Bangkok.",
+            "Watch out for altitude sickness, especially above 3,000m."
+          ],
+          "source_ids": [
+            "tips-nepal"
+          ]
+        }
+      ],
+      "tool_calls": [
+        "search_backpacker_tips",
+        "search_backpacker_tips",
+        "check_seasonal_conditions",
+        "check_seasonal_conditions",
+        "search_seasonal_notes",
+        "search_seasonal_notes",
+        "search_visa_rules",
+        "search_visa_rules",
+        "check_route",
+        "check_route"
+      ],
+      "retrieved": [
+        "tips-nepal",
+        "tips-srilanka",
+        "seasonal-nepal",
+        "seasonal-srilanka",
+        "visa-nepal-western",
+        "visa-srilanka-western"
+      ],
+      "runs": 1,
+      "passes": 1,
+      "pass_rate": 1.0,
+      "flaky": false
+    },
+    {
+      "id": "visa-vietnam-lead-time",
+      "name": "Respects the Vietnam e-visa lead time against a tight timeline",
+      "failure_mode": "ignores a visa lead time that should rule out or flag a destination",
+      "message": "My visa runs out in two days. Can I go to Vietnam next, or is Thailand the safer bet?",
+      "passed": true,
+      "elapsed_ms": 21646,
+      "trace_id": "2274a56d453eb2a2e7f0a249ac1f7972",
+      "checks": [
+        {
+          "type": "tool_called",
+          "passed": true,
+          "detail": "tool_calls=['check_seasonal_conditions', 'check_seasonal_conditions', 'search_backpacker_tips', 'search_backpacker_tips', 'search_visa_rules', 'search_visa_rules', 'check_route', 'check_route', 'search_seasonal_notes', 'search_seasonal_notes']"
+        },
+        {
+          "type": "retrieval_fired",
+          "passed": true,
+          "detail": "namespaces retrieved=['seasonal', 'tips', 'visa']"
+        },
+        {
+          "type": "reply_mentions_any",
+          "passed": true,
+          "detail": "matched=['e-visa', '3-5', 'working days']"
+        },
+        {
+          "type": "not_ranked_first",
+          "passed": true,
+          "detail": "rank 1 = 'thailand'"
+        }
+      ],
+      "reply": "Given your shoestring budget, fast travel pace, and the need to act quickly with just two days on your visa, Thailand is the safer bet. You can enter Thailand visa-free for 30 days, which suits your urgent timeframe. You can travel overland from Siem Reap to Bangkok for about USD 18, and expect a daily budget of around $20-30. In contrast, Vietnam requires an e-visa that takes 3-5 working days, which doesn't fit your current situation. For motorbiking enthusiasts like yourself, Vietnam offers enticing routes, but Thailand gets you moving sooner.",
+      "cards": [
+        {
+          "destination": "Thailand",
+          "rank": 1,
+          "verdict": "go",
+          "season_flag": "This is the wettest month on the Andaman coast.",
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Dorms cost between 200-400 THB.",
+            "Travel from Siem Reap to Bangkok by bus takes 8-9 hours and costs USD 12-25.",
+            "Use overnight trains from Bangkok to Chiang Mai, costing around 940-1,200 THB.",
+            "Beware of the 'Grand Palace is closed today' scam."
+          ],
+          "source_ids": [
+            "tips-thailand"
+          ]
+        },
+        {
+          "destination": "Vietnam",
+          "rank": 2,
+          "verdict": "avoid",
+          "season_flag": "September marks the start of the typhoon and flood season along the central coast.",
+          "visa_flag": "E-visa takes 3-5 working days.",
+          "backpacker_notes": [
+            "Dorm prices range from $5-9.",
+            "Visit Ha Giang Loop for $100-150 to self-ride.",
+            "Travel from Phnom Penh to Ho Chi Minh City by bus takes about 6-7 hours and costs USD 12-18.",
+            "Be cautious of Hanoi\u2019s chaotic traffic."
+          ],
+          "source_ids": [
+            "tips-vietnam"
+          ]
+        }
+      ],
+      "tool_calls": [
+        "check_seasonal_conditions",
+        "check_seasonal_conditions",
+        "search_backpacker_tips",
+        "search_backpacker_tips",
+        "search_visa_rules",
+        "search_visa_rules",
+        "check_route",
+        "check_route",
+        "search_seasonal_notes",
+        "search_seasonal_notes"
+      ],
+      "retrieved": [
+        "tips-vietnam",
+        "tips-thailand",
+        "visa-vietnam-western",
+        "visa-thailand-western",
+        "seasonal-vietnam",
+        "seasonal-thailand"
+      ],
+      "runs": 1,
+      "passes": 1,
+      "pass_rate": 1.0,
+      "flaky": false
+    },
+    {
+      "id": "rag-cites-source",
+      "name": "Cites the retrieved passage it used",
+      "failure_mode": "generic tourist advice instead of backpacker-specific advice",
+      "message": "Indonesia or the Philippines in May? What is there for me on a tight budget?",
+      "passed": true,
+      "elapsed_ms": 20316,
+      "trace_id": "033f3997da7510273bc42990a4684fe4",
+      "checks": [
+        {
+          "type": "retrieval_fired",
+          "passed": true,
+          "detail": "namespaces retrieved=['seasonal', 'tips', 'visa']"
+        },
+        {
+          "type": "grounded_in_retrieval",
+          "passed": true,
+          "detail": "18 distinctive shared terms: ['arrival', 'backpackers', 'daily', 'diving', 'domestic', 'dorms', 'ferries', 'flights']"
+        }
+      ],
+      "reply": "For a shoestring budget and interests in diving and islands, I recommend Indonesia. It aligns well with your budget band and balanced travel pace. In May, Indonesia enjoys dry weather, making it perfect for exploring islands like Bali and the Gili Islands. The visa on arrival costs about USD 35 and can be extended up to 60 days, while you can expect daily expenses to start around USD 22-30. From Vietnam, flights typically take about 4.5 hours and cost around USD 165. Always confirm current visa requirements before booking.",
+      "cards": [
+        {
+          "destination": "Indonesia",
+          "rank": 1,
+          "verdict": "go",
+          "season_flag": null,
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Dorms in Bali range from USD 7-12.",
+            "Visit Gili Islands for affordable diving, especially Gili Trawangan for nightlife.",
+            "Once in Bali, renting a scooter is common, priced around USD 5/day.",
+            "Be cautious: Many backpackers have accidents due to lacking proper licenses for scooters. Ensure to have an international driving permit."
+          ],
+          "source_ids": [
+            "tips-indonesia"
+          ]
+        },
+        {
+          "destination": "Philippines",
+          "rank": 2,
+          "verdict": "maybe",
+          "season_flag": null,
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Daily budget is around USD 25-35.",
+            "Island hopping in El Nido and Coron costs around PHP 1,200-1,800 per tour.",
+            "Domestic flights are often more efficient than ferries.",
+            "Carrying cash is advisable; ATMs may have high fees and low limits."
+          ],
+          "source_ids": [
+            "tips-philippines"
+          ]
+        }
+      ],
+      "tool_calls": [
+        "check_seasonal_conditions",
+        "check_seasonal_conditions",
+        "search_seasonal_notes",
+        "search_seasonal_notes",
+        "search_backpacker_tips",
+        "search_backpacker_tips",
+        "search_visa_rules",
+        "search_visa_rules",
+        "check_route",
+        "check_route"
+      ],
+      "retrieved": [
+        "seasonal-indonesia",
+        "seasonal-philippines",
+        "tips-indonesia",
+        "tips-philippines",
+        "visa-indonesia-western",
+        "visa-philippines-western"
+      ],
+      "runs": 1,
+      "passes": 1,
+      "pass_rate": 1.0,
+      "flaky": false
+    },
+    {
+      "id": "rag-budget-numbers",
+      "name": "Quotes realistic daily budget numbers from the store",
+      "failure_mode": "generic tourist advice instead of backpacker-specific advice",
+      "message": "How much a day should I budget for Laos versus Cambodia?",
+      "passed": true,
+      "elapsed_ms": 20840,
+      "trace_id": "d71fb1a7217d0f00384a61b8b0d57e8e",
+      "checks": [
+        {
+          "type": "retrieval_fired",
+          "passed": true,
+          "detail": "namespaces retrieved=['seasonal', 'tips', 'visa']"
+        },
+        {
+          "type": "reply_matches_regex",
+          "passed": true,
+          "detail": "match=$18"
+        }
+      ],
+      "reply": "For your shoestring budget and slow travel pace, here is a breakdown for Laos and Cambodia. In Laos, aim for $18-25 USD per day, with the possibility of paying around $30-45 USD for an overland journey from Bangkok to Vientiane. In Cambodia, budget around $20-25 USD daily, with an $8-9 hour bus from Bangkok to Siem Reap costing $12-25 USD. As you prefer temples and food, Cambodia might be a bit more appealing since you can visit Angkor Wat, though it's the wet season in both countries, so prepare for some rainy days.",
+      "cards": [
+        {
+          "destination": "Cambodia",
+          "rank": 1,
+          "verdict": "maybe",
+          "season_flag": "September is the wettest month, so travel may be impacted.",
+          "visa_flag": null,
+          "backpacker_notes": [
+            "In Siem Reap, a one-day Angkor pass is $37 and worth doing for the temples. The 8-9 hour bus from Bangkok to Siem Reap is a low-cost option. Visit Kampot & Kep for a slower pace and enjoyable local food. Be cautious in Phnom Penh; bag-snatching by motorbikes is common."
+          ],
+          "source_ids": [
+            "tips-cambodia"
+          ]
+        },
+        {
+          "destination": "Laos",
+          "rank": 2,
+          "verdict": "avoid",
+          "season_flag": "Avoid in September due to heavy rains, highly uncertain transport.",
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Consider taking the classic two-day slow boat from Huay Xai to Luang Prabang, costing about $20-25. Visit Kuang Si Waterfalls in Luang Prabang. For transport, overland from Bangkok to Vientiane takes 12 hours at $30-45."
+          ],
+          "source_ids": [
+            "tips-laos"
+          ]
+        }
+      ],
+      "tool_calls": [
+        "search_backpacker_tips",
+        "search_backpacker_tips",
+        "check_seasonal_conditions",
+        "check_seasonal_conditions",
+        "search_seasonal_notes",
+        "search_seasonal_notes",
+        "search_visa_rules",
+        "search_visa_rules",
+        "check_route",
+        "check_route"
+      ],
+      "retrieved": [
+        "tips-laos",
+        "tips-cambodia",
+        "seasonal-laos",
+        "seasonal-cambodia",
+        "visa-laos-western",
+        "visa-cambodia-western"
+      ],
+      "runs": 1,
+      "passes": 1,
+      "pass_rate": 1.0,
+      "flaky": false
+    }
+  ]
+}

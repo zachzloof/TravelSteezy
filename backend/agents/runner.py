@@ -854,24 +854,33 @@ async def _run_comparison(
     """Stage 1: run the relevant specialists concurrently.
     Stage 2: hand their reports to the Decision-Weigher.
     """
-    # The Weather specialist is NOT optional on a comparison. The other two
-    # flags stay advisory - the parser is usually right that a pure "what would
-    # I actually do there" question needs no route lookup - but season is the
-    # input this app exists to get right, and skipping it is silent: the weigher
-    # simply receives no seasonal report and ranks on everything else.
+    # ALL THREE specialists run on a comparison. turn_parser's needs_* flags are
+    # kept in the parse (they are useful for seeing what it thought) but are no
+    # longer read here, because the parser was observed skipping, in turn, each
+    # of the three inputs a comparison is made of:
     #
-    # Caught by eval case season-nepal-monsoon ("I want to do a big trek in
-    # July. Nepal or Sri Lanka?"), which regressed when the specialists were
-    # rolled back to gpt-4o-mini (run 36, and still failing in run 38): the
-    # parser returned needs_weather:false for a question whose whole subject is
-    # the season, no weather_agent span appears in the trace at all, and Nepal -
-    # in monsoon, the single destination the case exists to rule out - was
-    # ranked first. A stronger model got this right, which is exactly why it
-    # cannot be left to the model.
+    #   season-nepal-monsoon   "a big trek in July. Nepal or Sri Lanka?"
+    #                          -> needs_weather: false. No weather agent ran at
+    #                             all, and Nepal - in monsoon, the destination
+    #                             the case exists to rule out - ranked first.
+    #   rag-budget-numbers     "How much a day should I budget for Laos versus
+    #                          Cambodia?" -> needs_recommendations: false, so
+    #                             the agent that owns the budget corpus never
+    #                             ran, and the tips namespace was never searched
+    #                             for a question that is entirely about budget.
+    #
+    # Both failures are silent: no error, no empty-report warning, just a
+    # weigher ranking on whatever it did receive. And both are the same mistake
+    # the rest of this codebase refuses to leave to a model (the intent
+    # override, the country-scope override): a cheap deterministic rule beats a
+    # classifier guessing at what a turn needs. The saving was never large -
+    # this only ever skipped an agent on a turn the parser misread - and a
+    # comparison missing one of its three inputs is not a cheaper answer, it is
+    # a wrong one.
     specialists = graph.build_specialists(
         needs_weather=True,
-        needs_logistics=parse.get("needs_logistics", True) is not False,
-        needs_recommendations=parse.get("needs_recommendations", True) is not False,
+        needs_logistics=True,
+        needs_recommendations=True,
     )
     names = [agent.name for agent, _ in specialists]
 

@@ -717,3 +717,38 @@ exactly the kind of decision the rest of this codebase takes away from the
 model (#12, the intent override, the country-scope override in #43). Verified:
 `season-nepal-monsoon` passes again, and `season-philippines-typhoon` still
 does.
+
+## 52. All three specialists run on a comparison; the needs_* flags are no longer read
+
+#51 made the Weather specialist mandatory. Finishing the same session, the one
+remaining eval failure turned out to be the identical bug wearing different
+clothes, so the rule is now general.
+
+`rag-budget-numbers` ("How much a day should I budget for Laos versus
+Cambodia?") had been treated as a flaky case. It is not. Its trace shows
+`turn_parser` returning `needs_recommendations: false` for a question that is
+entirely about budget, so the agent that owns the `tips` corpus - where this
+app's budget numbers live - never ran, and the check asserting a `tips`
+retrieval failed. The same trace shows `needs_logistics: false` too. Only the
+Weather specialist ran, and only because #51 had just forced it.
+
+The results history makes the shape clear, and it is not noise:
+
+| Runs | Passed |
+|---|---|
+| 1-24 (before the dependency modernization) | 14 of 14 |
+| 25-41 (after it) | 4 of 10 |
+
+A case that fails *intermittently* can still be a real defect with a
+nondeterministic trigger - here, whether one model call happens to emit
+`false` for a boolean. Treating it as flaky, which the earlier runs did, is how
+it survived sixteen runs.
+
+`build_specialists` is therefore now called with all three flags true from the
+compare path. The flags stay on `TurnParse` because they record what the parser
+believed, which is worth seeing in a trace, but nothing reads them any more.
+The saving they existed for was never large - they only ever skipped an agent
+on a turn the parser had misread - and a comparison missing one of the three
+inputs it is made of is not a cheaper answer, it is a wrong one. Verified:
+`rag-budget-numbers`, `rag-cites-source`, `season-nepal-monsoon` and
+`visa-vietnam-lead-time` all pass (`evals/results/42-all-specialists-on-compare.md`).
