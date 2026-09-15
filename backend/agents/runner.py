@@ -861,7 +861,19 @@ async def _run_comparison(
             if cards:
                 break
     if not reply:
-        reply = text.strip() or "I could not put together a comparison for that."
+        # text.strip() is the LAST attempt's raw model output, kept as a fallback
+        # for the genuine-prose case the loop above expects (weigher answered in
+        # plain text instead of JSON). But if parse_json_block couldn't parse it
+        # *because* it's a malformed/unparseable JSON blob rather than prose,
+        # showing it raw leaks the payload straight into the chat UI - reported
+        # 2026-09-14 (rachel.B) when a template brace bug in DECISION_INSTRUCTION
+        # made the model echo back doubled braces that parse_json_block couldn't
+        # parse. Never surface something that merely looks like JSON as if it
+        # were the traveller-facing reply.
+        fallback = text.strip()
+        if fallback.startswith(("{", "[", "```")):
+            fallback = ""
+        reply = fallback or "I could not put together a comparison for that."
     trace.set_span_summary("agent.decision_weigher", f"{len(cards)} card(s)")
     return reply, cards, names
 

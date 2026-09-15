@@ -110,11 +110,23 @@ async function updateCatchup(message) {
   }
 }
 
+// Belt-and-braces client guard: the server should never send a reply that is
+// itself the raw JSON payload (see incident 2026-09-14, rachel.B - a prompt
+// template bug made the backend echo unparsed JSON straight into `reply`),
+// but if it ever slips through again, don't render it verbatim as chat prose.
+function looksLikeRawJson(text) {
+  if (typeof text !== 'string') return false
+  const trimmed = text.trim()
+  return trimmed.startsWith('{') && trimmed.endsWith('}') && /"reply"\s*:/.test(trimmed)
+}
+
 /** Everything that happens to the screen when a /chat response comes back. */
 function pushReply(res) {
   messages.value.push({
     role: 'assistant',
-    text: res.reply,
+    text: looksLikeRawJson(res.reply)
+      ? 'Something went wrong putting that comparison together - please try again.'
+      : res.reply,
     comparison: res.comparison || [],
     agents: res.agents_fired || [],
     sources: res.retrieved_sources || [],

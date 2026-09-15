@@ -8,9 +8,12 @@ Shape:
          |                (only the specialists this turn actually needs)
     decision_weigher  (reads all three from session state, ranks candidates)
 
-Note on structured output: ``turn_parser`` and ``decision_weigher`` use ADK's
-``output_schema`` with real Pydantic models (below), not a prompted-JSON
-convention parsed after the fact. This used to be impossible: older ADK
+Note on structured output: ``turn_parser`` uses ADK's ``output_schema`` with a
+real Pydantic model (below), not a prompted-JSON convention parsed after the
+fact. ``decision_weigher`` deliberately does NOT - see the comment on
+``make_decision_weigher()`` for the reproduced regression that caused this -
+and instead relies on prompted JSON parsed by ``parse_json_block``. This used
+to be impossible for the schema-typed agents: older ADK
 serialised ``output_schema`` to ``response_format.response_schema``, a
 Gemini-specific key OpenAI's API rejects through litellm. Current ADK
 (verified against 2.9 - see ``_to_litellm_response_format`` in
@@ -114,6 +117,24 @@ def parse_json_block(text: str) -> dict[str, Any] | None:
     for candidate in candidates:
         try:
             parsed = json.loads(candidate.strip())
+        except (json.JSONDecodeError, ValueError):
+            continue
+        if isinstance(parsed, dict):
+            return parsed
+
+    # Last-ditch repair: a prompt template that doubles its literal braces (e.g.
+    # for what a developer mistakes for str.format()-style escaping) makes a
+    # model echo back "{{...}}" pairs, which is not valid JSON at any brace
+    # depth. Collapsing runs of "{" and "}" down to one before re-parsing
+    # recovers that case without masking genuinely malformed output - it only
+    # helps candidates that are otherwise well-formed JSON.
+    for candidate in candidates:
+        collapsed = re.sub(r"\{{2,}", "{", candidate.strip())
+        collapsed = re.sub(r"\}{2,}", "}", collapsed)
+        if collapsed == candidate.strip():
+            continue
+        try:
+            parsed = json.loads(collapsed)
         except (json.JSONDecodeError, ValueError):
             continue
         if isinstance(parsed, dict):
@@ -253,20 +274,20 @@ Field rules:
   leave it out.
   There is no trip_start_date or trip_end_date field - do not invent one.
 - "visits": places they are AT or have ARRIVED in, as
-  [{{"location": "Chiang Mai", "location_type": "city", "country": "Thailand",
-     "arrival_date": "YYYY-MM-DD or null"}}].
+  [{"location": "Chiang Mai", "location_type": "city", "country": "Thailand",
+     "arrival_date": "YYYY-MM-DD or null"}].
   Include a place when they say they are there, have just arrived, or ask an
   on-the-ground question that only makes sense if they are there ("any good
   hostels here in Pai"). Do NOT include somewhere they are merely considering.
 - "departures": places they have LEFT, as
-  [{{"location": "Laos", "location_type": "country", "departure_date": "YYYY-MM-DD or null"}}].
+  [{"location": "Laos", "location_type": "country", "departure_date": "YYYY-MM-DD or null"}].
   Only on a clear signal that they have gone, or are leaving now.
 - "wishlist_adds": places they say they want to go, as
-  [{{"location": "Pai", "location_type": "city", "country": "Thailand", "priority": 1}}].
+  [{"location": "Pai", "location_type": "city", "country": "Thailand", "priority": 1}].
   Priority 1 high, 2 medium, 3 low. Wanting to go is enough; it need not be booked.
 - "wishlist_removes": places they have decided AGAINST, as plain location strings.
 - "reviews": opinions about somewhere they have been, as
-  [{{"location": "Pai", "rating": 5, "notes": "what they said, in their words"}}].
+  [{"location": "Pai", "rating": 5, "notes": "what they said, in their words"}].
   rating is 1-5 and may be null if they gave only prose. Convert plain language
   honestly: "loved it" is 5, "it was fine" is 3, "overrated" is 2.
 - "candidate_destinations": lowercase places they are choosing between, for
@@ -574,10 +595,10 @@ number with an adjective.
 
 Return ONLY a raw JSON object, no code fences:
 
-{{
+{
   "reply": "4-8 sentences to the traveller, conversational. Lead with your recommendation and the single most important reason. Include at least two concrete figures carried over from the specialists (daily budget, visa cost/duration/lead time, or journey hours and price). Explicitly name the stored profile values you used - say their budget band, their pace, where they are now and their dates back to them in passing, so it is obvious you did not need to ask. Never end by asking them for something already in the profile.",
   "cards": [
-    {{
+    {
       "destination": "Country Name",
       "rank": 1,
       "verdict": "go | maybe | avoid | unknown",
@@ -589,9 +610,9 @@ Return ONLY a raw JSON object, no code fences:
       "est_cost_note": "indicative daily budget and cost to get there",
       "backpacker_notes": ["3-4 concrete specifics lifted from the Recommendations and Logistics specialists for THIS destination. Cover all of: (a) a cost with its number - dorm price, daily budget or an entry fee; (b) a named thing to do that a backpacker actually does, with the place name; (c) how you get there or get around - the bus, train, slow boat or flight with its hours or price; (d) a scam, safety or ethical warning. Keep the specialists' actual figures and place names. Empty list only if that destination has no retrieved content."],
       "source_ids": ["the source ids the Recommendations specialist cited for this destination, e.g. tips-vietnam"]
-    }}
+    }
   ]
-}}
+}
 
 Include one card per candidate, ranked 1..n with no ties.
 
