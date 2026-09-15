@@ -1,0 +1,126 @@
+{
+  "run_id": "eval-20260915T200341Z-7dbfda",
+  "label": "44-baseline-tracking-flake",
+  "timestamp": "2026-09-15T20:05:44.448271+00:00",
+  "score": "0/1",
+  "passed": 0,
+  "total": 1,
+  "pass_rate": 0.0,
+  "repeats": 5,
+  "flaky": 1,
+  "total_attempts": 5,
+  "attempt_pass_rate": 0.6,
+  "config": {
+    "llm_model": "gpt-4o-mini",
+    "judge_model": "gpt-4o",
+    "judge_enabled": true,
+    "rag_backend": "pinecone",
+    "embeddings": "openai",
+    "langfuse": true
+  },
+  "results": [
+    {
+      "id": "tracking-does-not-relocate-you-on-a-placeless-turn",
+      "name": "A turn naming no place does not move the traveller",
+      "failure_mode": "writing memory the user did not actually state",
+      "message": null,
+      "passed": false,
+      "elapsed_ms": 26774,
+      "trace_id": "06ed053061649b74ae4842588cbacce9",
+      "checks": [
+        {
+          "type": "profile_field_in",
+          "passed": true,
+          "detail": "current_location='thailand', wanted one of ['thailand', 'pai']"
+        },
+        {
+          "type": "history_lacks",
+          "passed": true,
+          "detail": "history=['chiang mai', 'pai']"
+        }
+      ],
+      "reply": "Today, I recommend heading to Malaysia, as it's the most feasible option given your current location in Thailand and shoestring budget. With visa-free entry for 90 days and a daily budget around $25-30, Malaysia offers both affordability and ease of entry. You can travel overland from Bangkok to Penang, a journey that takes about 20 hours and costs roughly USD 30-50. This fits well with your shoestring budget and can be an enriching experience.\n\nKeep in mind the weather in Malaysia during September is mixed, but the east coast is generally more pleasant. This aligns with your current travel month. Confirm visa requirements officially even when they're listed as straightforward.",
+      "cards": [
+        {
+          "destination": "Malaysia",
+          "rank": 1,
+          "verdict": "go",
+          "season_flag": "While the west coast might experience heavier rain, the east coast is more favorable.",
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Daily budget around $25-30.",
+            "Explore George Town in Penang for vibrant street art and cheap hawker food.",
+            "The bus from Kuala Lumpur to Penang is comfortable, taking about 4 hours for around $10.",
+            "Be cautious of petty theft in crowded areas."
+          ],
+          "source_ids": [
+            "tips-malaysia"
+          ]
+        },
+        {
+          "destination": "Cambodia",
+          "rank": 2,
+          "verdict": "avoid",
+          "season_flag": "Avoid travel in rural areas due to wettest month.",
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Daily budget is approximately $20-25.",
+            "Visit Angkor Wat with a three-day pass for $62.",
+            "Bus from Siem Reap to Phnom Penh costs around $10-15 and takes 6-7 hours.",
+            "Be cautious of bag-snatchers on motorbikes in Phnom Penh."
+          ],
+          "source_ids": [
+            "tips-cambodia"
+          ]
+        },
+        {
+          "destination": "Laos",
+          "rank": 3,
+          "verdict": "avoid",
+          "season_flag": "Avoid due to heavy rain and unreliable roads.",
+          "visa_flag": null,
+          "backpacker_notes": [
+            "Daily budget about $18-25.",
+            "Take the two-day Mekong slow boat journey from Huay Xai to Luang Prabang for around $20-25.",
+            "Be aware of unexploded ordnance hazards, stick to marked paths."
+          ],
+          "source_ids": [
+            "tips-laos"
+          ]
+        }
+      ],
+      "tool_calls": [
+        "search_backpacker_tips",
+        "search_backpacker_tips",
+        "search_backpacker_tips",
+        "search_visa_rules",
+        "search_visa_rules",
+        "search_visa_rules",
+        "check_route",
+        "check_route",
+        "check_route",
+        "check_seasonal_conditions",
+        "check_seasonal_conditions",
+        "check_seasonal_conditions",
+        "search_seasonal_notes",
+        "search_seasonal_notes",
+        "search_seasonal_notes"
+      ],
+      "retrieved": [
+        "tips-malaysia",
+        "tips-cambodia",
+        "tips-laos",
+        "visa-malaysia-western",
+        "visa-cambodia-western",
+        "visa-laos-western",
+        "seasonal-malaysia",
+        "seasonal-cambodia",
+        "seasonal-laos"
+      ],
+      "runs": 5,
+      "passes": 3,
+      "pass_rate": 0.6,
+      "flaky": true
+    }
+  ]
+}

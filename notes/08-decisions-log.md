@@ -830,5 +830,61 @@ invariant, the budget split and its backfill edges, priority-then-distance
 ordering, only-exact-ties randomness, the wishlist/neighbour dedup, named
 destinations winning over the pool in both the plain and country-scoped cases,
 the full pool reaching the specialists, the long-wishlist cap, the card trim and
-rank renumbering), and the frontend builds. Not yet re-scored against the eval
-suite.
+rank renumbering), and the frontend builds.
+
+Eval suite re-scored at `--repeat 3`, all 39 cases, 117 attempts
+(`evals/results/43-wider-candidate-pool.md`): **38/39 cases passed all three
+runs (97%), 99% of individual attempts**. Every case that exercises this change
+passed 3/3 — `scope-country-question-answered-with-countries`,
+`scope-visa-expiry-forces-a-country-answer`, `discovery-uses-route-corpus`,
+`discovery-honest-about-unknown-origin`, `route-live-lookup-uncurated-pair`, and
+`honesty-unknown-destination`. That last one was the one to watch: it is the case
+the coverage guard was built for, and widening `COUNTRY_NEIGHBOURS` to name
+twenty uncovered countries was exactly the kind of change that could have
+undermined it.
+
+The single non-passing case, `tracking-does-not-relocate-you-on-a-placeless-turn`
+(2/3), is a **pre-existing defect, not a regression** — see decision 54.
+
+Mean turn latency across the run was ~12.4s, in line with the ~13s recorded in
+earlier result files, so the wider pool did not blow up latency the way the
+token arithmetic suggested it might.
+
+## 54. Every full-suite eval run before this one was `--repeat 1`, and it was hiding a real flake
+
+`tracking-does-not-relocate-you-on-a-placeless-turn` came back 2/3 in run 43,
+having been recorded PASS in runs 37, 38 and 41. The obvious reading is that
+decision 53 broke it. That reading is wrong, and checking rather than assuming is
+the whole point of this entry.
+
+Checked two ways.
+
+**The history.** Every prior full-suite run used `repeats: 1` — 36, 37, 38, 41 and
+42 all ran each case exactly once. `--repeat 3` was added back in decision 21 and
+then, in practice, almost never used for a full suite. A case with a ~2/3 pass
+rate clears a single run about two-thirds of the time, so three consecutive
+single-run PASSes is exactly what a long-standing flake looks like.
+
+**A control run.** The case was run at `--repeat 5` on `main`, with none of
+decision 53's changes present: **3/5, 60%** (`evals/results/44-baseline-tracking-flake.md`).
+Worse than the 2/3 on the branch. It is pre-existing, and the branch's result sits
+inside the noise band of the baseline rather than below it.
+
+The defect itself is real and still open: on a turn naming no place at all, the
+traveller's `current_location` is sometimes overwritten with a town from their
+route history (`current_location='chiang mai'` where the case requires
+`thailand` or `pai`). That is the bug report #3 family — the parser restating a
+location on a turn that named none — and `tracking.mentioned_in` is supposed to
+refuse exactly this. Intermittent, so something upstream of the guard is
+occasionally producing a *grounded-looking* write: "Chiang Mai" does appear in
+the traveller's history, so whatever path writes it is not the raw-message check.
+Not diagnosed here, and deliberately not fixed on a branch about candidate
+selection.
+
+The methodological point is the same one decision 52 made and is worth restating
+because it keeps recurring: **an intermittent failure is a defect with a
+nondeterministic trigger, not noise.** Note 06 has said so since decision 21;
+what was missing was the habit of actually running the full suite at `--repeat`.
+A single-run suite reports 38/39 and looks clean. The same code at `--repeat 3`
+reports 38/39 *and names a case that fails a third of the time.* Those are not
+the same result.

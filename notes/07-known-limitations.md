@@ -99,6 +99,20 @@ decided rather than re-litigating it.
   so the risk is low, but there's no eval-level assertion specifically for
   "account A's wishlist never appears in account B's chat context."
 
+- **An open, reproducible flake in the placeless-turn grounding guard.**
+  `tracking-does-not-relocate-you-on-a-placeless-turn` fails roughly a third of
+  the time: on a turn naming no place, `current_location` is sometimes
+  overwritten with a town from the traveller's route history
+  (`current_location='chiang mai'` where the case requires `thailand` or `pai`).
+  Measured at 3/5 on `main` and 2/3 on the decision-53 branch
+  (`evals/results/44-baseline-tracking-flake.md`,
+  `43-wider-candidate-pool.md`), so it is long-standing rather than a
+  regression — it was invisible only because every full-suite run before 43 used
+  `--repeat 1`. This is the bug report #3 family and `tracking.mentioned_in` is
+  meant to refuse it; the intermittency suggests something is producing a write
+  that *looks* grounded, since the town does appear in the traveller's own
+  history. Undiagnosed. See decision 54.
+
 ## Things that would need to change before this scales past a demo
 
 - **The `SUPPORTED_COUNTRIES` / `KNOWN_CITIES` vocabulary is a fixed, closed
