@@ -630,7 +630,25 @@ Return ONLY a raw JSON object, no code fences:
   ]
 }
 
-Include one card per candidate, ranked 1..n with no ties.
+HOW MANY CARDS. Weigh EVERY candidate listed above, then return only your best
+{max_cards?}, ranked 1..n with no ties. If there are fewer candidates than that,
+return one card per candidate and no filler - never pad the list with a
+destination that was not given to you.
+
+Ranking is your job and yours alone here. The candidate list you were given is
+not pre-sorted by merit: it is the traveller's own wishlist plus the countries
+nearest to them, and nothing upstream has judged any of them against this
+traveller's budget, pace, interests or visa position. You are the only step that
+holds all three specialist reports and their trip profile at once. So do not
+assume the order you received them in means anything, and do not simply keep the
+first {max_cards?} - decide.
+
+Dropping a candidate is a real decision, not a formatting one. Cut the ones that
+genuinely lose - a bad season, a visa that cannot be had in time, a poor fit with
+their stated budget - and keep the ones that genuinely compete. If a candidate
+you dropped was on their own wishlist, say so in one clause in the reply and say
+why, because silently omitting somewhere they told us they wanted to go reads as
+though we forgot.
 
 The "backpacker_notes" are the part the traveller actually acts on. Fill them from
 the Recommendations specialist's report verbatim enough to keep its numbers and

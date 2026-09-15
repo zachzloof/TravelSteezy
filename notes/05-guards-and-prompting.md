@@ -195,11 +195,145 @@ than a dead-end clarifying question.
 Since bug report #3 this same branch is entered whenever
 `wants_country_scope` fires, not only when the stored location happens to be a
 country. Its one remaining dead end is now handled explicitly: if the pool of
-onward countries is empty (nothing on the wishlist, and an origin country with
-no overland neighbour in `COUNTRY_NEIGHBOURS` — Japan, Australia, Mongolia),
-the turn goes to the `concierge` with a code-written `route_note` saying
-exactly that, rather than falling through to the town-level agent and answering
-a country question with towns again.
+onward countries is empty — nothing on the wishlist and an origin we hold no
+geography for at all, e.g. a traveller who has stored "Morocco" — the turn goes
+to the `concierge` with a code-written `route_note` saying exactly that, rather
+than falling through to the town-level agent and answering a country question
+with towns again.
+
+## Who chooses the three destinations (and why it stopped being a sort)
+
+Found by reading a trace rather than by an eval failure: three countries
+appeared in the candidate list before any specialist had run, and nothing in
+the trace explained where they came from or what had been dropped to get there.
+
+The pipeline was: take the wishlist plus up to three overland neighbours, sort
+by (season tier, curated journey hours, stored wishlist priority), then
+`candidates = ranked[:3]`. Three problems, in increasing order of seriousness.
+
+**1. The sort was doing a job it was not qualified for.** It decided the
+traveller's three destinations using season, distance and a stored priority
+number — before anything had looked at their budget band, pace, key interests
+or visa position. The `decision_weigher` is the only step in the graph that
+holds all three specialist reports *and* the trip profile at once, and it never
+saw anything the sort had already discarded. A guard computing a fact in code
+is this codebase's pattern; a heuristic quietly making a judgment call the
+weigher exists to make is not the same thing, and this was the second.
+
+**2. Nothing was recorded.** `ranked` was a local that fell out of scope. The
+discarded tail was not stored, not passed on, and not traced, which is why the
+original trace was unreadable. There are now `candidates.pool` and
+`candidates.ranked` trace notes.
+
+**3. `COUNTRY_NEIGHBOURS` let the corpus define geography.** It held at most
+three neighbours and only ever countries the seed corpus already covered, so
+Laos could never offer China, Myanmar could never offer Bangladesh or India,
+and the Philippines could never offer Taiwan — its nearest neighbour by a wide
+margin. Six origins were worse: Japan, Australia, New Zealand, Mongolia, South
+Korea and Myanmar were given *no* neighbours at all, on the reasoning that they
+had no realistic overland pairing inside the corpus. That conflated two
+different things. A backpacker in Japan asking where to go next has obvious
+answers — South Korea is a 1h flight or an overnight ferry. What they did not
+have was curated data, and the honest response to missing data is to go and
+find it, not to pretend the geography does not exist.
+
+### The precondition: the pool only exists when they named nowhere
+
+Worth stating explicitly, because two overrides in `run_turn` could plausibly
+fight and it is now asserted rather than assumed. A message naming two or more
+destinations is forced to `compare` *before* the pool-building block, and that
+block sits inside `if intent == "discover"`, so it never runs. "Thailand or
+Vietnam?" compares exactly Thailand and Vietnam.
+
+That holds even when the question is *also* country-scoped — "my visa is running
+out, should I go to Laos or Cambodia?" fires `wants_country_scope`, which is the
+thing that normally forces the country-level pool path, and the named candidates
+still win. The scope override only rewrites `local` → `discover` when there are
+no candidates (`if country_scope and intent == "local" and not candidates`).
+
+This is the right way round. The wishlist and the five nearest countries are the
+answer to "where next" when the traveller has not said; adding them to a question
+that named two countries would answer a different question, and would pay for
+eight extra destinations of specialist research to do it. A single named
+destination is likewise compared alone — "should I go to Vietnam next?" produces
+one card, an assessment rather than a comparison, and does not pull in
+neighbours.
+
+Covered by `test_two_named_destinations_are_the_only_candidates`,
+`test_named_destinations_win_even_when_the_question_is_country_scoped` and
+`test_naming_nowhere_is_what_builds_the_pool`, which are deliberately adjacent so
+the boundary is visible in one place.
+
+### What it is now
+
+- `COUNTRY_NEIGHBOURS` holds the **five genuinely nearest countries** for every
+  origin, by realistic backpacker travel (land borders first, then short
+  sea/air hops), regardless of corpus coverage. Twenty of the countries it can
+  now name are outside `SUPPORTED`. North Korea is the one true neighbour left
+  out on purpose — independent travel there is not available to this app's
+  users, so offering it would be actively unhelpful rather than merely
+  uncovered.
+- Those twenty are **not** curated. Writing seed corpus entries for them would
+  have meant inventing dorm prices, visa fees and month-by-month climate
+  ratings for Vanuatu, the Solomon Islands and Kazakhstan out of parametric
+  memory, and every number in this repo's corpus was verified when it was
+  written. `live_lookup`'s two-pass search-and-verify fills the gap at runtime
+  instead, once per destination ever, and `coverage_note` already treats a live
+  hit as fully covered (see note 03, "live lookup is real information, not a
+  hedge"). The live season check in `runner.py` was widened from wishlist
+  entries to *any* uncovered candidate to make this work — it previously
+  skipped neighbours on the reasoning that they were "always curated by
+  construction", which this change made false.
+- With no `TAVILY_API_KEY` the degradation is honest rather than wrong: the new
+  countries stay gagged by the coverage guard, say plainly that nothing is held
+  for them, and lose to covered candidates. They are never described with
+  invented specifics.
+- The pool is **wishlist + five nearest, split evenly** by
+  `MAX_COMPARISON_CANDIDATES` (10 → 5 and 5; 8 → 4 and 4), either side able to
+  spend the other's unused half. The cap is a setting rather than a constant
+  because the right number depends on the model tier and rate limit in front of
+  it — this org's real gpt-4o limit is 30,000 TPM, and the `SPECIALIST_MODEL`
+  rollback in note 01 is what tripping it looks like.
+- The wishlist half is ordered by **stated priority, then distance from where
+  the traveller actually is** (`_order_wishlist`). Priority leads because it is
+  the one number the traveller set themselves — a destination marked 1 should
+  not have to win a coin toss against one marked 5. Distance only separates
+  entries that already tie on priority, which is the common case: a traveller
+  who marks ten places "must do" has said they all matter equally and has not
+  said which to raise first, and of two equally-wanted countries the nearer one
+  is the cheaper, more plausible next hop. It is the same curated
+  overland/flight figure the Logistics specialist will quote
+  (`_journey_hours`), so "closest" means the same thing to the ranking code as
+  to the traveller reading the answer.
+- A **random tiebreak** sits underneath, and only reaches entries identical on
+  *both* priority and journey time. In practice that is a group of
+  same-priority countries with no curated route data at all — several of the
+  twenty uncovered countries sit at `inf` together. Ordering those
+  alphabetically would be deterministic but would mean the same few won every
+  turn forever. Anything we hold real data for is fully determined by priority
+  and distance, so eval reproducibility is preserved for every case that has
+  route coverage. `runner._candidate_rng` is a module-level `random.Random` so
+  tests can seed it.
+- A country on the wishlist that is **also** one of the five nearest is deduped
+  onto the neighbour side rather than researched twice — it keeps its stored
+  priority for the ordering sort via `wishlist_priority.get()`, and deduping
+  there frees a wishlist slot for somewhere further afield.
+- The sort still runs, but only **orders** the pool — it costs nothing, gives
+  the weigher a sane default ordering to push against, and keeps the trace
+  readable. The `unknown`-below-`avoid` tiering is unchanged and still correct.
+- The weigher is told to weigh every candidate and return its best
+  `WEIGHER_TOP_N` (6), and is told explicitly that the list it received is not
+  pre-sorted by merit and that dropping a wishlist entry needs saying out loud.
+  The cap is **also enforced in code** (`_coerce_cards`), for the usual reason:
+  "one card per candidate" is the instruction a long prompt is most likely to
+  fall back on, and ten cards would flood a UI built to show three and reveal
+  three more. Ranks are renumbered contiguously after the trim.
+
+Covered by `tests/test_where_next_scope.py` — the five-nearest invariant, the
+budget split at 10/8/6 and its backfill edges, priority beating distance,
+distance breaking a priority tie, only exact ties reaching the random tiebreak,
+the wishlist/neighbour dedup, the whole pool reaching the specialists, the
+long-wishlist cap, the card trim and the rank renumbering.
 
 ## City-awareness as a recurring theme
 

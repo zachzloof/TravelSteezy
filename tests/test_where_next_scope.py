@@ -529,15 +529,23 @@ def test_a_single_agent_turn_uses_the_same_session_id_too(app_env, monkeypatch):
 
 
 def test_country_question_with_no_onward_options_asks_instead_of_answering(app_env, monkeypatch):
-    """Japan has no overland neighbour in COUNTRY_NEIGHBOURS. With an empty
-    wishlist there is no country pool to answer with, and falling through to the
-    town-level agent would answer a country question with towns all over again.
-    The concierge holds no tools, and gets a code-written note saying so."""
+    """Morocco is not in COUNTRY_NEIGHBOURS at all, so we hold no geography for
+    it. With an empty wishlist there is no country pool to answer with, and
+    falling through to the town-level agent would answer a country question with
+    towns all over again. The concierge holds no tools, and gets a code-written
+    note saying so.
+
+    This used to be asserted with Japan, which was one of six origins
+    deliberately given no neighbours because it had no *overland* pairing inside
+    the corpus. All six have five nearest countries now (South Korea is an
+    overnight ferry from Japan, and pretending otherwise was the bug, not the
+    feature), so the only route into this branch is an origin we genuinely know
+    nothing about - which is what it should always have been testing."""
     store, db = app_env["store"], app_env["db"]
     user_id = make_user(db, "no_country_options")
     store.update_profile(
         user_id,
-        {"nationality": "United Kingdom", "current_location": "Japan"},
+        {"nationality": "United Kingdom", "current_location": "Morocco"},
         source="user_edit",
     )
 
@@ -548,3 +556,386 @@ def test_country_question_with_no_onward_options_asks_instead_of_answering(app_e
     assert seen["agent"] == "concierge"
     assert seen["result"]["intent"] == "memory"
     assert "NO ONWARD COUNTRIES HELD" in seen["state"]["route_note"]
+
+
+# --------------------------------------------------------------------------- #
+# how the candidate pool is built
+# --------------------------------------------------------------------------- #
+# Until this change a "where next" turn was cut to exactly three destinations by
+# a code-side sort - season tier, then journey hours, then wishlist priority -
+# before a single specialist ran. Everything else the traveller had asked for was
+# dropped silently, with nothing in the trace to say what or why. The pool is now
+# capped by budget rather than by that heuristic, every survivor is researched,
+# and the decision_weigher does the ranking.
+def test_every_origin_offers_five_nearest_countries():
+    """The table used to hold at most three, and six origins held none at all."""
+    from backend.agents import coverage
+
+    for origin, neighbours in coverage.COUNTRY_NEIGHBOURS.items():
+        assert len(neighbours) == 5, f"{origin} has {len(neighbours)}"
+        assert len(set(neighbours)) == 5, f"{origin} repeats a neighbour"
+        assert origin not in neighbours, f"{origin} lists itself"
+
+    # The six that were deliberately empty before, on the reasoning that they had
+    # no overland pairing inside the corpus.
+    for origin in ("japan", "australia", "new zealand", "mongolia", "south korea", "myanmar"):
+        assert len(coverage.nearby_country_options(origin)) == 5
+
+
+def test_nearest_countries_are_not_limited_to_the_curated_corpus():
+    """The widening is the point: the nearest country is often one the seed
+    corpus never covered, and live_lookup is what fills that in at runtime."""
+    from backend.agents import coverage
+
+    assert "china" in coverage.nearby_country_options("laos")
+    assert "taiwan" in coverage.nearby_country_options("philippines")
+    assert "bangladesh" in coverage.nearby_country_options("myanmar")
+    assert "uruguay" in coverage.nearby_country_options("brazil")
+
+    uncovered = {
+        c
+        for neighbours in coverage.COUNTRY_NEIGHBOURS.values()
+        for c in neighbours
+        if c not in coverage.SUPPORTED
+    }
+    assert uncovered, "nothing outside the corpus - the table did not widen"
+    # Independent travel to North Korea is not available to this app's users, so
+    # it is the one true neighbour left out on purpose.
+    assert "north korea" not in uncovered
+
+
+@pytest.mark.parametrize(
+    "budget,wishlist_count,expected",
+    [
+        (10, 8, (5, 5)),   # the stated default: half each
+        (8, 8, (4, 4)),
+        (6, 8, (3, 3)),
+        (10, 2, (2, 5)),   # short wishlist cannot lend its half to nobody
+        (10, 0, (0, 5)),   # empty wishlist still gets every neighbour
+        (3, 8, (2, 1)),    # odd budget: the spare slot goes to the wishlist
+    ],
+)
+def test_candidate_budget_is_split_evenly_between_wishlist_and_neighbours(
+    budget, wishlist_count, expected
+):
+    from backend.agents import runner
+
+    wishlist = [f"w{i}" for i in range(wishlist_count)]
+    neighbours = ["n1", "n2", "n3", "n4", "n5"]
+
+    chosen_w, chosen_n = runner._split_candidate_budget(wishlist, neighbours, budget)
+
+    assert (len(chosen_w), len(chosen_n)) == expected
+    assert len(chosen_w) + len(chosen_n) <= budget
+    # Both sides arrive pre-ordered and are taken as prefixes.
+    assert chosen_n == neighbours[: len(chosen_n)]
+    assert chosen_w == wishlist[: len(chosen_w)]
+
+
+def test_an_origin_with_no_geography_gives_the_whole_budget_to_the_wishlist():
+    from backend.agents import runner
+
+    wishlist = [f"w{i}" for i in range(12)]
+    chosen_w, chosen_n = runner._split_candidate_budget(wishlist, [], 10)
+
+    assert len(chosen_w) == 10
+    assert chosen_n == []
+
+
+# --- how the wishlist half is ordered -------------------------------------- #
+def test_stated_priority_beats_distance():
+    """The one number the traveller set themselves leads. A priority-1 country on
+    the far side of the world outranks a priority-5 country next door."""
+    import random
+
+    from backend.agents import runner
+
+    order = runner._order_wishlist(
+        {"japan": 1, "laos": 5, "peru": 1, "cambodia": 4},
+        "thailand",
+        random.Random(0),
+    )
+
+    assert set(order[:2]) == {"japan", "peru"}
+    assert order[2:] == ["cambodia", "laos"]
+
+
+def test_same_priority_is_broken_by_distance_from_where_they_are():
+    """"If they all matter equally, take the closest" - the nearer of two
+    equally-wanted countries is the cheaper, more plausible next hop."""
+    import random
+
+    from backend.agents import runner
+
+    # All priority 1. Laos and Cambodia have curated route legs from Thailand;
+    # Peru does not, so it sorts last on unknown distance rather than being lost.
+    order = runner._order_wishlist(
+        {"peru": 1, "laos": 1, "cambodia": 1}, "thailand", random.Random(0)
+    )
+
+    assert order[-1] == "peru"
+    assert set(order[:2]) == {"laos", "cambodia"}
+    assert runner._journey_hours("thailand", "laos") < float("inf")
+    assert runner._journey_hours("thailand", "peru") == float("inf")
+
+
+def test_the_closest_wins_when_priorities_tie():
+    import random
+
+    from backend.agents import runner
+
+    hours = {c: runner._journey_hours("thailand", c) for c in ("laos", "cambodia", "malaysia")}
+    nearest = min(hours, key=hours.get)
+
+    order = runner._order_wishlist(
+        {c: 1 for c in hours}, "thailand", random.Random(0)
+    )
+
+    assert order[0] == nearest
+
+
+def test_only_exact_ties_fall_through_to_the_random_tiebreak():
+    """Entries identical on BOTH priority and journey time - in practice a group
+    of same-priority countries we hold no route data for - rotate rather than
+    letting the same few win every turn forever. Anything we hold data for is
+    fully determined."""
+    import random
+
+    from backend.agents import runner
+
+    # All priority 1, none with a curated leg from Thailand, so all tie at inf.
+    flat = {c: 1 for c in ("peru", "brazil", "chile", "colombia", "ecuador")}
+    draws = {
+        tuple(runner._order_wishlist(flat, "thailand", random.Random(seed)))
+        for seed in range(12)
+    }
+    assert len(draws) > 1, "exact ties are not rotating"
+
+    # But a pool with real priorities and real distances is stable across seeds.
+    determined = {"japan": 1, "laos": 2, "cambodia": 3}
+    stable = {
+        tuple(runner._order_wishlist(determined, "thailand", random.Random(seed)))
+        for seed in range(12)
+    }
+    assert len(stable) == 1, f"a fully-determined ordering varied: {stable}"
+
+
+def test_the_whole_pool_reaches_the_specialists_not_just_three(app_env, monkeypatch):
+    """The `ranked[:3]` cut is gone. A traveller in Thailand with four wishlist
+    countries should have all five nearest countries AND their wishlist weighed,
+    not three survivors of a code-side heuristic."""
+    store, travel, db = app_env["store"], app_env["travel"], app_env["db"]
+    user_id = make_user(db, "full_pool")
+    store.update_profile(
+        user_id,
+        {"nationality": "United Kingdom", "current_location": "Thailand"},
+        source="user_edit",
+    )
+    for place, priority in (("Japan", 1), ("Nepal", 2), ("Peru", 3), ("India", 4)):
+        travel.add_wishlist(
+            user_id, place, location_type="country", country=place, priority=priority
+        )
+
+    seen = run_stubbed_turn(
+        monkeypatch, user_id, "which country should i go to next", {"intent": "discover"}
+    )
+
+    assert seen["agent"] == "decision_weigher"
+    candidates = [c.strip() for c in seen["state"]["candidates"].split(",")]
+    # 4 wishlist (under its half of 5) + all 5 nearest countries.
+    assert len(candidates) == 9
+    assert {"laos", "cambodia", "myanmar", "malaysia", "vietnam"} <= set(candidates)
+    assert {"japan", "nepal", "peru", "india"} <= set(candidates)
+
+
+# --------------------------------------------------------------------------- #
+# named destinations win outright: the pool is only built when they name none
+# --------------------------------------------------------------------------- #
+# "Thailand or Vietnam?" must compare exactly Thailand and Vietnam. The wishlist
+# and the five nearest countries exist to answer an OPEN "where next" - they are
+# what we fall back to when the traveller has not said, and adding them to a
+# question that named two countries would be answering a different question (and
+# paying for eight extra destinations of specialist research to do it).
+def test_two_named_destinations_are_the_only_candidates(app_env, monkeypatch):
+    """Even with a location and a full wishlist - everything needed to build a
+    ten-candidate pool - naming two countries wins."""
+    store, travel, db = app_env["store"], app_env["travel"], app_env["db"]
+    user_id = make_user(db, "named_two")
+    store.update_profile(
+        user_id,
+        {"nationality": "United Kingdom", "current_location": "Thailand"},
+        source="user_edit",
+    )
+    for p in ("Japan", "Nepal", "Peru", "India", "Taiwan", "Mexico"):
+        travel.add_wishlist(user_id, p, location_type="country", country=p, priority=1)
+
+    seen = run_stubbed_turn(
+        monkeypatch,
+        user_id,
+        "where should i go next, thailand or vietnam?",
+        {"intent": "compare", "candidate_destinations": ["Thailand", "Vietnam"]},
+    )
+
+    assert seen["agent"] == "decision_weigher"
+    candidates = [c.strip() for c in seen["state"]["candidates"].split(",")]
+    assert candidates == ["thailand", "vietnam"]
+    # None of the pool-building sources leaked in.
+    assert not ({"japan", "nepal", "peru", "india", "taiwan", "mexico"} & set(candidates))
+    assert not ({"laos", "cambodia", "myanmar", "malaysia"} & set(candidates))
+
+
+def test_named_destinations_win_even_when_the_question_is_country_scoped(
+    app_env, monkeypatch
+):
+    """The country-scope override and the named-candidate override could fight:
+    "my visa is running out" forces the country-level path, which is what builds
+    the pool. Naming two countries has to win, or a specific question gets
+    answered with eight countries they did not ask about."""
+    store, travel, db = app_env["store"], app_env["travel"], app_env["db"]
+    from backend.agents import coverage
+
+    user_id = make_user(db, "named_two_country_scope")
+    store.update_profile(
+        user_id,
+        {"nationality": "United Kingdom", "current_location": "Thailand"},
+        source="user_edit",
+    )
+    travel.add_wishlist(
+        user_id, "Japan", location_type="country", country="Japan", priority=1
+    )
+
+    message = "my visa is running out - should i go to laos or cambodia next?"
+    assert coverage.wants_country_scope(message) is True
+
+    seen = run_stubbed_turn(
+        monkeypatch,
+        user_id,
+        message,
+        {"intent": "compare", "candidate_destinations": ["Laos", "Cambodia"]},
+    )
+
+    candidates = [c.strip() for c in seen["state"]["candidates"].split(",")]
+    assert candidates == ["laos", "cambodia"]
+    assert "japan" not in candidates
+
+
+def test_naming_nowhere_is_what_builds_the_pool(app_env, monkeypatch):
+    """The contrast case, asserted alongside the two above so the boundary is
+    visible in one place: same account, same location, no destination named."""
+    store, travel, db = app_env["store"], app_env["travel"], app_env["db"]
+    user_id = make_user(db, "named_none")
+    store.update_profile(
+        user_id,
+        {"nationality": "United Kingdom", "current_location": "Thailand"},
+        source="user_edit",
+    )
+    travel.add_wishlist(
+        user_id, "Japan", location_type="country", country="Japan", priority=1
+    )
+
+    seen = run_stubbed_turn(
+        monkeypatch, user_id, "which country should i go to next", {"intent": "discover"}
+    )
+
+    candidates = [c.strip() for c in seen["state"]["candidates"].split(",")]
+    assert len(candidates) > 2
+    assert "japan" in candidates
+    assert {"laos", "cambodia", "myanmar", "malaysia", "vietnam"} <= set(candidates)
+
+
+def test_a_country_on_both_the_wishlist_and_the_neighbours_is_researched_once(
+    app_env, monkeypatch
+):
+    """Vietnam is one of Thailand's five nearest AND on this traveller's
+    wishlist. Sending it to the specialists twice would be paid-for duplicate
+    work and would put two cards for the same country in front of the weigher."""
+    store, travel, db = app_env["store"], app_env["travel"], app_env["db"]
+    user_id = make_user(db, "dedup_pool")
+    store.update_profile(
+        user_id,
+        {"nationality": "United Kingdom", "current_location": "Thailand"},
+        source="user_edit",
+    )
+    travel.add_wishlist(
+        user_id, "Vietnam", location_type="country", country="Vietnam", priority=1
+    )
+    travel.add_wishlist(
+        user_id, "Japan", location_type="country", country="Japan", priority=1
+    )
+
+    seen = run_stubbed_turn(
+        monkeypatch, user_id, "which country should i go to next", {"intent": "discover"}
+    )
+
+    candidates = [c.strip() for c in seen["state"]["candidates"].split(",")]
+    assert candidates.count("vietnam") == 1
+    assert len(candidates) == len(set(candidates))
+    # It is still there - deduping must not drop it, only stop it doubling.
+    assert "vietnam" in candidates
+    assert "japan" in candidates
+
+
+def test_a_long_wishlist_is_capped_at_the_configured_budget(app_env, monkeypatch):
+    store, travel, db = app_env["store"], app_env["travel"], app_env["db"]
+    from backend.config import settings
+
+    user_id = make_user(db, "capped_pool")
+    store.update_profile(
+        user_id,
+        {"nationality": "United Kingdom", "current_location": "Thailand"},
+        source="user_edit",
+    )
+    for i in range(15):
+        travel.add_wishlist(
+            user_id, f"Country{i}", location_type="country",
+            country=f"Country{i}", priority=1,
+        )
+
+    seen = run_stubbed_turn(
+        monkeypatch, user_id, "which country should i go to next", {"intent": "discover"}
+    )
+
+    candidates = [c.strip() for c in seen["state"]["candidates"].split(",")]
+    assert len(candidates) == settings.max_comparison_candidates
+    # Half the budget is held for the nearest countries no matter how long the
+    # wishlist gets - the whole point of the split.
+    assert len({"laos", "cambodia", "myanmar", "malaysia", "vietnam"} & set(candidates)) == 5
+
+
+def test_the_weigher_card_list_is_trimmed_to_the_configured_top_n():
+    """The prompt asks for WEIGHER_TOP_N; the cap is enforced in code as well,
+    because "one card per candidate" is the instruction the weigher falls back
+    to, and ten cards would flood a UI built to reveal six."""
+    from backend.agents import runner
+    from backend.config import settings
+
+    raw = [
+        {"destination": f"Country{i}", "rank": i, "verdict": "maybe"}
+        for i in range(1, 11)
+    ]
+
+    cards = runner._coerce_cards(raw)
+
+    assert len(cards) == settings.weigher_top_n
+    assert [c["rank"] for c in cards] == list(range(1, settings.weigher_top_n + 1))
+    assert [c["destination"] for c in cards] == [
+        f"Country{i}" for i in range(1, settings.weigher_top_n + 1)
+    ]
+
+
+def test_card_ranks_are_renumbered_contiguously():
+    """The weigher occasionally emits gapped or duplicate ranks, and the
+    frontend orders and labels cards by this field."""
+    from backend.agents import runner
+
+    cards = runner._coerce_cards(
+        [
+            {"destination": "Laos", "rank": 7},
+            {"destination": "Vietnam", "rank": 2},
+            {"destination": "Malaysia", "rank": 2},
+        ]
+    )
+
+    assert [c["rank"] for c in cards] == [1, 2, 3]
+    assert cards[0]["destination"] in {"Vietnam", "Malaysia"}
+    assert cards[-1]["destination"] == "Laos"

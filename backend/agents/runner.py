@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import random
 import re
 from datetime import date
 from typing import Any
@@ -43,6 +44,104 @@ from backend.tracing.langfuse_setup import Trace
 
 logger = logging.getLogger(__name__)
 
+# Used only to break exact ties in wishlist ordering - see _order_wishlist. Its
+# own Random instance, not the `random` module functions, so tests can seed this
+# one object without touching global random state and nothing else in the process
+# can reseed it out from under a turn.
+_candidate_rng = random.Random()
+
+
+def _journey_hours(origin: str, dest: str) -> float:
+    """Shortest curated travel time between two countries, ``inf`` if unknown.
+
+    The same curated overland/flight figures the Logistics specialist reports, so
+    "closest" here means the same thing to the ranking code as it will to the
+    traveller reading the answer.
+    """
+    from backend.agents import routes
+
+    route = routes.lookup(origin, dest)
+    hours = [
+        h for h in (route.get("overland_hours"), route.get("flight_hours"))
+        if h is not None
+    ]
+    return min(hours) if hours else float("inf")
+
+
+def _order_wishlist(
+    wishlist_priority: dict[str, int],
+    here_country: str,
+    rng: random.Random,
+) -> list[str]:
+    """Order wishlist countries by how they should compete for a candidate slot.
+
+    Stated priority first, then distance from where the traveller actually is.
+
+    Priority leading is the whole point: it is the one number the traveller set
+    themselves, and a destination they marked 1 should not have to win a coin
+    toss against one they marked 5. Distance only ever separates entries that
+    already tie on priority - which is the common case, since a traveller who
+    marks ten places "must do" has told us they all matter equally and has not
+    told us which to raise first. Proximity is the honest answer there: of two
+    equally-wanted countries, the nearer one is the cheaper, more plausible next
+    hop, and it is the same curated figure the Logistics specialist will quote.
+
+    The random tiebreak underneath is a last resort, not a strategy. It only
+    reaches entries identical on BOTH priority and journey time, which in
+    practice means a group of same-priority countries we hold no route data for
+    at all - several of the twenty uncovered countries COUNTRY_NEIGHBOURS can now
+    name sit at ``inf`` together. Ordering those alphabetically would be
+    deterministic but would also mean the same few won every single turn forever;
+    shuffling them lets a long flat wishlist rotate. Anything we actually hold
+    data for is fully determined by priority and distance.
+    """
+    return sorted(
+        wishlist_priority,
+        key=lambda c: (
+            wishlist_priority.get(c, 3),
+            _journey_hours(here_country, c),
+            rng.random(),
+        ),
+    )
+
+
+def _split_candidate_budget(
+    wishlist: list[str],
+    neighbours: list[str],
+    budget: int,
+) -> tuple[list[str], list[str]]:
+    """Divide ``budget`` candidate slots between the two sources.
+
+    Half each, so a budget of 10 is 5 wishlist + 5 nearest countries and a budget
+    of 8 is 4 + 4. Whichever side cannot fill its half lends the remainder to the
+    other, so an empty wishlist still yields all five neighbours and an origin we
+    hold no geography for still yields a full pool of wishlist entries.
+
+    Both lists are taken as prefixes, so both arrive already in the order they
+    should compete in: the wishlist from _order_wishlist, the neighbours
+    nearest-first as COUNTRY_NEIGHBOURS stores them.
+
+    Returns ``(wishlist_choice, neighbour_choice)`` rather than one merged list so
+    the caller can say in the trace where each candidate came from.
+    """
+    budget = max(0, budget)
+    half = budget // 2
+
+    # Claim half each, then hand out what neither side could use. Wishlist is
+    # offered the leftover first: those are destinations the traveller asked for
+    # by name, which is a stronger signal than proximity.
+    take_wishlist = min(len(wishlist), half)
+    take_neighbours = min(len(neighbours), half)
+    spare = budget - take_wishlist - take_neighbours
+    if spare > 0:
+        extra = min(spare, len(wishlist) - take_wishlist)
+        take_wishlist += extra
+        spare -= extra
+    if spare > 0:
+        take_neighbours += min(spare, len(neighbours) - take_neighbours)
+
+    return wishlist[:take_wishlist], neighbours[:take_neighbours]
+
 
 class _DropAppNameMismatch(logging.Filter):
     """ADK infers an "app name" from the root agent's module path and warns when it
@@ -65,7 +164,7 @@ STATE_KEYS = (
     "weather_assessment", "logistics_assessment", "recommendations",
     "turn_parse", "decision", "concierge_reply", "coverage_note",
     "travel_block", "pending_reviews", "focus_location", "route_note",
-    "local_guide_reply", "discovery_reply", "passports",
+    "local_guide_reply", "discovery_reply", "passports", "max_cards",
 )
 
 
@@ -288,6 +387,29 @@ def _coerce_cards(raw: Any) -> list[dict[str, Any]]:
             }
         )
     cards.sort(key=lambda c: c["rank"])
+
+    # Enforce the card cap in code, not only in the prompt. The weigher is asked
+    # for its best settings.weigher_top_n, and now that it can be handed ten
+    # candidates instead of three, "return one card per candidate" is the
+    # instruction it is most likely to fall back on when the prompt gets long -
+    # which would push a ten-card wall into a UI built to show three and reveal
+    # three more. Same reasoning as every other guard here: if the contract
+    # matters, compute it rather than ask for it.
+    #
+    # Trimmed after the rank sort, so this keeps the weigher's OWN top picks
+    # rather than whichever cards happened to come first in its JSON.
+    if len(cards) > settings.weigher_top_n:
+        logger.info(
+            "decision_weigher returned %d cards, trimming to %d",
+            len(cards), settings.weigher_top_n,
+        )
+        cards = cards[: settings.weigher_top_n]
+
+    # Re-number after the trim so ranks are always a contiguous 1..n. The weigher
+    # occasionally emits duplicate or gapped ranks, and the frontend orders and
+    # labels cards by this field.
+    for position, card in enumerate(cards, start=1):
+        card["rank"] = position
     return cards
 
 
@@ -375,6 +497,9 @@ async def run_turn(user_id: int, message: str, username: str = "") -> dict[str, 
             "user_question": message,
             "today": date.today().isoformat(),
             "pending_reviews": ", ".join(pending) if pending else "(none)",
+            # The weigher is handed the whole candidate pool and returns only its
+            # best N; the UI shows three and hides the rest behind a toggle.
+            "max_cards": str(settings.weigher_top_n),
         }
 
         # Onboarding is NOT handled here any more. It used to hijack the first
@@ -511,7 +636,7 @@ async def run_turn(user_id: int, message: str, username: str = "") -> dict[str, 
             intent = "discover"
             trace.note("routing.country_scope", "local -> discover (country question)")
         if intent == "discover":
-            from backend.agents import climate, routes
+            from backend.agents import climate
             from backend.rag.route_data import ROUTE_GRAPH, resolve_country
 
             here = (profile.get("current_location") or "").strip().lower()
@@ -546,8 +671,34 @@ async def run_turn(user_id: int, message: str, username: str = "") -> dict[str, 
                     if loc not in wishlist_priority or priority < wishlist_priority[loc]:
                         wishlist_priority[loc] = priority
 
-                pool = list(wishlist_priority) + [c for c in neighbours if c not in wishlist_priority]
+                # A country on the wishlist that is ALSO one of the five nearest
+                # is dropped here rather than researched twice - it stays in the
+                # pool once, via the neighbour half, and keeps its stored
+                # priority for the ordering sort below through
+                # wishlist_priority.get(). Deduping on the neighbour side also
+                # frees a wishlist slot for somewhere further afield, which is
+                # the side with more to say that geography alone would not.
+                wishlist_pool = [
+                    c
+                    for c in _order_wishlist(wishlist_priority, here_country, _candidate_rng)
+                    if c not in neighbours
+                ]
+                chosen_wishlist, chosen_neighbours = _split_candidate_budget(
+                    wishlist_pool,
+                    neighbours,
+                    settings.max_comparison_candidates,
+                )
+                pool = chosen_wishlist + chosen_neighbours
                 if pool:
+                    # Worth seeing in a trace: which half each candidate came
+                    # from, and how many wishlist entries did not make the cut.
+                    trace.note(
+                        "candidates.pool",
+                        f"{len(chosen_wishlist)} of {len(wishlist_pool)} wishlist "
+                        f"(by priority, then distance) + {len(chosen_neighbours)} "
+                        f"of {len(neighbours)} nearest, budget "
+                        f"{settings.max_comparison_candidates}",
+                    )
                     # climate.assess() only knows the curated table (~15
                     # countries) - everything else comes back "unknown", which
                     # the season_rank tiering below (correctly) treats as the
@@ -561,76 +712,96 @@ async def run_turn(user_id: int, message: str, username: str = "") -> dict[str, 
                     # "avoid" picks, because none of their real wishlist had a
                     # curated rating to rank with.
                     #
-                    # So: for wishlist countries (not hardcoded neighbours,
-                    # which are always curated by construction) the table
-                    # comes back "unknown" for, actually check - live_lookup's
-                    # existing search-once-cache-forever pipeline underneath
+                    # So for any candidate the table comes back "unknown" for,
+                    # actually check - live_lookup's existing
+                    # search-once-cache-forever pipeline underneath
                     # classify_season means this only ever pays the real
                     # search+LLM cost once per destination; every later month
                     # asked about the same country reuses the same fetched,
-                    # verified passage. Capped, and cheapest/highest-priority
-                    # first, so a long wishlist cannot turn one turn into a
-                    # dozen live searches.
+                    # verified passage. Capped, and in pool order (wishlist
+                    # first), so a long candidate list cannot turn one turn into
+                    # a dozen live searches.
+                    #
+                    # "any candidate", not "any wishlist candidate": this used to
+                    # skip neighbours on the reasoning that they were "always
+                    # curated by construction". That stopped being true when
+                    # COUNTRY_NEIGHBOURS widened to the five genuinely nearest
+                    # countries rather than the nearest ones the corpus happened
+                    # to cover (see the long note there). Twenty of the countries
+                    # it can now name - China, Taiwan, Singapore, Bangladesh,
+                    # Uruguay, Panama and the rest - have no curated climate row
+                    # at all, and leaving them on the old assumption would have
+                    # handed every one of them to the weigher permanently
+                    # "unknown": gagged by the coverage guard, unable to rank
+                    # first, and beaten by any curated neighbour having a
+                    # genuinely terrible month. This live check is precisely what
+                    # makes widening that table safe rather than cosmetic.
                     MAX_LIVE_SEASON_CHECKS = 6
-                    uncovered_wishlist = sorted(
-                        (
-                            c for c in wishlist_priority
-                            if climate.assess(c, travel_month)["rating"] == "unknown"
-                        ),
-                        key=lambda c: wishlist_priority.get(c, 3),
-                    )[:MAX_LIVE_SEASON_CHECKS]
+                    uncovered = [
+                        c for c in pool
+                        if climate.assess(c, travel_month)["rating"] == "unknown"
+                    ][:MAX_LIVE_SEASON_CHECKS]
 
                     live_season_ratings: dict[str, str] = {}
-                    if uncovered_wishlist:
-                        with trace.local_step("wishlist.live_season_check"):
+                    if uncovered:
+                        with trace.local_step("candidates.live_season_check"):
                             results = await asyncio.gather(
                                 *(
                                     asyncio.to_thread(live_lookup.classify_season, c, travel_month)
-                                    for c in uncovered_wishlist
+                                    for c in uncovered
                                 )
                             )
                             live_season_ratings = {
-                                c: r for c, r in zip(uncovered_wishlist, results) if r
+                                c: r for c, r in zip(uncovered, results) if r
                             }
                         trace.set_span_summary(
-                            "wishlist.live_season_check",
-                            f"{len(live_season_ratings)}/{len(uncovered_wishlist)} resolved",
+                            "candidates.live_season_check",
+                            f"{len(live_season_ratings)}/{len(uncovered)} resolved",
                         )
-                    # More candidates than one reply should carry (e.g. several
-                    # wishlist countries at the same priority) gets narrowed in
-                    # three passes, cheaply and deterministically rather than by
-                    # an arbitrary cut: (1) season fit right now - a country in
-                    # its rainy season loses to one actually in its travel
-                    # window, from the same curated table the Weather specialist
-                    # uses; (2) distance - the same curated flight/overland
-                    # hours the Logistics specialist uses, closest first,
-                    # unknown routes sinking to the bottom of their season tier
-                    # rather than being dropped; (3) how badly they want to go -
-                    # the wishlist priority they set themselves, overland-only
-                    # neighbours defaulting to the lowest priority since they
-                    # were never explicitly asked for.
+                    # This sort ORDERS the pool; it no longer decides who is in
+                    # it. That is the whole point of the change: the three-pass
+                    # tiering below used to be followed by a hard `[:3]`, so a
+                    # cheap code-side heuristic - season tier, then curated
+                    # journey hours, then stored wishlist priority - was the
+                    # thing choosing the traveller's three destinations, and the
+                    # specialists and the weigher only ever saw what had already
+                    # survived it. Everything it discarded was discarded before a
+                    # single agent had looked at the traveller's budget band,
+                    # pace, interests or visa position, and nothing recorded what
+                    # had been dropped. The whole (budget-capped) pool now goes
+                    # to the specialists and the decision_weigher ranks it, which
+                    # is the one step in this graph that actually holds all three
+                    # specialist reports and the trip profile at once.
+                    #
+                    # Keeping the sort anyway is deliberate. It costs nothing, it
+                    # gives the weigher a sane default ordering to push against
+                    # rather than a list in dictionary order, and it keeps the
+                    # trace readable. The three passes: (1) season fit right now
+                    # - a country in its rainy season sorts below one actually in
+                    # its travel window, from the same curated table the Weather
+                    # specialist uses; (2) distance - the same curated
+                    # flight/overland hours the Logistics specialist uses,
+                    # closest first, unknown routes sinking within their season
+                    # tier; (3) how badly they want to go - the wishlist priority
+                    # they set themselves, neighbours defaulting to the lowest
+                    # since they were never explicitly asked for.
                     #
                     # "unknown" sits WORSE than "avoid", not between "mixed" and
-                    # "avoid": a wishlist country this app holds zero seasonal
-                    # data for is not a safer bet than a covered neighbour having
-                    # a bad month, it is an untested one. Ranking unknown ahead of
-                    # avoid let bucket-list countries with no curated coverage at
-                    # all (e.g. Japan, Australia) push out actually-covered
-                    # neighbours just because the neighbours' real season happened
-                    # to be bad that month - reproduced live from a Bali account
-                    # with Japan/Australia on the wishlist in September, when
-                    # Thailand and Philippines are both genuinely "avoid" season:
-                    # the old tiering chose Japan and Australia over Malaysia,
-                    # Thailand and Philippines, none of which this app can back up.
+                    # "avoid": a country this app holds zero seasonal data for is
+                    # not a safer bet than a covered neighbour having a bad month,
+                    # it is an untested one. Ranking unknown ahead of avoid let
+                    # bucket-list countries with no curated coverage at all (e.g.
+                    # Japan, Australia) push out actually-covered neighbours just
+                    # because the neighbours' real season happened to be bad that
+                    # month - reproduced live from a Bali account with
+                    # Japan/Australia on the wishlist in September, when Thailand
+                    # and Philippines are both genuinely "avoid" season: the old
+                    # tiering chose Japan and Australia over Malaysia, Thailand
+                    # and Philippines, none of which this app can back up.
+                    # It matters less now that this only orders, but it is still
+                    # the honest tiering and the live check above is what stops
+                    # most candidates landing in "unknown" in the first place.
                     season_rank = {"good": 0, "mixed": 1, "avoid": 2, "unknown": 3}
-
-                    def _distance_hours(dest: str) -> float:
-                        route = routes.lookup(here_country, dest)
-                        hours = [
-                            h for h in (route.get("overland_hours"), route.get("flight_hours"))
-                            if h is not None
-                        ]
-                        return min(hours) if hours else float("inf")
 
                     def _season_rating(dest: str) -> str:
                         return live_season_ratings.get(dest) or climate.assess(dest, travel_month)["rating"]
@@ -639,13 +810,15 @@ async def run_turn(user_id: int, message: str, username: str = "") -> dict[str, 
                         pool,
                         key=lambda c: (
                             season_rank.get(_season_rating(c), 3),
-                            _distance_hours(c),
+                            _journey_hours(here_country, c),
                             wishlist_priority.get(c, 3),
                         ),
                     )
-                    candidates = ranked[:3]
+                    # No truncation. The weigher decides what makes the reply.
+                    candidates = ranked
                     state["candidates"] = ", ".join(candidates)
                     state["coverage_note"] = coverage.coverage_note(candidates)
+                    trace.note("candidates.ranked", ", ".join(candidates))
                     intent = "compare"
                     # The needs_* flags on `parse` were set by turn_parser for the
                     # ORIGINAL "discover" intent, where the discovery agent (not
@@ -661,9 +834,16 @@ async def run_turn(user_id: int, message: str, username: str = "") -> dict[str, 
                     parse["needs_recommendations"] = True
                 elif country_scope:
                     # They asked about countries and there is no country pool to
-                    # answer with: an empty wishlist, and an origin country with
-                    # no overland neighbour in the corpus (Japan, Australia,
-                    # Mongolia - see COUNTRY_NEIGHBOURS). Handing this to the
+                    # answer with: an empty wishlist, and an origin this app
+                    # holds no geography for at all - somewhere outside
+                    # COUNTRY_NEIGHBOURS entirely, e.g. a traveller who has
+                    # stored "Morocco" as their location.
+                    #
+                    # This branch used to fire for Japan, Australia, Mongolia,
+                    # New Zealand, South Korea and Myanmar too, because those six
+                    # were deliberately given no neighbours. They have five each
+                    # now, so the only way to reach this is a genuinely unknown
+                    # origin. Handing that to the
                     # town-level agent would answer a country question with
                     # towns again, which is the whole bug. Say what we hold and
                     # ask, rather than quietly changing the subject.

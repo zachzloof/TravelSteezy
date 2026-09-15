@@ -163,7 +163,29 @@ run:
      history and answer as though they were still in it.
    Both of the last two are bug report #3 — see
    [notes/05-guards-and-prompting.md](notes/05-guards-and-prompting.md).
-6. **Run the chosen agent(s)**, append the turn to history, return the reply.
+6. **Build the candidate pool — only when the traveller named nowhere.** If the
+   message names destinations ("Thailand or Vietnam?"), those *are* the
+   candidates and nothing is added to them; the override in step 5 has already
+   forced `compare`, and this step is skipped entirely. The pool exists to
+   answer an open "where next", not to widen a specific question.
+
+   Otherwise the pool is the traveller's wishlist plus the five nearest
+   countries (`coverage.COUNTRY_NEIGHBOURS`), split evenly:
+   `MAX_COMPARISON_CANDIDATES` (10) means five from each, and either side may
+   spend the other's unused half. The wishlist half is ordered by stated
+   priority, then by distance from where the traveller is — so a long list of
+   equally-wanted places resolves to the five closest. A country on both the
+   wishlist and the neighbour list is researched once, not twice. Every
+   candidate in the pool is researched by all three specialists;
+   the `decision_weigher` ranks them and returns its best `WEIGHER_TOP_N` (6),
+   of which the UI shows three and puts the rest behind "show 3 more".
+
+   This step used to end in a hard `ranked[:3]`: a code-side heuristic — season
+   tier, then journey hours, then wishlist priority — picked the traveller's
+   three destinations before a single specialist ran, and nothing recorded what
+   it had dropped. That sort still runs, but it now only *orders* the pool. See
+   [notes/05](notes/05-guards-and-prompting.md).
+7. **Run the chosen agent(s)**, append the turn to history, return the reply.
 
 ### Agent reference
 
@@ -173,7 +195,7 @@ run:
 | `weather_agent` | `check_seasonal_conditions`, `search_seasonal_notes` | `compare` | Season fit per candidate, for the stated travel month. |
 | `logistics_agent` | `search_visa_rules`, `check_route` | `compare` | Visa requirements and overland/flight options per candidate. |
 | `recommendations_agent` | `search_backpacker_tips`, `find_hostels`, `suggest_areas_to_stay`, `find_food_near`, `get_places_recommendations`, `get_traveller_feedback` | `compare` | Backpacker-specific budget, activity, route and warning content — curated RAG plus live Google Places. |
-| `decision_weigher` | none | `compare` | Reads the three specialist reports out of session state and ranks candidates against the traveller's stored preferences. |
+| `decision_weigher` | none | `compare` | Reads the three specialist reports out of session state and ranks every candidate against the traveller's stored preferences, returning its best `WEIGHER_TOP_N` (6) as cards. It is the only step holding all three reports and the trip profile at once, which is why candidate selection is its job rather than a code-side sort's. |
 | `concierge` | none | `memory`, `review` | Small talk and "what do you remember about me" — answered straight from the profile. |
 | `local_guide` | `suggest_areas_to_stay`, `find_hostels`, `find_food_near`, `get_places_recommendations`, `search_backpacker_tips`, `get_traveller_feedback`, `get_booking_links` | `local` | On-the-ground questions about one place the traveller is already in. Deliberately holds no visa/route tools, which is what makes the intent override in step 5 necessary. |
 | `discovery_agent` | `discover_next_destinations`, `get_traveller_feedback` | `discover` | Open "where next from here", answered from the curated route graph rather than Places — Places can say what's nearby, not that backpackers leaving Chiang Mai go to Pai. |

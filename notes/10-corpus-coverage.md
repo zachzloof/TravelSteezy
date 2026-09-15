@@ -101,6 +101,40 @@ wide, not because they're low-priority:
   exemption) that would need its own careful, well-sourced treatment rather
   than being bolted onto the East Asia batch alongside visa-free Japan/Korea.
 
+## Countries the app can now NAME but does not cover
+
+Read this before concluding the corpus is inconsistent with what the assistant
+offers. The curated corpus is still the 24 countries in the table above — that
+number has not changed — but since decision 53 `coverage.COUNTRY_NEIGHBOURS`
+holds the five *genuinely* nearest countries to each origin rather than the
+nearest ones the corpus happened to cover. So a "where next" turn can put a
+destination in front of the specialists that has no row here:
+
+`china, singapore, brunei, timor-leste, taiwan, bangladesh, pakistan, maldives,
+russia, kazakhstan, papua new guinea, solomon islands, fiji, tonga, vanuatu,
+new caledonia, paraguay, uruguay, panama, venezuela`
+
+Several were already on the "deliberately not covered" list above — China for
+its visa complexity, Uruguay/Paraguay/Venezuela as lower-traffic, Panama as
+part of the Central America gap. That reasoning stands for *curation*. It was
+never a reason to pretend they are not next door.
+
+These are handled, not curated:
+
+- `coverage_note` gags them by default — no figures, cannot rank first.
+- `live_lookup`'s two-pass search-and-verify fills the gap at runtime, once per
+  destination ever, and `coverage_note` treats a verified live hit as fully
+  covered (note 03).
+- With no `TAVILY_API_KEY` they stay gagged and lose to covered candidates,
+  which is the honest outcome rather than a wrong one.
+
+**If you curate any of them, they move into the table above and out of this
+list** — and this is exactly the trigger the "How to extend this file" section
+below describes. The twenty were not curated in decision 53 because doing so
+would have meant writing unverified dorm prices, visa fees and monthly climate
+ratings for places like Vanuatu and Kazakhstan, which is what the rule at the
+top of this file exists to prevent.
+
 ## How to extend this file
 
 When adding a country:
