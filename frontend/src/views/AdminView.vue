@@ -14,12 +14,19 @@ const copiedId = ref(null)
 const error = ref('')
 const busy = ref(false)
 const tab = ref('accounts')
+const bugFilter = ref('open')
 
-const openBugs = computed(() => bugs.value.filter((b) => b.status !== 'resolved').length)
+const openBugs = computed(() => bugs.value.filter((b) => b.status !== 'resolved'))
+const resolvedBugs = computed(() => bugs.value.filter((b) => b.status === 'resolved'))
 const TABS = computed(() => [
   { id: 'accounts', label: 'Accounts', count: users.value.length },
-  { id: 'bugs', label: 'Bug reports', count: openBugs.value }
+  { id: 'bugs', label: 'Bug reports', count: openBugs.value.length }
 ])
+const BUG_FILTER_TABS = computed(() => [
+  { id: 'open', label: 'Open', count: openBugs.value.length },
+  { id: 'resolved', label: 'Resolved', count: resolvedBugs.value.length }
+])
+const filteredBugs = computed(() => (bugFilter.value === 'open' ? openBugs.value : resolvedBugs.value))
 
 onMounted(() => {
   if (tokens.admin()) refresh()
@@ -176,8 +183,9 @@ const STATUS_CLASS = { approved: 'go', pending: 'maybe', rejected: 'avoid' }
 
       <!-- ------------------------------------------------------- bugs -->
       <section v-else class="panel">
-        <div v-if="bugs.length" class="bug-list">
-          <div v-for="b in bugs" :key="b.id" class="bug" :class="{ resolved: b.status === 'resolved' }">
+        <SegmentedTabs v-if="bugs.length" v-model="bugFilter" :tabs="BUG_FILTER_TABS" label="Bug report status" class="bug-filter" />
+        <div v-if="filteredBugs.length" class="bug-list">
+          <div v-for="b in filteredBugs" :key="b.id" class="bug" :class="{ resolved: b.status === 'resolved' }">
             <button class="bug-row" :aria-expanded="openBugId === b.id" @click="toggleBug(b.id)">
               <span class="tag" :class="{ go: b.status === 'resolved', maybe: b.status === 'open' }">{{ b.status }}</span>
               <span class="bug-desc">{{ b.description }}</span>
@@ -197,7 +205,7 @@ const STATUS_CLASS = { approved: 'go', pending: 'maybe', rejected: 'avoid' }
         </div>
         <div v-else class="empty-state">
           <span class="glyph" aria-hidden="true">🐞</span>
-          <p>No bug reports yet.</p>
+          <p>{{ bugs.length ? `No ${bugFilter} bug reports.` : 'No bug reports yet.' }}</p>
         </div>
       </section>
     </template>
@@ -259,6 +267,7 @@ tbody tr:last-child td { border-bottom: none; }
 }
 
 /* ------------------------------------------------------------------- bugs */
+.bug-filter { margin-bottom: var(--sp-4); }
 .bug-list { display: flex; flex-direction: column; }
 .bug { border-bottom: 1px solid var(--line); }
 .bug:last-child { border-bottom: none; }
