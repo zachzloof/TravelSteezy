@@ -397,7 +397,7 @@ All scoped to the authenticated account; `user_id` comes from the signed token.
 
 ## 9. Frontend
 
-- **Welcome page** (`/welcome`) is where a new account lands. Four questions, one
+- **Welcome page** (`/welcome`) is where a new account lands. Five questions, one
   at a time, each answered in a plain textarea, with a panel beside it filling in
   with what has been captured so far. A router gate sends any account that has
   not finished or skipped onboarding here before it can reach the chat.

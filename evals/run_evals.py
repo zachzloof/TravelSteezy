@@ -529,6 +529,12 @@ def run_travel_check(check: dict[str, Any], ctx: dict[str, Any]) -> dict[str, An
         hits = [v for v in check["values"] if v.lower() in blob]
         return {"passed": bool(hits), "detail": f"interests={have}, matched={hits}"}
 
+    if kind == "key_interests_contain_any":
+        have = travel_store.get_key_interests(user_id)
+        blob = " ".join(have)
+        hits = [v for v in check["values"] if v.lower() in blob]
+        return {"passed": bool(hits), "detail": f"key_interests={have}, matched={hits}"}
+
     if kind == "profile_field_set":
         actual = (get_profile(user_id).get(check["field"]) or "").strip().lower()
         wanted = str(check["value"]).strip().lower()

@@ -41,6 +41,7 @@ const profile = ref({})
 const history = ref([])
 const wishlist = ref([])
 const interests = ref([])
+const keyInterests = ref([])
 
 const question = computed(() => questions.value.find((q) => q.id === stepId.value) || null)
 const position = computed(() => questions.value.findIndex((q) => q.id === stepId.value) + 1)
@@ -83,6 +84,7 @@ function apply(res) {
   if (res.travel_history) history.value = res.travel_history
   if (res.wishlist) wishlist.value = res.wishlist
   if (res.interests) interests.value = res.interests
+  if (res.key_interests) keyInterests.value = res.key_interests
 }
 
 async function focusBox() {
@@ -162,6 +164,7 @@ const WRITE_LABELS = {
   add_wishlist: 'Want to go',
   set_passports: 'Passport',
   set_interests: 'Into',
+  set_key_interests: 'Really into',
   set_social_style: 'Travelling',
   update_profile: 'Noted'
 }
@@ -183,6 +186,8 @@ function describe(write) {
     case 'set_passports':
       return (p.passports || []).join(' and ')
     case 'set_interests':
+      return (p.interests || []).join(', ')
+    case 'set_key_interests':
       return (p.interests || []).join(', ')
     case 'set_social_style':
       return labelFor(p.social_style)
@@ -353,7 +358,14 @@ function describe(write) {
             <div v-if="interests.length" class="group">
               <p class="eyebrow">Into</p>
               <div class="chips">
-                <span v-for="i in interests" :key="i" class="tag">{{ i }}</span>
+                <span
+                  v-for="i in interests"
+                  :key="i"
+                  class="tag"
+                  :class="{ key: keyInterests.includes(i) }"
+                >
+                  <span v-if="keyInterests.includes(i)" class="star" aria-hidden="true">★</span>{{ i }}
+                </span>
               </div>
             </div>
           </template>
@@ -510,6 +522,8 @@ textarea { min-height: 118px; }
 .place { text-transform: capitalize; min-width: 0; }
 
 .chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.tag.key { border-color: var(--accent); background: var(--accent-soft); color: var(--text); font-weight: 600; }
+.tag .star { font-size: 12px; line-height: 1; margin-right: 3px; }
 
 dl { display: grid; grid-template-columns: minmax(72px, auto) 1fr; gap: var(--sp-1) var(--sp-3); margin: 0; font-size: 13.5px; }
 dt { color: var(--muted); }

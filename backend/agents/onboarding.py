@@ -130,6 +130,32 @@ QUESTIONS: list[dict[str, Any]] = [
         ],
         "optional": False,
     },
+    {
+        "id": "priorities",
+        "title": "What matters most to you?",
+        "prompt": "Out of all of that, what would actually make or break a destination for you?",
+        "hint": (
+            "Three to five, tops - the genuine dealbreakers, not a repeat of your full "
+            "list. \"Diving is non-negotiable\" or just naming your top few is plenty."
+        ),
+        "placeholder": (
+            "Diving is the big one - that's non-negotiable for me. Good hiking matters "
+            "too. Everything else is a nice-to-have."
+        ),
+        "captures": ["key_interests", "interests"],
+        "optional": True,
+        # This deliberately does not re-ask "what are you into" - the style
+        # question already covers that. It asks a narrower thing the style
+        # question never does: which of those, if any, are non-negotiable.
+        "rules": (
+            "\"key_interests\" is only filled when they single out a few things "
+            "as mattering most - explicit emphasis (\"non-negotiable\", \"the "
+            "big one\", \"top priority\") or a direct short list. Never infer it "
+            "from list order or repetition alone; if nothing is clearly singled "
+            "out, leave it empty. Anything named here that is genuinely new "
+            "also belongs in \"interests\"."
+        ),
+    },
 ]
 
 QUESTION_IDS: tuple[str, ...] = tuple(q["id"] for q in QUESTIONS)
@@ -186,6 +212,7 @@ class OnboardingCapture(BaseModel):
     travel_history: list[OnboardingTravelHistoryEntry] = Field(default_factory=list)
     wishlist: list[OnboardingWishlistEntry] = Field(default_factory=list)
     interests: list[str] = Field(default_factory=list)
+    key_interests: list[str] = Field(default_factory=list)
     passports: list[str] = Field(default_factory=list)
     budget_band: Optional[str] = None
     travel_style: Optional[str] = None
@@ -274,6 +301,12 @@ Other fields
 - "interests" are lowercase single words where possible: nature, food, nightlife,
   trekking, diving, history, beaches, surfing, culture, photography, wildlife,
   markets, climbing, yoga, festivals.
+- "key_interests" stays empty UNLESS they explicitly single a few interests out
+  as mattering most - "non-negotiable", "the big one", "what I really want",
+  "top priority", or a direct short list of favourites. Do not fill this just
+  because a question asked about priorities; only what the traveller actually
+  singled out counts, never the first few items of a longer list you picked
+  yourself. At most five.
 - There is no trip start or end date field - do not invent one even if they
   mention dates.
 
@@ -523,6 +556,20 @@ def apply_capture(
         travel.set_interests(user_id, interests, source=source)
         writes.append(
             {"operation": "set_interests", "payload": {"interests": interests}, "source": source}
+        )
+
+    # ---- key interests ------------------------------------------------------
+    key_interests = [
+        str(i).strip() for i in (captured.get("key_interests") or []) if str(i).strip()
+    ]
+    if key_interests:
+        travel.set_key_interests(user_id, key_interests, source=source)
+        writes.append(
+            {
+                "operation": "set_key_interests",
+                "payload": {"interests": key_interests},
+                "source": source,
+            }
         )
 
     # ---- social style -----------------------------------------------------
