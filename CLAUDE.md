@@ -14,7 +14,6 @@ non-obvious code here is the fix for a specific bug that is written up somewhere
 - [README.md](README.md) — core app: architecture, agent/tool table, memory model, RAG namespaces, stack, API, evals, local run, Railway deploy.
 - [docs/EXTENSION.md](docs/EXTENSION.md) — onboarding, trip tracking, reviews, Google Places tools, the `routes`/`experience` namespaces, the extra `/travel/*` endpoints.
 - [notes/](notes/00-index.md) — file-per-topic "why", with the bug, the fix, and the eval case or test that caught it. `notes/00-index.md` says which file to read before touching what. In particular: read `01` and `05` before changing the agent graph or a prompt, `04` before "fixing" ranking or clustering, `06` before trusting an eval score, and `09` before adding anything that calls an LLM.
-- [PROGRESS.md](PROGRESS.md) — working notes from the extension build.
 
 ## Commands
 
@@ -36,12 +35,16 @@ python -m pytest tests/test_travel_and_places.py -q                  # one file
 python -m pytest tests/test_memory_and_auth.py -k isolation -q       # one test
 
 # evals (these DO call OpenAI and hit the real database)
-python -m evals.run_evals                         # full suite, 35 cases
+python -m evals.run_evals                         # full suite (every case in evals/cases.jsonl)
 python -m evals.run_evals --case season-nepal-monsoon
 python -m evals.run_evals --label after-fix       # names the output files
 python -m evals.run_evals --no-judge              # assertions only, skip judge calls
 python -m evals.run_evals --repeat 3              # per-case pass rate; agents are nondeterministic
 ```
+
+Write files with the Write/Edit tools, not a shell heredoc. A heredoc edit here once ate
+every `\b` in a regex into a literal `0x08` byte, and quoting failures are easy to miss in
+long content — if you do use one, grep the result for stray control bytes (`notes/03`).
 
 `pytest` is not in `requirements.txt` — install it separately. `scripts/bootstrap.py`
 (run before uvicorn in production) creates the schema, ingests the corpus if the index
@@ -118,8 +121,18 @@ is `agents.fan_out`, because it wraps app-level orchestration rather than an age
 
 ## Keeping the docs current
 
-The docs are part of the deliverable here, so a change is not finished until they match the
-code. When you change behaviour, update the docs in the same commit:
+The docs are part of the deliverable here, so a substantial change is not finished until
+they match the code.
+
+**This applies to changes that alter behaviour, contracts or architecture** — adding or
+changing an agent, tool, prompt, guard, intent, endpoint, schema column, setting, model
+choice, or corpus content.
+
+**It does not apply to** typo and comment fixes, formatting, renames, dependency bumps with
+no behaviour change, or refactors that leave behaviour identical. Don't update four
+documents for a one-line change; if a change sits on the line, ask rather than assume.
+
+For a change in scope, update in the same commit:
 
 - **README.md** — when the architecture, agent/tool table, API surface, stack, namespace
   counts or eval scores change.
