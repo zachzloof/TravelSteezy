@@ -425,14 +425,25 @@ function describe(write) {
   .steps li .pip { width: 30px; height: 30px; font-size: 12px; }
 }
 
-/* ------------------------------------------------------------------ layout */
+/* ------------------------------------------------------------------ layout
+   The whole page is locked to the space main actually gives it (--view-h,
+   minus the gutter main pads it with) and never scrolls itself. .cols takes
+   whatever is left after the intro and the rail, and its two panels each
+   scroll their own overflow — a laptop-height window scrolls the question
+   or the captured list, never the page underneath them. */
+.page { height: calc(var(--view-h) - 2 * var(--gutter)); overflow: hidden; }
+
 .cols {
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
   gap: var(--sp-4);
-  align-items: start;
+  align-items: stretch;
+  flex: 1;
+  min-height: 0;
 }
-@media (max-width: 900px) { .cols { grid-template-columns: 1fr; } }
+@media (max-width: 900px) {
+  .cols { display: flex; flex-direction: column; min-height: 0; }
+}
 
 /* ---------------------------------------------------------------- question */
 .step {
@@ -443,6 +454,8 @@ function describe(write) {
   font-weight: 650;
   color: var(--accent-bright);
 }
+.ask { min-height: 0; overflow-y: auto; }
+@media (max-width: 900px) { .ask { flex: 1 1 auto; } }
 .ask h2 { margin: 0 0 var(--sp-2); font-size: var(--fs-h2); }
 .prompt { margin: 0 0 var(--sp-1); font-size: 14.5px; }
 .hint { margin: 0 0 var(--sp-4); }
@@ -470,8 +483,8 @@ textarea { min-height: 118px; }
 .revisit { margin: var(--sp-4) 0 0; }
 
 /* ---------------------------------------------------------------- captured */
-.captured { position: sticky; top: calc(var(--header-h) + var(--gutter)); }
-@media (max-width: 900px) { .captured { position: static; } }
+.captured { min-height: 0; overflow-y: auto; }
+@media (max-width: 900px) { .captured { flex: 0 1 auto; max-height: 38vh; } }
 .captured h3 { margin: 0 0 var(--sp-3); font-size: var(--fs-h3); }
 
 .just {
