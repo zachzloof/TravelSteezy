@@ -14,10 +14,13 @@ facts about the run, not opinions about the prose. Only the genuinely qualitativ
 cases ("is this backpacker advice or brochure copy") use an LLM judge, and each of
 those states its own rubric and pass threshold in cases.jsonl.
 
-Results are written to evals/results/<label>.json and a human-readable summary to
-evals/results/<label>.md, so a run's score is a committed artifact rather than
-terminal scrollback. Each run gets a run_id that is attached to every Langfuse
-trace as a tag, so a failing case can be opened in Langfuse and inspected.
+Results are written to evals/results/<N>-<label>.json and a human-readable summary
+to evals/results/<N>-<label>.md, so a run's score is a committed artifact rather
+than terminal scrollback. <N> is auto-assigned as the next chronological number
+based on what's already in evals/results/, so results stay numbered in run order
+without needing to be renamed by hand. Each run gets a run_id that is attached to
+every Langfuse trace as a tag, so a failing case can be opened in Langfuse and
+inspected.
 """
 from __future__ import annotations
 
@@ -46,6 +49,25 @@ init_tracing()
 CASES_PATH = Path(__file__).parent / "cases.jsonl"
 RESULTS_DIR = Path(__file__).parent / "results"
 LOCK_PATH = Path(__file__).parent / ".eval_lock"
+
+
+def _numbered_label(label: str) -> str:
+    """Prefix a results label with the next chronological sequence number.
+
+    Results files are numbered in the order they were produced (see the 1-23
+    baseline in evals/results/), so a run's number tells you where it sits in
+    history at a glance. Auto-prefixing here keeps that sequence extending
+    correctly without relying on whoever runs the suite to number it by hand.
+    """
+    if re.match(r"\d+-", label):
+        return label
+    existing = [
+        int(m.group(1))
+        for f in RESULTS_DIR.glob("*.json")
+        if (m := re.match(r"(\d+)-", f.name))
+    ]
+    next_n = max(existing, default=0) + 1
+    return f"{next_n}-{label}"
 
 
 class ConcurrentRunError(RuntimeError):
@@ -902,6 +924,7 @@ async def main() -> int:
 
     run_id = f"eval-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}-{uuid.uuid4().hex[:6]}"
     label = args.label or run_id
+    label = _numbered_label(label)
 
     cases = load_cases(args.cases)
     account_ids = ensure_eval_accounts()
