@@ -85,6 +85,33 @@ class Settings:
         self.judge_model: str = os.getenv("JUDGE_MODEL", "gpt-4o")
         self.embedding_model: str = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
 
+        # --- "where next" candidate budget ----------------------------------
+        # How many destinations a country-scoped "where next" turn may carry
+        # into the specialist fan-out. The pool is the traveller's wishlist plus
+        # the five nearest countries (coverage.COUNTRY_NEIGHBOURS), and the
+        # wishlist has no upper bound - one account can hold twenty entries - so
+        # something has to stop one turn from putting twenty destinations into
+        # three specialist prompts at once. That is not just a cost worry: this
+        # org's real gpt-4o limit is 30,000 tokens/minute, and the rollback
+        # documented on specialist_model above is what tripping it looks like.
+        #
+        # Deliberately a setting rather than a constant. The right number
+        # depends on the model tier and rate limit in front of it, and those
+        # change without the code changing.
+        #
+        # runner.py splits this budget evenly between the two sources (10 -> 5
+        # wishlist + 5 neighbours, 8 -> 4 + 4), then lets either side spend the
+        # other's unused half, so a traveller with an empty wishlist still gets
+        # all five neighbours. The decision_weigher ranks the survivors and
+        # returns the best WEIGHER_TOP_N of them.
+        self.max_comparison_candidates: int = int(
+            os.getenv("MAX_COMPARISON_CANDIDATES", "10")
+        )
+        # How many ranked cards the weigher returns. The UI shows the top three
+        # and hides the rest behind a "show 3 more" toggle, so this being a
+        # multiple of three is not an accident.
+        self.weigher_top_n: int = int(os.getenv("WEIGHER_TOP_N", "6"))
+
         # --- rag -----------------------------------------------------------
         self.pinecone_api_key: str | None = os.getenv("PINECONE_API_KEY")
         self.pinecone_index: str = os.getenv("PINECONE_INDEX", "onward-rag")

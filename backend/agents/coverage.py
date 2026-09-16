@@ -175,42 +175,123 @@ def route_note(current_location: str | None) -> str:
     )
 
 
-# Overland neighbours within the covered corpus, used when we know the country
-# but not the town, so "where next" still gets a real answer.
+# The five nearest countries to each origin we can be standing in, used when we
+# know the country but not the town, so "where next" still gets a real answer.
+#
+# WHY THESE ARE NOT RESTRICTED TO THE CURATED CORPUS ANY MORE
+# -----------------------------------------------------------
+# This table used to hold at most three neighbours, and only ever countries the
+# seed corpus already covered. Both limits were wrong in the same way: they let
+# the shape of our knowledge base decide what counted as "nearby", so the answer
+# to "which country next" silently excluded the country a traveller was most
+# likely to actually cross into. Laos's real onward options include China;
+# Myanmar's include Bangladesh and India; the Philippines' nearest neighbour by
+# a wide margin is Taiwan. None of those could ever be offered.
+#
+# Six origins were worse than incomplete - Mongolia, Myanmar, South Korea,
+# Japan, Australia and New Zealand were deliberately given NO neighbours at all,
+# on the reasoning that they had no realistic *overland* pairing inside the
+# corpus. That reasoning confused two different things. A backpacker in Japan
+# asking where to go next has obvious answers (South Korea is a 1h flight or an
+# overnight ferry); what they did not have was curated data, and the honest
+# response to missing data is to go and find it, not to pretend the geography
+# does not exist. Those six now have five entries each like everyone else.
+#
+# So these are the five genuinely nearest countries by realistic backpacker
+# travel - land borders first, then short sea/air hops - regardless of whether
+# the corpus covers them. Twenty of the countries named below are NOT in
+# SUPPORTED, and that is deliberate and handled, not an oversight:
+#
+#   - coverage_note() still gags them by default: no figures, cannot rank first.
+#   - backend/rag/live_lookup.py's two-pass search-and-verify fills the gap at
+#     runtime, once per destination ever, and coverage_note treats a live hit as
+#     fully covered - see notes/03's "live lookup is real information, not a
+#     hedge". runner.py now runs that check for uncovered NEIGHBOURS as well as
+#     uncovered wishlist entries, which is what makes this table safe to widen.
+#   - With no TAVILY_API_KEY the degradation is honest rather than wrong: the
+#     new countries stay gagged, say plainly that we hold nothing for them, and
+#     lose to covered candidates. They are never described with invented
+#     specifics. (See "Degradation is a feature" in CLAUDE.md.)
+#
+# Deliberately NOT curated here instead: writing seed corpus entries for twenty
+# countries would have meant inventing dorm prices, visa fees and month-by-month
+# climate ratings for Vanuatu, the Solomon Islands and Kazakhstan out of
+# parametric memory. Every number in this repo's corpus was verified when it was
+# written; the live pipeline is the mechanism that keeps that true here.
+#
+# North Korea is the one geographic neighbour omitted on purpose (it is among
+# the five nearest to both South Korea and Japan): independent travel there is
+# not available to the people this app is for, so offering it as a "where next"
+# option would be actively unhelpful rather than merely uncovered.
 COUNTRY_NEIGHBOURS: dict[str, list[str]] = {
-    "thailand": ["laos", "cambodia", "malaysia"],
-    "laos": ["thailand", "vietnam", "cambodia"],
-    "vietnam": ["cambodia", "laos", "thailand"],
-    "cambodia": ["thailand", "vietnam", "laos"],
-    "malaysia": ["thailand", "indonesia", "philippines"],
-    "indonesia": ["malaysia", "philippines", "thailand"],
-    "philippines": ["malaysia", "vietnam", "indonesia"],
-    "nepal": ["india", "sri lanka", "thailand"],
-    "sri lanka": ["india", "nepal", "thailand"],
-    "india": ["nepal", "sri lanka", "bhutan"],
-    "bhutan": ["india", "nepal"],
-    # South America's classic overland "gringo trail" - every pairing below is a
-    # real, commonly-used land border crossing named in the corresponding route
-    # docs (e.g. Cusco -> La Paz, Uyuni -> San Pedro de Atacama, Mendoza <->
-    # Santiago, El Calafate <-> Puerto Natales, the Iguazu Falls Brazil/Argentina
-    # pairing, Quito -> Bogota).
-    "peru": ["bolivia", "ecuador"],
-    "bolivia": ["peru", "chile", "argentina"],
-    "chile": ["bolivia", "argentina"],
-    "argentina": ["chile", "brazil", "bolivia"],
-    "brazil": ["argentina"],
-    "colombia": ["ecuador"],
-    "ecuador": ["colombia", "peru"],
-    # Mongolia, Myanmar, South Korea, Japan, Australia and New Zealand are
-    # deliberately left without neighbours here: none has a realistic overland
-    # "nearby country" pairing within this corpus (Myanmar's land borders also
-    # carry their own safety caveats - see the visa doc; Korea/Japan/Australia/NZ
-    # are reachable from each other only by sea or air).
+    # --- Southeast Asia ---------------------------------------------------
+    # Thailand, Cambodia and Vietnam's lists are the mainland overland circuit
+    # already described in the route docs; China enters via the Boten (Laos) and
+    # Hekou/Youyi Guan (Vietnam) crossings, both standard backpacker routes.
+    "thailand": ["laos", "cambodia", "myanmar", "malaysia", "vietnam"],
+    "laos": ["thailand", "vietnam", "cambodia", "myanmar", "china"],
+    "vietnam": ["cambodia", "laos", "china", "thailand", "philippines"],
+    "cambodia": ["thailand", "vietnam", "laos", "malaysia", "myanmar"],
+    # Singapore is a causeway crossing from Johor Bahru, and Brunei a genuine
+    # land border on Borneo - both nearer to Malaysia than anywhere curated.
+    "malaysia": ["singapore", "thailand", "brunei", "indonesia", "vietnam"],
+    "indonesia": ["singapore", "malaysia", "timor-leste", "brunei", "australia"],
+    "philippines": ["taiwan", "malaysia", "brunei", "indonesia", "vietnam"],
+    "myanmar": ["thailand", "laos", "bangladesh", "india", "china"],
+    # --- South Asia -------------------------------------------------------
+    "nepal": ["india", "china", "bhutan", "bangladesh", "pakistan"],
+    "india": ["nepal", "bangladesh", "bhutan", "pakistan", "sri lanka"],
+    "bhutan": ["india", "nepal", "bangladesh", "china", "myanmar"],
+    "sri lanka": ["india", "maldives", "bangladesh", "nepal", "myanmar"],
+    # --- East Asia --------------------------------------------------------
+    # All three of these had no entry at all before. Japan/Korea/Mongolia are a
+    # short hop from each other and from China; Russia is genuinely among
+    # Mongolia's and Japan's nearest and is listed honestly, visa difficulty
+    # being a fact for the Logistics specialist to report rather than a reason
+    # to hide the option.
+    "japan": ["south korea", "taiwan", "china", "russia", "philippines"],
+    "south korea": ["japan", "china", "taiwan", "mongolia", "russia"],
+    "mongolia": ["china", "russia", "kazakhstan", "south korea", "japan"],
+    # --- Oceania ----------------------------------------------------------
+    "australia": [
+        "indonesia",
+        "timor-leste",
+        "papua new guinea",
+        "new zealand",
+        "solomon islands",
+    ],
+    "new zealand": ["australia", "fiji", "tonga", "vanuatu", "new caledonia"],
+    # --- South America ----------------------------------------------------
+    # The classic overland "gringo trail" pairings are unchanged and still real,
+    # commonly-used land crossings named in the route docs (Cusco -> La Paz,
+    # Uyuni -> San Pedro de Atacama, Mendoza <-> Santiago, El Calafate <->
+    # Puerto Natales, the Iguazu Falls Brazil/Argentina pairing, Quito ->
+    # Bogota). What is new is the near neighbours the corpus never covered:
+    # Uruguay and Paraguay in the Southern Cone, Panama and Venezuela off
+    # Colombia.
+    "peru": ["bolivia", "ecuador", "chile", "brazil", "colombia"],
+    "bolivia": ["peru", "chile", "argentina", "paraguay", "brazil"],
+    "chile": ["argentina", "bolivia", "peru", "paraguay", "uruguay"],
+    "argentina": ["uruguay", "chile", "paraguay", "bolivia", "brazil"],
+    "brazil": ["uruguay", "argentina", "paraguay", "bolivia", "peru"],
+    "colombia": ["ecuador", "panama", "venezuela", "peru", "brazil"],
+    "ecuador": ["colombia", "peru", "panama", "brazil", "bolivia"],
 }
 
+# Every origin above now carries five, so this is the number of neighbour slots
+# a "where next" turn can contribute. runner.py splits its candidate budget
+# evenly between these and the traveller's own wishlist.
+NEARBY_COUNTRY_LIMIT = 5
 
-def nearby_country_options(origin: str, limit: int = 3) -> list[str]:
-    """Plausible next countries from a covered country. Empty if uncovered."""
+
+def nearby_country_options(origin: str, limit: int = NEARBY_COUNTRY_LIMIT) -> list[str]:
+    """The nearest countries to ``origin``, nearest first. Empty if unknown.
+
+    Empty now means only "this origin is not a country we hold geography for" -
+    it no longer means "this origin has no realistic onward country", which is
+    what it used to mean for Japan, Australia and the other four (see the note
+    on COUNTRY_NEIGHBOURS above).
+    """
     return COUNTRY_NEIGHBOURS.get((origin or "").strip().lower(), [])[:limit]
 
 

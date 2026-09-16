@@ -752,3 +752,139 @@ on a turn the parser had misread - and a comparison missing one of the three
 inputs it is made of is not a cheaper answer, it is a wrong one. Verified:
 `rag-budget-numbers`, `rag-cites-source`, `season-nepal-monsoon` and
 `visa-vietnam-lead-time` all pass (`evals/results/42-all-specialists-on-compare.md`).
+
+## 53. The five nearest countries, the whole pool to the specialists, and the weigher picks the six
+
+Found by reading a trace, not by an eval failure: on a "which country next"
+turn, three countries appeared as candidates before any specialist had run, and
+nothing in the trace said where they came from or what had been dropped.
+
+The cause was `candidates = ranked[:3]` in `runner.py`. A code-side sort —
+season tier, then curated journey hours, then stored wishlist priority — chose
+the traveller's three destinations, and the specialists and the
+`decision_weigher` only ever saw the survivors. The sort ran before anything had
+considered budget band, pace, key interests or visa position, and `ranked` was a
+local that fell out of scope, so the discarded tail was never stored or traced.
+
+Three changes, which are one change:
+
+**`COUNTRY_NEIGHBOURS` now holds the five genuinely nearest countries**, not up
+to three drawn only from the covered corpus. The old table let the shape of the
+knowledge base define geography: Laos could never offer China, Myanmar never
+Bangladesh, the Philippines never Taiwan. Six origins — Japan, Australia, New
+Zealand, Mongolia, South Korea, Myanmar — had *no* neighbours at all, on the
+reasoning that they had no overland pairing inside the corpus. They have five
+each now. North Korea is the one geographic neighbour deliberately omitted.
+
+**The twenty newly-reachable countries are covered by `live_lookup`, not by new
+seed content.** Curating them would have meant inventing dorm prices, visa fees
+and monthly climate ratings for Vanuatu, the Solomon Islands and Kazakhstan;
+every number in this corpus was verified when written, and the live pipeline is
+what keeps that true. `coverage_note` already treats a verified live hit as
+fully covered. The live season check was widened from wishlist entries to any
+uncovered candidate, since "neighbours are always curated by construction" —
+the assumption it was written under — stopped being true. Without
+`TAVILY_API_KEY` the new countries stay honestly gagged rather than guessed at.
+
+**The pool goes to the specialists whole, and the weigher ranks it.** Wishlist
+plus the five nearest, split evenly by the new `MAX_COMPARISON_CANDIDATES`
+setting (10 → 5 and 5, 8 → 4 and 4, either side able to spend the other's unused
+half). The weigher returns its best `WEIGHER_TOP_N` (6); the UI shows three and
+reveals the rest behind "show 3 more". The cap is enforced in `_coerce_cards` as
+well as in the prompt, because "one card per candidate" is what a long prompt
+falls back to. The old sort is kept but now only orders the pool.
+
+The wishlist half is ordered by **stated priority, then distance from where they
+are**. The first draft of this sampled the wishlist uniformly at random, to stop
+a long wishlist showing the same top few forever. That was wrong and was
+corrected in the same session: priority is the one number the traveller set
+themselves, and a destination they marked 1 should not have to win a coin toss
+against one they marked 5. Distance breaks the tie, which is the case that
+actually matters — a traveller who marks ten places "must do" has told us they
+all matter equally and has not told us which to raise, and of two equally-wanted
+countries the nearer one is the cheaper, more plausible next hop. A random
+tiebreak survives underneath but only reaches entries identical on *both*
+priority and journey time, in practice a group of same-priority countries with no
+curated route data; everything we hold data for is fully determined, so eval
+reproducibility is preserved wherever there is route coverage.
+
+The remaining trade-off is stated rather than hidden: a comparison now carries up
+to ten destinations through three specialists instead of three, which is real
+token cost against this org's 30K TPM gpt-4o limit — hence the cap being a
+setting, not a constant. Measured with `tiktoken` against the real prompts: the
+weigher (the only gpt-4o caller in a production turn) goes from roughly 4.5K to
+8.5K tokens per comparison, so the 30K/min lane falls from about 6.5 comparison
+turns a minute to about 3.5. The specialists carry far more tokens but run on
+`gpt-4o-mini`, whose limit is an order of magnitude higher.
+
+None of this touches a question that names its own destinations. "Thailand or
+Vietnam?" still compares exactly those two: the two-or-more-destinations override
+forces `compare` before the pool block, which sits inside `if intent ==
+"discover"` and never runs — true even when the question is also country-scoped
+("my visa is running out, Laos or Cambodia?"). The pool answers an open "where
+next"; widening a specific question would answer a different one and pay for
+eight extra destinations of research to do it. Previously implicit, now asserted.
+
+Verified: 196 tests pass (up from 175, 21 new covering the five-nearest
+invariant, the budget split and its backfill edges, priority-then-distance
+ordering, only-exact-ties randomness, the wishlist/neighbour dedup, named
+destinations winning over the pool in both the plain and country-scoped cases,
+the full pool reaching the specialists, the long-wishlist cap, the card trim and
+rank renumbering), and the frontend builds.
+
+Eval suite re-scored at `--repeat 3`, all 39 cases, 117 attempts
+(`evals/results/43-wider-candidate-pool.md`): **38/39 cases passed all three
+runs (97%), 99% of individual attempts**. Every case that exercises this change
+passed 3/3 — `scope-country-question-answered-with-countries`,
+`scope-visa-expiry-forces-a-country-answer`, `discovery-uses-route-corpus`,
+`discovery-honest-about-unknown-origin`, `route-live-lookup-uncurated-pair`, and
+`honesty-unknown-destination`. That last one was the one to watch: it is the case
+the coverage guard was built for, and widening `COUNTRY_NEIGHBOURS` to name
+twenty uncovered countries was exactly the kind of change that could have
+undermined it.
+
+The single non-passing case, `tracking-does-not-relocate-you-on-a-placeless-turn`
+(2/3), is a **pre-existing defect, not a regression** — see decision 54.
+
+Mean turn latency across the run was ~12.4s, in line with the ~13s recorded in
+earlier result files, so the wider pool did not blow up latency the way the
+token arithmetic suggested it might.
+
+## 54. Every full-suite eval run before this one was `--repeat 1`, and it was hiding a real flake
+
+`tracking-does-not-relocate-you-on-a-placeless-turn` came back 2/3 in run 43,
+having been recorded PASS in runs 37, 38 and 41. The obvious reading is that
+decision 53 broke it. That reading is wrong, and checking rather than assuming is
+the whole point of this entry.
+
+Checked two ways.
+
+**The history.** Every prior full-suite run used `repeats: 1` — 36, 37, 38, 41 and
+42 all ran each case exactly once. `--repeat 3` was added back in decision 21 and
+then, in practice, almost never used for a full suite. A case with a ~2/3 pass
+rate clears a single run about two-thirds of the time, so three consecutive
+single-run PASSes is exactly what a long-standing flake looks like.
+
+**A control run.** The case was run at `--repeat 5` on `main`, with none of
+decision 53's changes present: **3/5, 60%** (`evals/results/44-baseline-tracking-flake.md`).
+Worse than the 2/3 on the branch. It is pre-existing, and the branch's result sits
+inside the noise band of the baseline rather than below it.
+
+The defect itself is real and still open: on a turn naming no place at all, the
+traveller's `current_location` is sometimes overwritten with a town from their
+route history (`current_location='chiang mai'` where the case requires
+`thailand` or `pai`). That is the bug report #3 family — the parser restating a
+location on a turn that named none — and `tracking.mentioned_in` is supposed to
+refuse exactly this. Intermittent, so something upstream of the guard is
+occasionally producing a *grounded-looking* write: "Chiang Mai" does appear in
+the traveller's history, so whatever path writes it is not the raw-message check.
+Not diagnosed here, and deliberately not fixed on a branch about candidate
+selection.
+
+The methodological point is the same one decision 52 made and is worth restating
+because it keeps recurring: **an intermittent failure is a defect with a
+nondeterministic trigger, not noise.** Note 06 has said so since decision 21;
+what was missing was the habit of actually running the full suite at `--repeat`.
+A single-run suite reports 38/39 and looks clean. The same code at `--repeat 3`
+reports 38/39 *and names a case that fails a third of the time.* Those are not
+the same result.

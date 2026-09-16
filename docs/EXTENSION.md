@@ -28,7 +28,7 @@ is keyed by `user_id` and cascades on account deletion.
 | Table | Purpose |
 |---|---|
 | `travel_history` | The route. Town-level, explicitly ordered, with the post-visit review attached. |
-| `wishlist` | Where they want to go, with priority and status (`open`/`visited`/`dropped`). |
+| `wishlist` | Where they want to go, with priority and status (`open`/`visited`/`dropped`). Open entries are half the candidate pool on a "where next" turn — see below. |
 | `user_interests` | Interests as rows, so agents can filter rather than parse a text blob. |
 | `recommendation_feedback` | Whether a surfaced suggestion was accepted or rejected. |
 | `places_cache` | Google Places responses, keyed by query hash, with a TTL. |
@@ -196,6 +196,31 @@ On a detected visit:
 The important negative rule: **asking about a place is not visiting it.** "What
 is Luang Prabang like? I might go one day" must not log a visit. That distinction
 is stated in the parser prompt and has its own eval case.
+
+### What the wishlist is actually used for
+
+An open wishlist entry is not just a list on the trip panel — it is **half the
+candidate pool** on a country-scoped "where next" turn. The pool is the wishlist
+plus the five nearest countries, split evenly by `MAX_COMPARISON_CANDIDATES`
+(10 → five of each), and every candidate in it is researched by all three
+specialists before the `decision_weigher` ranks them.
+
+Three behaviours worth knowing when reading a trace:
+
+- **`priority` is load-bearing, not decoration.** The wishlist half is ordered
+  by stated priority first. Only entries that tie on priority are separated by
+  anything else, so setting a priority genuinely changes which places get
+  researched.
+- **Ties are broken by distance from where they are**, using the same curated
+  overland/flight figures the Logistics specialist quotes. A traveller who
+  marks ten places priority 1 has said they all matter equally, so the five
+  nearest win the slots. The `candidates.pool` trace note records the split.
+- **Half the budget is reserved for the nearest countries** no matter how long
+  the wishlist gets, so a long wishlist can never crowd out the geography — and
+  an empty one still yields all five neighbours. A country that is both on the
+  wishlist and next door is researched once.
+
+Full reasoning in [notes/05](../notes/05-guards-and-prompting.md), decision 53.
 
 The harder negative rule, added after bug report #3: **a place the traveller did
 not type is not a visit either.** `tracking.mentioned_in()` checks every

@@ -120,6 +120,20 @@ function looksLikeRawJson(text) {
   return trimmed.startsWith('{') && trimmed.endsWith('}') && /"reply"\s*:/.test(trimmed)
 }
 
+// How many destination cards a comparison opens with. The backend hands us up
+// to WEIGHER_TOP_N (6 by default); showing all of them at once turns a reply
+// into a wall of cards that buries the recommendation the assistant actually
+// led with in its text.
+const INITIAL_CARDS = 3
+
+function visibleCards(m) {
+  return m.showAllCards ? m.comparison : m.comparison.slice(0, INITIAL_CARDS)
+}
+
+function hiddenCardCount(m) {
+  return Math.max(0, (m.comparison?.length || 0) - INITIAL_CARDS)
+}
+
 /** Everything that happens to the screen when a /chat response comes back. */
 function pushReply(res) {
   messages.value.push({
@@ -131,7 +145,12 @@ function pushReply(res) {
     agents: res.agents_fired || [],
     sources: res.retrieved_sources || [],
     traceId: res.trace_id,
-    showDetail: false
+    showDetail: false,
+    // The weigher returns its best six; three is what a reply should open with.
+    // The rest stay one click away rather than being thrown out - they were
+    // fully researched by the same specialists, and a traveller who does not
+    // like the top three has somewhere to go that is not "ask again".
+    showAllCards: false
   })
   lastTrace.id = res.trace_id || lastTrace.id
   if (res.profile) profile.value = res.profile
@@ -166,7 +185,7 @@ async function submitReview(payload) {
     messages.value.push({
       role: 'assistant',
       text: `Noted - ${payload.location} saved to your trip history.`,
-      comparison: [], agents: [], sources: [], showDetail: false
+      comparison: [], agents: [], sources: [], showDetail: false, showAllCards: false
     })
     await scrollDown()
   } catch (e) {
@@ -282,13 +301,23 @@ async function scrollDown() {
 
               <div v-if="m.comparison.length" class="cards auto-grid">
                 <DestinationCard
-                  v-for="(c, ci) in m.comparison"
+                  v-for="(c, ci) in visibleCards(m)"
                   :key="c.destination"
                   :card="c"
-                  :style="{ animationDelay: `${ci * 80}ms` }"
+                  :style="{ animationDelay: `${(ci % INITIAL_CARDS) * 80}ms` }"
                   class="pop-in"
                 />
               </div>
+
+              <button
+                v-if="hiddenCardCount(m)"
+                class="ghost small more-cards"
+                :aria-expanded="m.showAllCards ? 'true' : 'false'"
+                @click="m.showAllCards = !m.showAllCards"
+              >
+                <span class="chev" :class="{ open: m.showAllCards }" aria-hidden="true">›</span>
+                {{ m.showAllCards ? 'Show fewer' : `Show ${hiddenCardCount(m)} more` }}
+              </button>
 
               <button class="ghost small detail-toggle" @click="m.showDetail = !m.showDetail">
                 <span class="chev" :class="{ open: m.showDetail }" aria-hidden="true">›</span>
@@ -580,6 +609,21 @@ async function scrollDown() {
 .assistant-block { display: flex; flex-direction: column; gap: var(--sp-3); align-items: flex-start; width: 100%; }
 
 .cards { --min: 250px; width: 100%; gap: var(--sp-3); }
+
+/* Sits directly under the cards and above the quieter "N steps · N passages"
+   row, so the reading order is recommendation -> more options -> how we got
+   there. Shares the pill shape of .detail-toggle but keeps full text colour:
+   this is an offer to the traveller, not debug chrome. */
+.more-cards {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  padding: 5px 11px;
+  border-radius: var(--radius-pill);
+  border-color: var(--line);
+}
 
 /* ------------------------------------------------------------- the detail */
 .detail-toggle {
