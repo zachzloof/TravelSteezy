@@ -91,6 +91,7 @@ def health() -> JSONResponse:
             "auth": {
                 "admin_configured": bool(settings.admin_password),
                 "auto_approve": settings.admin_auto_approve,
+                "access_code_configured": bool(settings.access_code),
             },
         }
     )

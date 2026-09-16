@@ -12,6 +12,10 @@ from pydantic import BaseModel, Field, field_validator
 class RegisterRequest(BaseModel):
     username: str = Field(min_length=3, max_length=40)
     password: str = Field(min_length=8, max_length=72)
+    # Optional; checked against settings.access_code. A match auto-approves the
+    # account even when ADMIN_AUTO_APPROVE is off. Never required at the schema
+    # level - registration without one just falls back to the normal pending flow.
+    access_code: Optional[str] = None
 
     @field_validator("username")
     @classmethod

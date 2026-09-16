@@ -9,15 +9,18 @@ const router = useRouter()
 const mode = ref('login')
 const username = ref('')
 const password = ref('')
+const accessCode = ref('')
 const error = ref('')
 const notice = ref('')
 const busy = ref(false)
 const autoApprove = ref(false)
+const accessCodeConfigured = ref(false)
 
 onMounted(async () => {
   try {
     const health = await api.health()
     autoApprove.value = !!health?.auth?.auto_approve
+    accessCodeConfigured.value = !!health?.auth?.access_code_configured
   } catch {
     // /health being unreachable is surfaced on the first real request instead.
   }
@@ -33,7 +36,7 @@ async function submit() {
       tokens.setUser(res.access_token, res.username)
       router.push(route.query.next || '/chat')
     } else {
-      const res = await api.register(username.value.trim(), password.value)
+      const res = await api.register(username.value.trim(), password.value, accessCode.value.trim())
       if (res.access_token) {
         // Auto-approve is on: log straight in rather than showing a dead end.
         tokens.setUser(res.access_token, res.username)
@@ -103,6 +106,10 @@ function setMode(next) {
             minlength="8"
           />
         </div>
+        <div v-if="mode === 'register'" class="field">
+          <label for="ac">Access code <span class="muted small">(optional)</span></label>
+          <input id="ac" v-model="accessCode" autocomplete="off" />
+        </div>
         <button class="primary full" :disabled="busy" type="submit">
           {{ busy ? 'Working…' : mode === 'login' ? 'Log in' : 'Create account' }}
         </button>
@@ -111,6 +118,10 @@ function setMode(next) {
       <p v-if="mode === 'register'" class="muted small foot">
         <template v-if="autoApprove">
           This deployment approves new accounts automatically, so you can log in straight away.
+        </template>
+        <template v-else-if="accessCodeConfigured">
+          New accounts need admin approval unless you enter a valid access code, which
+          approves you instantly.
         </template>
         <template v-else>
           New accounts need admin approval before you can log in.

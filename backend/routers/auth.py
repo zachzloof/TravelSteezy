@@ -32,7 +32,8 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 @router.post("/register", response_model=RegisterResponse)
 def register(payload: RegisterRequest) -> RegisterResponse:
-    initial_status = "approved" if settings.admin_auto_approve else "pending"
+    code_matches = bool(settings.access_code) and payload.access_code == settings.access_code
+    initial_status = "approved" if (settings.admin_auto_approve or code_matches) else "pending"
 
     try:
         with get_conn() as conn:

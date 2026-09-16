@@ -43,6 +43,11 @@ class Settings:
         # Demo safety: when true, new registrations are approved immediately so a
         # cold marker in incognito is never blocked waiting on a human.
         self.admin_auto_approve: bool = _as_bool(os.getenv("ADMIN_AUTO_APPROVE"), False)
+        # Optional shared secret. When set, a registration submitted with a matching
+        # access code is approved instantly, same as ADMIN_AUTO_APPROVE but scoped to
+        # people who have the code rather than everyone. Leave unset to gate purely
+        # on admin approval.
+        self.access_code: str | None = os.getenv("ACCESS_CODE") or None
 
         # --- llm -----------------------------------------------------------
         self.openai_api_key: str | None = os.getenv("OPENAI_API_KEY")

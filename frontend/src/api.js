@@ -93,8 +93,12 @@ async function request(path, { method = 'GET', body, auth = 'user' } = {}) {
 export const api = {
   health: () => request('/health', { auth: null }),
 
-  register: (username, password) =>
-    request('/auth/register', { method: 'POST', body: { username, password }, auth: null }),
+  register: (username, password, accessCode) =>
+    request('/auth/register', {
+      method: 'POST',
+      body: { username, password, access_code: accessCode || undefined },
+      auth: null,
+    }),
   login: (username, password) =>
     request('/auth/login', { method: 'POST', body: { username, password }, auth: null }),
 

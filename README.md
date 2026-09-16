@@ -677,6 +677,7 @@ Open http://localhost:8000. For frontend hot-reload use `npm run dev` in
 | `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY` | optional |
 | `DEMO_USERNAME`, `DEMO_PASSWORD` | optional pre-approved demo account |
 | `ADMIN_AUTO_APPROVE` | `true` to skip approval gating for demo day |
+| `ACCESS_CODE` | optional; a registration with a matching access code is approved instantly, same as `ADMIN_AUTO_APPROVE` but scoped to people who have the code |
 
 `scripts/bootstrap.py` runs before uvicorn on every boot: it creates the schema,
 ingests the RAG corpus if the index is empty, and seeds the demo account if those
