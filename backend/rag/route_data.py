@@ -924,6 +924,64 @@ ROUTE_DOCS: list[dict[str, Any]] = [
         region="east asia",
     ),
     _route(
+        "Beijing", "China", ["Xian", "Datong", "Chengdu", "Shanghai", "Ulaanbaatar"],
+        """
+        Onward from Beijing. Xian (the Terracotta Army) is a straightforward 4.5-6h
+        high-speed train, USD 60-90 second class, and the natural first move for most
+        itineraries. Datong, 2h by high-speed rail, is an easy and underrated day-or-two
+        detour few first-timers take, for the Hanging Monastery and the Yungang Grottoes.
+        Chengdu (pandas, Sichuan food) is a longer 7-8h high-speed run or a 3h flight. For
+        the Trans-Mongolian route, the twice-weekly K23/K3 train to Ulaanbaatar takes about
+        27-30h - book well ahead, seats sell out fast in Mongolia's short summer season.
+        Shanghai is 4.5-5h by high-speed rail, the standard way to close a loop through the
+        east. Beijing itself is worth 4-5 days minimum: the Great Wall (Mutianyu is less
+        crowded and better maintained than Badaling), the Forbidden City, and the hutong
+        alleys around Houhai.
+        """,
+        region="east asia",
+    ),
+    _route(
+        "Xian", "China", ["Beijing", "Chengdu", "Guilin"],
+        """
+        Onward from Xian. Chengdu is 3.5-4h by high-speed rail, USD 45-65, the natural next
+        stop for pandas and Sichuan food. Beijing is 4.5-6h back the way you came. Guilin,
+        further south for the karst scenery, is a longer haul at around 10-11h by
+        high-speed rail - most people fly this leg instead (about 2h, often cheaper than
+        the train). Xian itself is a 2-3 day stop: the Terracotta Army (book the earliest
+        entry slot to beat the tour groups), the intact Ming-dynasty city wall (rentable
+        bikes to ride the full loop), and the Muslim Quarter's night food street.
+        """,
+        region="east asia",
+    ),
+    _route(
+        "Chengdu", "China", ["Xian", "Beijing", "Lhasa", "Kunming"],
+        """
+        Onward from Chengdu. Kunming, the gateway to Yunnan and the overland route toward
+        Laos/Vietnam/Myanmar, is 6-7h by high-speed rail or a 1.5h flight. Xian is 3.5-4h
+        back north by high-speed rail. Lhasa is reachable by a spectacular but long 36-40h
+        train over the Tibetan Plateau, or a 2.5h flight - either way, remember the Tibet
+        Travel Permit is mandatory and can only be arranged through a licensed agency well
+        in advance, so this is not a spontaneous add-on. Chengdu itself is worth 2-3 days
+        for the giant panda bases (go at opening time, when the pandas are most active) and
+        the Sichuan hotpot scene.
+        """,
+        region="east asia",
+    ),
+    _route(
+        "Guilin", "China", ["Yangshuo", "Kunming", "Beijing"],
+        """
+        Onward from Guilin. Nearly everyone's real destination is Yangshuo, 1h by shuttle
+        bus - the rice-terrace roads, a Yulong River bamboo raft trip (cheaper and quieter
+        than the main Li River cruise that starts in Guilin), and a genuine rock-climbing
+        scene make it worth 3-4 days on its own, more than Guilin city itself. From
+        Guilin/Yangshuo onward: Kunming, for the Yunnan extension toward Laos, Vietnam and
+        Myanmar, is a long 10-11h high-speed rail run or a 1.5-2h flight. Guilin city
+        itself is worth one day for the Li River cruise if short on time, or skip straight
+        to Yangshuo.
+        """,
+        region="east asia",
+    ),
+    _route(
         "Lima", "Peru", ["Huacachina", "Arequipa", "Cusco"],
         """
         Onward from Lima, the usual international arrival point and not a place to
@@ -1338,6 +1396,12 @@ EXTRA_CITIES: dict[str, str] = {
     # Mongolia (route doc covers ulaanbaatar).
     "gobi desert": "mongolia", "terelj national park": "mongolia",
     "lake khovsgol": "mongolia",
+    # China (route docs cover beijing/xian/chengdu/guilin as origins). Hong Kong and
+    # Macau are deliberately NOT mapped here - they run separate immigration, visa
+    # and currency regimes from mainland China, so resolving them to "china" would
+    # silently apply the wrong visa rules and coverage data.
+    "datong": "china", "shanghai": "china", "kunming": "china", "lhasa": "china",
+    "yangshuo": "china",
     # Bhutan (no route doc - see tips-bhutan-overview, no independent circuit).
     "thimphu": "bhutan", "paro": "bhutan", "punakha": "bhutan",
     # Australia (route docs cover sydney/cairns/melbourne/byron bay as origins).

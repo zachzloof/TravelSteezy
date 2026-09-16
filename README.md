@@ -336,9 +336,12 @@ address account B's row. Two eval cases and four unit tests assert this.
 
 ## 5. RAG
 
-Seed corpus: 52 curated country-level documents covering the Southeast Asia
-backpacker circuit, South Asia (Nepal, Sri Lanka, India, Bhutan) and Mongolia
-and Myanmar, in three namespaces:
+Seed corpus: 92 curated country-level documents across 25 countries - the
+Southeast Asia backpacker circuit, South Asia, East Asia (Japan, South Korea,
+Mongolia, China), South America and Oceania (Australia, New Zealand) - in
+three namespaces, plus 88 town-level `routes` documents (see
+[notes/10-corpus-coverage.md](notes/10-corpus-coverage.md) for the
+country-by-country depth rating):
 
 | Namespace | Contents | Read by |
 |---|---|---|

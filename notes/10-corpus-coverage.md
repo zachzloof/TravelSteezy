@@ -70,9 +70,10 @@ argue with the star count.
 | Chile | Yes | 1 doc | 1 doc | 3 | ★★★ | North (Atacama) vs. south (Patagonia) is as real a split as Peru's or Australia's but currently held in one doc - candidate for a future two-doc split |
 | Brazil | Split by nationality | 1 doc | 1 doc | 3 | ★★★ | Continent-sized country genuinely undercovered at 3 route docs - Amazon (Manaus), the northeast beaches beyond Salvador, and Sao Paulo are all unrepresented as origins |
 | South Korea | Yes | 1 doc | 1 doc | 3 | ★★★ | The country that triggered this whole review - now has a real, sourced month-by-month table instead of one live-search guess |
+| China | Split by nationality | 2 docs | 1 doc | 4 | ★★★ | Full triad present and the corridor/Yunnan seasonal split is genuinely warranted, but 4 route docs (Beijing/Xian/Chengdu/Guilin) is thin for a country this size - Yunnan beyond Kunming, the northeast, and the whole west (Xinjiang, Tibet's own independent-travel ban aside) are unrepresented as origins, the same honest gap Brazil has |
 | Bhutan | No (operator-arranged) | No (folded into tips) | 1 doc | 0 | ★ | Deliberately minimal by design - independent budget travel isn't possible there, see `tips-bhutan-overview`; not a gap to close, a fact to keep surfacing honestly |
 
-**24 countries covered**, 88 curated `visa`/`seasonal`/`tips` documents, 84
+**25 countries covered**, 92 curated `visa`/`seasonal`/`tips` documents, 88
 `routes` documents, ~320 known place names resolvable to a country (see
 `route_data.KNOWN_CITIES`).
 
@@ -96,28 +97,37 @@ wide, not because they're low-priority:
   were excluded from the 2026-09 batch as lower-traffic on the backpacker
   circuit than the seven added - worth revisiting if user demand says
   otherwise.
-- **China** - excluded specifically because of visa complexity (a real,
-  in-advance visa requirement for all six "Western" passports, no
-  exemption) that would need its own careful, well-sourced treatment rather
-  than being bolted onto the East Asia batch alongside visa-free Japan/Korea.
+
+**China was on this list until 2026-09-16 and no longer is** - see the History
+entry below. The "visa complexity" reasoning that kept it off the 2026-09
+batch turned out to be stale even at the time it was written: China's
+unilateral visa-free policy (Ireland/Australia/New Zealand since 2024, Canada
+and the UK added 17 February 2026) means five of the six "Western" passports
+this corpus tracks get 30 days visa-free, not the blanket in-advance
+requirement the old note claimed. Worth remembering as a general lesson, not
+just a China-specific correction: a reason for deferring a country is a
+claim about the world at a point in time, and claims like that can go stale
+just as easily as a number can - the fix, same as everywhere else in this
+file, is to verify before repeating it, not to trust a previous entry's
+confidence.
 
 ## Countries the app can now NAME but does not cover
 
 Read this before concluding the corpus is inconsistent with what the assistant
-offers. The curated corpus is still the 24 countries in the table above — that
+offers. The curated corpus is still the 25 countries in the table above — that
 number has not changed — but since decision 53 `coverage.COUNTRY_NEIGHBOURS`
 holds the five *genuinely* nearest countries to each origin rather than the
 nearest ones the corpus happened to cover. So a "where next" turn can put a
 destination in front of the specialists that has no row here:
 
-`china, singapore, brunei, timor-leste, taiwan, bangladesh, pakistan, maldives,
+`singapore, brunei, timor-leste, taiwan, bangladesh, pakistan, maldives,
 russia, kazakhstan, papua new guinea, solomon islands, fiji, tonga, vanuatu,
 new caledonia, paraguay, uruguay, panama, venezuela`
 
-Several were already on the "deliberately not covered" list above — China for
-its visa complexity, Uruguay/Paraguay/Venezuela as lower-traffic, Panama as
-part of the Central America gap. That reasoning stands for *curation*. It was
-never a reason to pretend they are not next door.
+Several were already on the "deliberately not covered" list above -
+Uruguay/Paraguay/Venezuela as lower-traffic, Panama as part of the Central
+America gap. That reasoning stands for *curation*. It was never a reason to
+pretend they are not next door.
 
 These are handled, not curated:
 
@@ -130,10 +140,11 @@ These are handled, not curated:
 
 **If you curate any of them, they move into the table above and out of this
 list** — and this is exactly the trigger the "How to extend this file" section
-below describes. The twenty were not curated in decision 53 because doing so
-would have meant writing unverified dorm prices, visa fees and monthly climate
-ratings for places like Vanuatu and Kazakhstan, which is what the rule at the
-top of this file exists to prevent.
+below describes, and exactly what happened to China. The remaining nineteen
+were not curated in decision 53 because doing so would have meant writing
+unverified dorm prices, visa fees and monthly climate ratings for places like
+Vanuatu and Kazakhstan, which is what the rule at the top of this file exists
+to prevent.
 
 ## How to extend this file
 
@@ -146,8 +157,8 @@ When adding a country:
    seasonal question explicitly and say why, the same way the India and Peru
    entries do - don't split by default, and don't skip a split a country
    clearly needs.
-4. Update the "24 countries" summary line and the "What's deliberately NOT
-   covered" list (remove what you just added).
+4. Update the "N countries covered" summary line below the table and the
+   "What's deliberately NOT covered" list (remove what you just added).
 5. Re-run `python -m scripts.ingest_rag --wipe` (full reingest, not additive
    - see the docstring on `backend/rag/store.wipe()` for why a wipe is
    needed rather than an additive upsert) and confirm the smoke test at the
@@ -168,3 +179,29 @@ When adding a country:
   countries: Peru, Colombia, Ecuador, Bolivia, Chile, Argentina, Brazil,
   South Korea, Japan, Australia, New Zealand. Corpus grew from 13 to 24
   countries, 53 to 88 curated documents, 60 to 84 route documents.
+- **2026-09-16: China added, and the reason it had been deferred turned out
+  to be stale.** Traced back from a live symptom: China was being dropped
+  from Logistics/Recommendations specialist reports even after the batching
+  fix in decision 56, and a Langfuse trace pointed at the real cause -
+  `climate.CLIMATE_TABLE` had no entry for China at all, so it fell into the
+  worst season tier by default and the coverage guard suppressed any figures
+  for it. The "deliberately not covered" reasoning above (visa complexity)
+  was checked rather than taken on trust, given the user's own suspicion it
+  might be out of date - and it was: China's unilateral visa-free policy
+  (Ireland/Australia/New Zealand since 2024, Canada and the UK added 17
+  February 2026) now covers five of the six Western passports this corpus
+  tracks, with the US the sole exception (240-hour transit or a standard
+  L-visa). Added the full triad - one visa document with the real
+  per-nationality split, two seasonal documents (the main
+  Beijing-Xian-Shanghai-Guilin corridor, and Yunnan/the southwest, which runs
+  on a genuinely different clock and carries the Tibet independent-travel
+  restriction and Xinjiang's climate extremes as their own callouts rather
+  than folding them into a false seasonal verdict) - plus a tips document,
+  four town-level route documents (Beijing, Xian, Chengdu, Guilin), and seven
+  country-pair route legs (Vietnam, Laos, Mongolia, Nepal, Myanmar, Japan,
+  South Korea) in `routes.py`, all covering the neighbours already in
+  `coverage.COUNTRY_NEIGHBOURS`'s new `"china"` entry. Rated ★★★ rather than
+  higher specifically because route-doc density is thin for a country this
+  size - the same honest gap Brazil has. Corpus grew from 24 to 25 countries,
+  88 to 92 curated documents, 84 to 88 route documents. See decision 58 in
+  `08-decisions-log.md`.

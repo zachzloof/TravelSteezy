@@ -989,3 +989,102 @@ Not yet covered by an automated test or eval case - the failure is
 nondeterministic (5/10 and 10/10 coverage reproduced on identical inputs
 across two runs before the fix), so a regression test needs multiple repeats
 to mean anything, per note 06's `--repeat` rule. See notes/05.
+
+## 57. A code-level completeness check backs up batching, instead of trusting a smaller batch to be reliable enough
+
+Decision 56 lowered the odds of a specialist silently dropping a candidate by
+shrinking how many it writes up per call. Verifying it, a further live repro
+found lower odds is not the same as zero: a 5-candidate batch of Logistics
+still dropped one candidate (a different one each run, no pattern), even
+though it had already called both required tools for every candidate in the
+batch - the same write-side symptom as decision 56, just less frequent at a
+smaller batch size. Guessing a batch size small enough to be "safe enough" was
+rejected as a strategy, for the same reason this codebase never guesses at
+model reliability elsewhere (notes/05's whole guard pattern): there is no
+batch size this proves zero for, only smaller-and-still-nonzero.
+
+Added `_missing_from_report(output, candidates)` in `runner.py`: a plain,
+deterministic check for which candidates never got their own "Score: X/10"
+line in a specialist's output (matched against whole lines containing
+"score:", not just anything after the literal word, so markdown formatting or
+the name appearing before "Score:" on the line doesn't produce a false miss;
+and matched only against Score lines, not any mention of the name anywhere in
+the report, since a destination can be name-dropped inside ANOTHER
+candidate's write-up - "reachable via Cambodia" - without being covered
+itself). `_run_one_specialist` now takes an optional `candidates` list and, if
+any are missing after a successful call, makes exactly one targeted follow-up
+call asking only about the missed names (`_fill_missing_candidates`), merging
+the result into the report. Applied everywhere a specialist runs against a
+known candidate list - both to each chunk inside `_run_specialist_batched` and
+to Weather's single whole-pool call, even though Weather has shown no dropout
+in any repro - the check itself is free (a few string comparisons), so there
+is no reason to leave a specialist unchecked just because it has not failed
+yet.
+
+Deliberately only one retry attempt, not a loop back into
+`_run_one_specialist`'s own two-attempt retry: a two-or-three-destination
+follow-up is exactly the load a Weather-sized ask handles reliably, so if that
+single call still misses something, a `trace.note` records it
+(`{step}.missing_candidates`, status "error") for a human to notice rather
+than spending a third call chasing it. Verified live: re-ran the full
+10-candidate comparison post-fix and saw no `missing_candidates` trace entries
+fire (batching alone was sufficient that run) - the guard is a safety net for
+the runs where it is not, and is inexpensive to leave in place permanently.
+
+## 58. China added to the corpus, after its exclusion reason turned out to be stale
+
+Traced back from a live symptom while verifying decision 57: China was still
+being dropped from specialist reports, and a Langfuse trace pointed at a
+different cause than batching entirely - `climate.CLIMATE_TABLE` had no entry
+for China at all. `runner.py`'s pool-ordering sort treats a country with no
+curated climate row as "unknown", ranked WORSE than "avoid" (the tiering
+decision 43's neighbour-widening already established), and `coverage_note`
+separately gags the specialists from stating any figure for it. China was
+losing on both counts before a single specialist had said anything about it.
+
+`notes/10-corpus-coverage.md` already explained the gap: China was left out of
+the 2026-09 expansion "specifically because of visa complexity (a real,
+in-advance visa requirement for all six Western passports, no exemption)."
+Asked to just patch the climate table and move on, the user pushed back on
+that reasoning directly rather than accepting it secondhand - and checking it
+(live search, not memory) found it stale: China's unilateral visa-free policy,
+extended in stages since 2023, now covers Ireland and Australia/New Zealand
+(since 2024) and, as of 17 February 2026, Canada and the UK too - five of the
+six "Western" passports this corpus tracks. Only the US lacks unilateral
+visa-free entry, and has the 240-hour transit-only allowance or a standard
+L-visa (USD 68-140, 4 business days) as its real options. The lesson generalised
+in notes/10 itself: a reason for deferring a country is a claim about the
+world at a point in time, and it can go stale exactly like a price or a
+climate table entry can - the fix is to verify before repeating it, not to
+inherit a previous entry's confidence.
+
+Given the reason for exclusion no longer held, did the full triad rather than
+patching just the climate table - a climate-only patch would have flipped
+China's coverage classification to "fully covered" (`SUPPORTED` is a plain
+`set(CLIMATE_TABLE) | set(KNOWN_DESTINATIONS)` union) while its visa and tips
+data stayed completely uncurated, silently defeating the honesty guard for
+the two knowledge pillars this app is most exposed on getting wrong. Added:
+one visa document with the real per-nationality split (`visa-china-western`);
+two seasonal documents, because the climate genuinely doesn't fit one verdict
+- the Beijing-Xian-Shanghai-Guilin corridor most backpackers travel runs a
+real four-season monsoon climate, while Yunnan/the southwest runs on its own
+gentler wet/dry cycle, and Tibet (independent travel banned outright, same
+restriction as Bhutan) and Xinjiang (climate extremes) are named as their own
+callouts rather than folded into either verdict; one tips document; four
+town-level route documents (Beijing, Xian, Chengdu, Guilin) in
+`route_data.py`; and seven country-pair legs (Vietnam, Laos, Mongolia, Nepal,
+Myanmar, Japan, South Korea) in `routes.py`, matching a new `"china"` entry in
+`coverage.COUNTRY_NEIGHBOURS` (South Korea took the fifth neighbour slot over
+the geographically-nearer Nepal specifically because Nepal's only land route
+runs through Tibet's permit-gated tour requirement, not a usable independent
+crossing). Rated ★★★ in notes/10, not higher, specifically because four route
+docs is thin for a country this size - the same honest gap Brazil's entry
+already names for itself.
+
+Re-ingested (`python -m scripts.ingest_rag --wipe`) and confirmed the smoke
+test still passes. Corpus grew from 24 to 25 countries, 88 to 92 curated
+documents, 84 to 88 route documents. Not yet covered by a dedicated eval case
+- worth adding one that compares China against a curated SE Asia neighbour
+and asserts the visa split (five nationalities visa-free, one not) comes
+through correctly rather than being flattened to "visa-free" or "needs a
+visa" for everyone.

@@ -244,11 +244,21 @@ COUNTRY_NEIGHBOURS: dict[str, list[str]] = {
     "bhutan": ["india", "nepal", "bangladesh", "china", "myanmar"],
     "sri lanka": ["india", "maldives", "bangladesh", "nepal", "myanmar"],
     # --- East Asia --------------------------------------------------------
-    # All three of these had no entry at all before. Japan/Korea/Mongolia are a
+    # All four of these had no entry at all before. Japan/Korea/Mongolia are a
     # short hop from each other and from China; Russia is genuinely among
     # Mongolia's and Japan's nearest and is listed honestly, visa difficulty
     # being a fact for the Logistics specialist to report rather than a reason
-    # to hide the option.
+    # to hide the option. China's own list leads with its two most-travelled
+    # overland SE Asia crossings (Laos, Vietnam) and the Trans-Mongolian route,
+    # all three curated in routes.py; Myanmar's land border is real but
+    # currently unreliable for independent travel (see that route pair's own
+    # note) and is still listed honestly rather than hidden. South Korea takes
+    # the fifth slot over the genuinely-nearer Nepal specifically because
+    # Nepal's only land route runs through Tibet, which requires an
+    # agency-arranged permit and tour rather than being a real independent
+    # crossing - a short flight/ferry hop beats a land border that isn't
+    # actually usable as one.
+    "china": ["vietnam", "laos", "mongolia", "myanmar", "south korea"],
     "japan": ["south korea", "taiwan", "china", "russia", "philippines"],
     "south korea": ["japan", "china", "taiwan", "mongolia", "russia"],
     "mongolia": ["china", "russia", "kazakhstan", "south korea", "japan"],

@@ -456,6 +456,43 @@ inputs across two runs before the fix), so a regression test needs multiple
 repeats to mean anything, same as the eval suite's `--repeat` requirement in
 note 06.
 
+## A smaller batch lowers the odds of a dropped candidate; it doesn't zero them
+
+Direct follow-on from the guard above, and the same lesson this whole file
+keeps re-teaching: don't trust the model to self-report completeness, check
+in code. Re-verifying the batching fix live found a 5-candidate batch of
+Logistics could still drop one candidate - a different one each run, tools
+already called for it - just less often than at 10. There is no batch size
+that proves zero; only smaller-and-still-nonzero, the same reason this
+codebase doesn't try to guess a "safe enough" prompt for anything else it
+guards.
+
+`_missing_from_report(output, candidates)` in `runner.py` is a plain,
+deterministic check: which candidates never got their own "Score: X/10" line.
+Matched against whole lines containing "score:" rather than only text
+following the literal word, so markdown formatting or the destination name
+coming before "Score:" on the line doesn't produce a false miss; matched only
+against Score lines, not any mention of the name anywhere in the report,
+because a destination can be name-dropped inside ANOTHER candidate's write-up
+("reachable via Cambodia") without being covered itself - counting that as
+coverage would under-report the exact failure this guard exists to catch.
+
+`_run_one_specialist` takes an optional `candidates` list and, if any are
+missing from a successful call's output, makes exactly one targeted
+follow-up call asking only about the missed names (`_fill_missing_candidates`),
+merging the result in. Applied everywhere a specialist runs against a known
+candidate list - every chunk inside `_run_specialist_batched`, and Weather's
+single whole-pool call too, even though Weather has shown no dropout in any
+repro - the check itself costs nothing (a few string comparisons), so there's
+no reason to leave a specialist unchecked just because it hasn't failed yet.
+
+Deliberately one retry only, not a loop back into `_run_one_specialist`'s own
+two-attempt retry: a two-or-three-destination follow-up is exactly the load a
+Weather-sized ask handles reliably. If that single call still misses
+something, a `trace.note` (`{step}.missing_candidates`, status "error")
+records it for a human to notice rather than spending a third call chasing
+it. See decision 57.
+
 ## What a guard does *not* do
 
 Worth being explicit: none of these guards can stop a model from getting

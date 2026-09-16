@@ -225,6 +225,23 @@ CLIMATE_TABLE: dict[str, dict[str, Any]] = {
             12: ("avoid", "Deep winter. Not a travel window outside Ulaanbaatar itself."),
         },
     },
+    "china": {
+        "summary": "Too large for one season: Yunnan/southwest mild year-round on its own May-Oct wet season; the Beijing-Xian-Shanghai-Guilin corridor most backpackers travel runs a real four-season monsoon climate. Chinese New Year (shifting, Jan/Feb) and National Day 'Golden Week' (1-7 Oct) jam domestic transport and prices regardless of the weather.",
+        "months": {
+            1: ("mixed", "North (Beijing, Xian) is cold and dry, often below freezing; Yunnan and the south are mild and pleasant, the best window there. Chinese New Year falls in January some years and triggers the world's largest annual human migration - book trains and flights weeks ahead or avoid travelling the week either side of it."),
+            2: ("mixed", "Same north/south split as January; Chinese New Year (a shifting lunar date) most often falls this month - the single most disruptive week of the year for domestic transport and prices nationwide, not just where it's celebrated."),
+            3: ("mixed", "Transitional. Beijing shakes off winter but stays windy and dry with occasional spring dust storms blowing in from the Gobi; Yunnan and the Guilin/Guangxi region are already warm and comfortable."),
+            4: ("good", "Genuinely good almost everywhere: mild and dry in the north, warm and still dry in the south before the wet season arrives."),
+            5: ("good", "Last reliably dry month before the Yangtze basin's wet season; north is warm and pleasant, Yunnan starting to see its first wet-season showers."),
+            6: ("mixed", "'Meiyu' (plum rain) season begins across the Yangtze basin (Shanghai, Guilin) - overcast and humid with persistent drizzle; Yunnan's wet season is underway too, though its altitude keeps it milder than the lowlands; the north stays hot and mostly dry."),
+            7: ("avoid", "Peak heat and humidity in the Yangtze basin and the north (Beijing/Xian regularly 35C+), typhoon season building on the southeast coast, and this is also the domestic summer holiday, so trains, flights and hotels spike everywhere at once."),
+            8: ("avoid", "Same combination as July - extreme heat inland, typhoon risk on the coast, peak domestic holiday crowds - July and August are the two months most worth avoiding on a first trip."),
+            9: ("mixed", "Typhoon risk on the southeast coast continues into early September but eases through the month; the north turns genuinely pleasant as autumn arrives."),
+            10: ("good", "Widely considered the best month nationally - clear autumn skies, comfortable temperatures from Beijing to Guilin. The first week is the exception: National Day 'Golden Week' (1-7 October) is the other mass domestic travel holiday, packing every major sight and train and roughly doubling hotel prices - plan around it, not during it."),
+            11: ("good", "Still excellent in most of the country; the north is cooling fast toward winter by the end of the month, Yunnan stays mild."),
+            12: ("mixed", "North is cold, dry and often below freezing (Beijing); Yunnan and the far south stay mild - a genuine two-speed month depending on which half of the country is meant."),
+        },
+    },
     "myanmar": {
         "summary": "Cool/dry Nov-Feb is best; hot Mar-May; monsoon Jun-Oct heaviest on the coasts, lighter around Bagan/Mandalay's rain shadow.",
         "months": {

@@ -430,6 +430,43 @@ VISA_DOCS = [
         nationalities=WESTERN_PASSPORTS,
     ),
     _doc(
+        "visa-china-western",
+        """
+        China unilateral visa-free entry: UK, Irish, Australian, Canadian and New Zealand
+        passport holders get 30 days visa-free for tourism, business, family visits and
+        transit - no application, no fee. Canada and the UK were only added to this list on
+        17 February 2026, joining Ireland, Australia and New Zealand (added 2024) and some 70
+        other nationalities; the policy has been extended in stages since its 2023 launch and
+        is currently confirmed through 31 December 2026, with further extensions likely but
+        not guaranteed - check before booking a trip near that date. Registering your
+        accommodation with local police within 24 hours of arrival is a real legal
+        requirement, normally handled automatically if staying somewhere used to foreign
+        guests.
+
+        US passport holders are the exception among these six: there is no unilateral
+        visa-free entry for US citizens. The practical options are the 240-hour (10-day)
+        visa-free transit - valid only when entering AND leaving through one of 65 designated
+        ports, with a confirmed onward ticket to a genuine third country or region (Hong Kong
+        and Macau both count), and NOT valid in Tibet, Xinjiang, Inner Mongolia, Gansu,
+        Qinghai or Ningxia - or a standard L-visa tourist visa applied for in advance through
+        a Chinese consulate (via the COVA online system; the passport itself must be
+        submitted and collected in person), costing around USD 140 for regular 4-business-day
+        processing, cut to a reciprocal USD 68 for the 10-year multiple-entry version through
+        31 December 2026. No supporting itinerary or hotel booking is required for the
+        standard application any more (dropped January 2024) - just the passport, form and a
+        photo.
+
+        Independent travel is NOT possible in the Tibet Autonomous Region for any
+        nationality: a Tibet Travel Permit, arranged only through a licensed agency alongside
+        a private guide and vehicle, is mandatory even for Lhasa alone - budget for an
+        organised tour if that is part of the plan, the same restriction as Bhutan.
+        """,
+        "visa",
+        "china",
+        region="east asia",
+        nationalities=WESTERN_PASSPORTS,
+    ),
+    _doc(
         "visa-peru-western",
         """
         Peru visa exemption, with a real split by nationality that is easy to flatten
@@ -816,6 +853,61 @@ SEASONAL_DOCS = [
         "mongolia",
         region="east asia",
         monsoon_months=[],
+    ),
+    _doc(
+        "seasonal-china",
+        """
+        The Beijing-Xian-Shanghai-Guilin corridor most backpackers actually travel runs a
+        real four-season climate with two holidays that matter more than the weather does.
+        Winter (December-February) is cold and dry in the north - Beijing and Xian regularly
+        drop below freezing, with biting wind chill - while spring (March-May) and autumn
+        (September-November) are the genuine sweet spots: mild, mostly dry, and the best
+        light for the Great Wall, the Terracotta Army and Guilin's karst scenery alike.
+        Summer (June-August) is hot and humid basin-wide, worsened by the Yangtze basin's
+        "meiyu" (plum rain) drizzle in June and building southeast-coast typhoon risk in
+        July-August; it is also China's domestic school-holiday season, so trains, flights
+        and hotels are at their most expensive and hardest to book regardless of the weather.
+
+        The two dates that matter more than any season: Chinese New Year (a shifting lunar
+        date, usually late January to mid-February) triggers the world's largest annual
+        human migration as the country travels home at once - high-speed rail and flights
+        sell out weeks ahead and many small businesses close for the week - and National Day
+        "Golden Week" (1-7 October) does the same on the domestic tourism side, doubling
+        hotel prices at every major sight in the country. Plan around both rather than
+        through them if at all possible; October outside that first week is otherwise close
+        to the best month to be in China.
+        """,
+        "seasonal",
+        "china",
+        region="east asia",
+        monsoon_months=[6, 7, 8],
+    ),
+    _doc(
+        "seasonal-china-yunnan",
+        """
+        Yunnan and the southwest borderlands (Kunming, Dali, Lijiang, Shangri-La - the
+        overland gateway toward Laos, Myanmar and Vietnam) run on a gentler clock than the
+        rest of the country: Kunming's altitude earns it the nickname "Spring City" and
+        keeps temperatures mild year-round, with a clear wet season roughly May to October
+        (afternoon storms, landslide risk on the mountain roads to Shangri-La and Tiger
+        Leaping Gorge) and a dry, sunny, genuinely excellent November-to-April window that
+        runs opposite the cold, dry winter most of the rest of the country has.
+
+        Tibet and Xinjiang are a different proposition entirely and worth naming separately
+        rather than folding into a seasonal verdict: independent travel in the Tibet
+        Autonomous Region is not possible for any nationality (an agency-arranged permit,
+        guide and vehicle are mandatory, the same restriction as Bhutan - see the visa
+        document), and its short travel season (roughly May-October, with mountain passes on
+        the Sichuan-Tibet Highway snowbound outside it) matters less than that access rule
+        does. Xinjiang's desert climate is genuinely extreme - Turpan is one of the hottest
+        places in China in summer, the north can drop far below freezing in winter - and
+        sits far enough off the standard backpacker circuit that most travellers are better
+        served treating it as its own trip than as an add-on to this one.
+        """,
+        "seasonal",
+        "china",
+        region="east asia",
+        monsoon_months=[5, 6, 7, 8, 9, 10],
     ),
     _doc(
         "seasonal-myanmar",
@@ -1461,6 +1553,39 @@ TIPS_DOCS = [
         "mongolia",
         region="east asia",
         budget_shoestring_usd=30,
+    ),
+    _doc(
+        "tips-china",
+        """
+        China backpacker notes. Daily budget: shoestring USD 30-40, mid USD 50-80. Hostel
+        dorms run roughly USD 8-15 (CNY 60-110) a night, cheaper outside Beijing/Shanghai.
+        High-speed rail is the backbone of an independent trip - fast, punctual and genuinely
+        pleasant - and a real budget line at USD 30-80 (CNY 220-600) a journey; book through
+        the official 12306 app/site (an English version exists) or Trip.com, and note that
+        China's "real-name" ticketing system means every ticket is tied to your passport
+        number and checked with it at the gate. The classic first-timer loop is Beijing (Great
+        Wall, Forbidden City) - Xian (Terracotta Army) - Chengdu (pandas, and the jump-off for
+        Sichuan) - Guilin/Yangshuo (karst river scenery, the single most-loved landscape
+        stretch in the country for backpackers) - Shanghai, with a Yunnan extension (Kunming -
+        Dali - Lijiang) for those heading toward the Laos/Vietnam/Myanmar border overland.
+
+        Two practical things trip up first-timers more than any cost or route: first, the
+        "Great Firewall" blocks Google, Gmail, WhatsApp, Instagram, most Western news and
+        much else - a paid VPN, installed and tested BEFORE arrival (VPN provider websites
+        are themselves often blocked once inside), is close to essential for staying in
+        contact home or navigating with anything other than Chinese map apps. Second, cash
+        and foreign cards are both increasingly marginal - Alipay and WeChat Pay, both now
+        offering a "foreign card" linking option, cover everything from street food to
+        subway fares, and many small vendors genuinely cannot take anything else; set one up
+        with an international card before relying on cash. Scam watch: the "tea house/art
+        exhibition" scam targeting solo travellers near major tourist sites (a friendly local
+        invites you for tea or to see student art, then presents a wildly inflated bill) is
+        still the most common backpacker-targeted scam in Beijing and Shanghai.
+        """,
+        "tips",
+        "china",
+        region="east asia",
+        budget_shoestring_usd=35,
     ),
     _doc(
         "tips-myanmar",

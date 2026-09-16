@@ -982,6 +982,27 @@ def _rate_limit_backoff_seconds(exc: Exception, attempt: int) -> float | None:
     return min(2.0 * attempt, 10.0)
 
 
+def _missing_from_report(output: str, candidates: list[str]) -> list[str]:
+    """Which of ``candidates`` never got their own "Score: X/10" line in
+    ``output``.
+
+    Cheap and deterministic - this codebase's usual answer to "the model
+    might not have done what it was told" (see notes/05's guard pattern)
+    rather than trusting a specialist's own output to be complete. Checked
+    against whole lines containing "score:", not just anything following the
+    literal word, so formatting variance (dashes, markdown bold, the name
+    coming before "Score:" on the line) doesn't matter. Matching against ANY
+    mention of the name in the whole report would under-count misses - a
+    destination can be name-dropped inside ANOTHER candidate's write-up
+    ("reachable via Cambodia") without actually being covered itself.
+    """
+    score_lines = [line for line in output.splitlines() if "score:" in line.lower()]
+    return [
+        c for c in candidates
+        if c.strip() and not any(c.strip().lower() in line.lower() for line in score_lines)
+    ]
+
+
 async def _run_one_specialist(
     agent: LlmAgent,
     key: str,
@@ -990,6 +1011,7 @@ async def _run_one_specialist(
     user_id: int,
     trace: Trace,
     step_name: str | None = None,
+    candidates: list[str] | None = None,
 ) -> tuple[str, str, list[str], str | None]:
     """Run one specialist. Never raises: a failure is reported, not propagated.
 
@@ -1005,6 +1027,17 @@ async def _run_one_specialist(
     show up as distinct rows in this app's own "what ran" panel rather than
     both being labelled e.g. "logistics_agent". It never affects the real,
     auto-instrumented ADK/OpenAI span Langfuse records for the call.
+
+    ``candidates``, when given, is checked against the output via
+    ``_missing_from_report`` afterwards. Reproduced live even with batching in
+    place (see ``_run_specialist_batched``): a specialist can retrieve data for
+    every candidate in a batch - including a genuinely uncovered one recovered
+    by the live-search fallback - and still silently drop ONE of them from the
+    final write-up, no error, no pattern to which one. Smaller batches lower
+    the odds; they do not make it zero. Any candidate missing its own "Score:"
+    line gets exactly one targeted follow-up call asking only about the missed
+    names, merged into the report - a code-level check closing the gap, not
+    another instruction hoping the model complies.
     """
     name = step_name or agent.name
     last_error: Exception | None = None
@@ -1018,6 +1051,13 @@ async def _run_one_specialist(
 
             trace.set_span_summary(name, output[:180] or "(no output)")
             if output.strip():
+                if candidates:
+                    missing = _missing_from_report(output, candidates)
+                    if missing:
+                        output, tool_calls = await _fill_missing_candidates(
+                            agent, key, state, message, user_id, trace,
+                            name, missing, output, tool_calls,
+                        )
                 return key, output, tool_calls, None
             last_error = RuntimeError("specialist produced no output")
         except Exception as exc:  # noqa: BLE001
@@ -1029,6 +1069,45 @@ async def _run_one_specialist(
             if wait:
                 await asyncio.sleep(wait)
     return key, "", [], f"{type(last_error).__name__}: {last_error}"
+
+
+async def _fill_missing_candidates(
+    agent: LlmAgent,
+    key: str,
+    state: dict[str, Any],
+    message: str,
+    user_id: int,
+    trace: Trace,
+    step_name: str,
+    missing: list[str],
+    output: str,
+    tool_calls: list[str],
+) -> tuple[str, list[str]]:
+    """One targeted follow-up call for candidates a specialist's report
+    silently skipped (see ``_missing_from_report``), merged into ``output``.
+
+    Deliberately just one attempt, not a loop back into
+    ``_run_one_specialist``'s own retry - a two-or-three-destination follow-up
+    is exactly the load Weather-sized asks handle reliably, so if this one
+    call still misses something, the trace note is left for a human to
+    notice rather than spending another retry chasing it.
+    """
+    retry_state = dict(state)
+    retry_state["candidates"] = ", ".join(missing)
+    _, retry_output, retry_calls, retry_error = await _run_one_specialist(
+        agent, key, retry_state, message, user_id, trace,
+        step_name=f"{step_name}.retry-missing",
+    )
+    recovered = bool(retry_output.strip()) and not retry_error
+    trace.note(
+        f"{step_name}.missing_candidates",
+        f"{', '.join(missing)} -> {'recovered' if recovered else 'still missing'}",
+        status="ok" if recovered else "error",
+    )
+    if retry_output.strip():
+        output = f"{output}\n\n{retry_output}"
+        tool_calls = tool_calls + retry_calls
+    return output, tool_calls
 
 
 def _chunk(items: list[str], size: int) -> list[list[str]]:
@@ -1069,7 +1148,9 @@ async def _run_specialist_batched(
     """
     chunks = _chunk(candidates, batch_size)
     if len(chunks) <= 1:
-        return await _run_one_specialist(agent, key, state, message, user_id, trace)
+        return await _run_one_specialist(
+            agent, key, state, message, user_id, trace, candidates=candidates
+        )
 
     async def _run_chunk(index: int, chunk: list[str]) -> tuple[str, list[str], str | None]:
         chunk_state = dict(state)
@@ -1082,6 +1163,7 @@ async def _run_specialist_batched(
             user_id,
             trace,
             step_name=f"{agent.name}[{index + 1}/{len(chunks)}]",
+            candidates=chunk,
         )
         return output, tool_calls, error
 
@@ -1174,7 +1256,9 @@ async def _run_comparison(
                     candidates or [], settings.specialist_batch_size,
                 )
                 if key in BATCHED_KEYS
-                else _run_one_specialist(agent, key, state, message, user_id, trace)
+                else _run_one_specialist(
+                    agent, key, state, message, user_id, trace, candidates=candidates
+                )
                 for agent, key in specialists
             )
         )
