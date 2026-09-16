@@ -989,6 +989,7 @@ async def _run_one_specialist(
     message: str,
     user_id: int,
     trace: Trace,
+    step_name: str | None = None,
 ) -> tuple[str, str, list[str], str | None]:
     """Run one specialist. Never raises: a failure is reported, not propagated.
 
@@ -998,29 +999,106 @@ async def _run_one_specialist(
     survives a Task being spawned mid-context, copying it at creation time -
     is what nests this call's auto-instrumented ADK activity under that span
     correctly, with no manual wiring.
+
+    ``step_name`` overrides the local trace step's label - used by
+    ``_run_specialist_batched`` so two concurrent chunks of the same agent
+    show up as distinct rows in this app's own "what ran" panel rather than
+    both being labelled e.g. "logistics_agent". It never affects the real,
+    auto-instrumented ADK/OpenAI span Langfuse records for the call.
     """
+    name = step_name or agent.name
     last_error: Exception | None = None
     for attempt in (1, 2):
         try:
-            with trace.local_step(agent.name):
+            with trace.local_step(name):
                 text, final_state, tool_calls = await _run_agent(
                     agent, state, message, str(user_id), adk_session_id(user_id)
                 )
                 output = str(final_state.get(key) or text or "")
 
-            trace.set_span_summary(agent.name, output[:180] or "(no output)")
+            trace.set_span_summary(name, output[:180] or "(no output)")
             if output.strip():
                 return key, output, tool_calls, None
             last_error = RuntimeError("specialist produced no output")
         except Exception as exc:  # noqa: BLE001
             last_error = exc
             logger.warning(
-                "specialist %s attempt %d failed: %s", agent.name, attempt, exc
+                "specialist %s attempt %d failed: %s", name, attempt, exc
             )
             wait = _rate_limit_backoff_seconds(exc, attempt)
             if wait:
                 await asyncio.sleep(wait)
     return key, "", [], f"{type(last_error).__name__}: {last_error}"
+
+
+def _chunk(items: list[str], size: int) -> list[list[str]]:
+    if size <= 0 or len(items) <= size:
+        return [items]
+    return [items[i : i + size] for i in range(0, len(items), size)]
+
+
+async def _run_specialist_batched(
+    agent: LlmAgent,
+    key: str,
+    state: dict[str, Any],
+    message: str,
+    user_id: int,
+    trace: Trace,
+    candidates: list[str],
+    batch_size: int,
+) -> tuple[str, str, list[str], str | None]:
+    """Like ``_run_one_specialist``, but splits ``candidates`` into chunks of
+    at most ``batch_size`` and merges the reports.
+
+    Logistics and Recommendations ask for far more detail per destination than
+    Weather does (visa + two route options + border notes, or a mandatory
+    budget/activities/transport/warning/citation block, versus Weather's score
+    line + 2-4 sentences). Reproduced live at ``max_comparison_candidates=10``
+    on ``specialist_model`` (``gpt-4o-mini``): both agents called their
+    required tool once for every candidate every time, but silently stopped
+    WRITING about some of them before finishing - Logistics dropped one
+    candidate a turn, Recommendations as few as half of ten in one run, a
+    different subset each time. It is candidate-count-times-output-load
+    exceeding the cheap model's capacity, not a broken tool call, so no batch
+    is ever asked to fully write up more than ``batch_size`` destinations.
+    See ``settings.specialist_batch_size`` and notes/05.
+
+    A chunk that fails outright does not discard the others - same
+    isolate-don't-propagate rule ``_run_one_specialist`` already follows one
+    level up, just applied within one specialist instead of across the three.
+    """
+    chunks = _chunk(candidates, batch_size)
+    if len(chunks) <= 1:
+        return await _run_one_specialist(agent, key, state, message, user_id, trace)
+
+    async def _run_chunk(index: int, chunk: list[str]) -> tuple[str, list[str], str | None]:
+        chunk_state = dict(state)
+        chunk_state["candidates"] = ", ".join(chunk)
+        _, output, tool_calls, error = await _run_one_specialist(
+            agent,
+            key,
+            chunk_state,
+            message,
+            user_id,
+            trace,
+            step_name=f"{agent.name}[{index + 1}/{len(chunks)}]",
+        )
+        return output, tool_calls, error
+
+    results = await asyncio.gather(
+        *(_run_chunk(i, chunk) for i, chunk in enumerate(chunks))
+    )
+
+    outputs = [output for output, _, _ in results if output.strip()]
+    tool_calls = [call for _, calls, _ in results for call in calls]
+    errors = [error for _, _, error in results if error]
+
+    merged_output = "\n\n".join(outputs)
+    # Only surface an error if EVERY chunk failed - a partial report (some
+    # candidates covered, one batch lost to a transient failure) is still
+    # useful to the weigher and is not the same failure as an empty report.
+    combined_error = "; ".join(errors) if errors and not merged_output else None
+    return key, merged_output, tool_calls, combined_error
 
 
 async def _run_comparison(
@@ -1084,10 +1162,19 @@ async def _run_comparison(
     }
     all_tool_calls: list[str] = []
     failures: list[str] = []
+    # Weather's per-destination ask is light enough that it covers a full
+    # candidate list reliably on specialist_model - only the two heavier
+    # specialists get split into batches. See _run_specialist_batched.
+    BATCHED_KEYS = {"logistics_assessment", "recommendations"}
     with trace.span("agents.fan_out", metadata={"specialists": names}) as fan_span:
         outcomes = await asyncio.gather(
             *(
-                _run_one_specialist(agent, key, state, message, user_id, trace)
+                _run_specialist_batched(
+                    agent, key, state, message, user_id, trace,
+                    candidates or [], settings.specialist_batch_size,
+                )
+                if key in BATCHED_KEYS
+                else _run_one_specialist(agent, key, state, message, user_id, trace)
                 for agent, key in specialists
             )
         )

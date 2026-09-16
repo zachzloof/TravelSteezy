@@ -185,6 +185,15 @@ run:
    three destinations before a single specialist ran, and nothing recorded what
    it had dropped. That sort still runs, but it now only *orders* the pool. See
    [notes/05](notes/05-guards-and-prompting.md).
+
+   Logistics and Recommendations ask for far more detail per destination than
+   Weather does, and at a full 10-candidate pool were reproduced silently
+   dropping candidates from the WRITTEN report even though they'd called the
+   required tool for every one of them. `runner._run_specialist_batched` splits
+   their candidate list into chunks of `SPECIALIST_BATCH_SIZE` (5) and merges
+   the reports, so no single call is asked to fully write up more than that
+   many destinations; Weather runs the whole pool in one call, since it never
+   showed the problem. See [notes/05](notes/05-guards-and-prompting.md).
 7. **Run the chosen agent(s)**, append the turn to history, return the reply.
 
 ### Agent reference

@@ -407,6 +407,55 @@ scores evenly across all three; which axis matters more depends on what this
 traveller actually said they care about, which is the judgment the weigher
 exists to make. See decision 55.
 
+## A specialist can drop candidates from its writing even when it retrieved all of them
+
+Found by direct reproduction (three live calls per specialist, isolated from
+`run_turn`), not by an eval failure: at `MAX_COMPARISON_CANDIDATES=10`,
+Logistics called `search_visa_rules` + `check_route` for every candidate but
+its written report covered only 9 of 10, a different one dropped each run.
+Recommendations was worse - one run called `search_backpacker_tips` for all
+10 and wrote up only 5, the next run covered all 10 with the identical prompt
+and code. Weather, same model, same 10 candidates, dropped none across
+repeated runs.
+
+The difference is per-destination output load, not the tool calls. Weather
+asks for a score line plus 2-4 sentences. Logistics asks for a visa
+type/cost/duration/lead-time, two route options with hours and cost, and
+border notes. Recommendations asks for a mandatory
+budget/activities/transport/warning block plus citations, on top of its own
+KEY-interest instructions to actively search multiple live tools per
+destination. `specialist_model` defaults to `gpt-4o-mini` for the documented
+rate-limit reasons above (see "Model selection" in note 01) - reliable at 2-4
+sentences times ten, not reliable at Recommendations' full block times ten.
+The retrieval step (the tool call) and the writing step (the final synthesis)
+draw on different parts of the model's capacity, and this is the writing step
+running out first while the retrieval step completes normally - which is why
+"it called the tool" is not evidence the report is complete.
+
+**Fix:** `runner._run_specialist_batched` splits a specialist's candidate list
+into chunks of at most `settings.specialist_batch_size` (default 5) and merges
+the per-chunk reports, so no single call is ever asked to fully write up more
+than that many destinations. Applied only to Logistics and Recommendations
+(the `BATCHED_KEYS` set in `_run_comparison`) - Weather showed no dropout at
+10 candidates in one call, so batching it would only double its cost for no
+reliability gain. A chunk that fails outright doesn't discard the others: the
+merge keeps whatever chunks succeeded and only reports an error if every chunk
+came back empty, the same isolate-don't-propagate rule `_run_one_specialist`
+already applies one level up (per-specialist, not per-chunk).
+
+Deliberately not fixed by raising `specialist_model` instead, even though the
+knob already exists: note 01 measured that exact change tripping this org's
+30K TPM `gpt-4o` rate limit at a 62% failure rate, at a smaller candidate
+count than today's default of 10 - larger prompts now would make that worse,
+not better. Batching stays on the cheap model and fixes the actual bottleneck
+(per-call output load) instead of paying for a bigger model to paper over it.
+
+Not yet covered by an automated test or eval case - the failure is
+nondeterministic (reproduced at both 5/10 and 10/10 coverage on identical
+inputs across two runs before the fix), so a regression test needs multiple
+repeats to mean anything, same as the eval suite's `--repeat` requirement in
+note 06.
+
 ## What a guard does *not* do
 
 Worth being explicit: none of these guards can stop a model from getting

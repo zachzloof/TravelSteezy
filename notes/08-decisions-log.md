@@ -930,3 +930,62 @@ data path, so nothing in `runner.py` changed.
 Not yet covered by an eval case — worth adding one that checks a destination
 with an uneven score spread (e.g. high season score, low logistics score) isn't
 mechanically outranked by one that scores evenly-but-lower across all three.
+
+## 56. Logistics and Recommendations batch their candidates in code; Weather doesn't need to
+
+Reported live, right after decision 55 shipped the per-specialist scores:
+Weather ranked all 10 candidates at `MAX_COMPARISON_CANDIDATES=10`, Logistics
+and Recommendations did not. Reproduced directly (three isolated specialist
+calls, same 10-candidate state, no `run_turn` involved): Logistics called both
+its required tools for every candidate but its written report covered 9 of 10,
+a different one dropped each run; Recommendations called `search_backpacker_tips`
+for all 10 both times but wrote up only 5 the first run and all 10 the second,
+identical prompt and code both times. Weather, same `specialist_model`
+(`gpt-4o-mini`), same candidate count, dropped nothing across repeated runs.
+
+Root cause is per-destination output load, not a missed tool call. Weather asks
+for a score line plus 2-4 sentences per destination. Logistics asks for a full
+visa (type/cost/duration/lead time) plus two route options plus border notes.
+Recommendations asks for a mandatory budget/activities/transport/warning block
+plus citations, on top of actively working multiple live tools per destination
+for KEY interests. At ten candidates, gpt-4o-mini's retrieval step (the tool
+call) kept completing while its writing step silently ran out of capacity
+before covering every candidate - two different capabilities of the same
+model, and the retrieval one held up better under load than the writing one.
+
+Two options considered and the tradeoff, echoing note 01's `specialist_model`
+history exactly:
+
+- **Raise `SPECIALIST_MODEL` to `gpt-4o`.** The knob already exists for this.
+  Rejected again for the same measured reason it was rejected before: note 01
+  found this move trips this org's 30K TPM `gpt-4o` rate limit at a 62%
+  failure rate, measured at a *smaller* candidate count than today's default
+  of 10 - bigger prompts now would make that failure mode more likely, not
+  less. Trading a silent dropout for an outright failed turn is not a fix.
+- **Split each specialist's candidate list into batches in code, merge the
+  reports.** Built. `runner._run_specialist_batched` chunks the candidate list
+  into groups of at most `settings.specialist_batch_size` (default 5,
+  `SPECIALIST_BATCH_SIZE` in `.env`) and runs one call per chunk via
+  `asyncio.gather`, same fan-out-and-isolate shape `_run_comparison` already
+  uses across the three specialists, just applied one level down inside a
+  single specialist. Stays on `gpt-4o-mini` throughout - no rate-limit
+  exposure, no cost-tier change - and fixes the actual bottleneck (output load
+  per call) instead of paying for a bigger model to paper over it.
+
+Applied only to Logistics and Recommendations (`BATCHED_KEYS` in
+`_run_comparison`). Weather is deliberately left on one call for the whole
+pool: it showed zero dropout at 10 candidates across every repro run, so
+batching it would double its cost for no reliability gain. Verified live after
+the fix, twice: both specialists covered 10/10 candidates on both runs, where
+before the fix Recommendations had ranged from 5/10 to 10/10 on the identical
+prompt.
+
+A chunk failing outright doesn't discard the others - `_run_specialist_batched`
+merges whatever chunks succeeded and only reports an error if every chunk came
+back empty, mirroring the isolate-don't-propagate rule `_run_one_specialist`
+already applies across the three specialists, now also applied within one.
+
+Not yet covered by an automated test or eval case - the failure is
+nondeterministic (5/10 and 10/10 coverage reproduced on identical inputs
+across two runs before the fix), so a regression test needs multiple repeats
+to mean anything, per note 06's `--repeat` rule. See notes/05.

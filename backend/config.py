@@ -111,6 +111,25 @@ class Settings:
         # and hides the rest behind a "show 3 more" toggle, so this being a
         # multiple of three is not an accident.
         self.weigher_top_n: int = int(os.getenv("WEIGHER_TOP_N", "6"))
+        # Logistics and Recommendations ask for far more per destination than
+        # Weather does (visa + two route options + border notes; or a mandatory
+        # budget/activities/transport/warning/citation block, versus Weather's
+        # score line + 2-4 sentences). Reproduced live at max_comparison_candidates
+        # =10 on specialist_model (gpt-4o-mini): both agents called their
+        # required tool once per candidate every time, but silently stopped
+        # WRITING about some of them - Logistics dropped one candidate per turn,
+        # Recommendations as few as half of ten in one run, a different subset
+        # each time. Weather, same model, same candidate count, dropped none -
+        # it is candidate-count-times-output-load hitting the cheap model's
+        # capacity, not a broken tool call. `runner._run_specialist_batched`
+        # splits a specialist's candidate list into chunks of this size and
+        # merges the reports, so no single call is ever asked to fully write up
+        # more than this many destinations. Kept off gpt-4o rather than sized
+        # down: notes/01-agent-architecture.md's "Model selection" section
+        # already found that upgrading these three agents' model tier trips
+        # this org's 30K TPM rate limit at a 62% failure rate, and that was
+        # measured at a smaller candidate count than today's default of 10.
+        self.specialist_batch_size: int = int(os.getenv("SPECIALIST_BATCH_SIZE", "5"))
 
         # --- rag -----------------------------------------------------------
         self.pinecone_api_key: str | None = os.getenv("PINECONE_API_KEY")
