@@ -463,6 +463,23 @@ CLIMATE_TABLE: dict[str, dict[str, Any]] = {
             12: ("mixed", "Rio/south summer season and holiday crowds building; Amazon in its wet season."),
         },
     },
+    "south africa": {
+        "summary": "Opposite systems, like Australia: the Cape (Mediterranean climate) is wet in winter (May-Aug) and dry/busy in summer (Nov-Mar); Kruger/the interior is dry May-Sep (best game viewing) and wet Oct-Apr (green, more malaria risk). Shoulder months (Apr, Sep) tend to favour both halves at once.",
+        "months": {
+            1: ("mixed", "Cape Town at its hot, dry, crowded summer peak - excellent beach weather but the priciest fortnight of the year. Kruger deep in its wet, green season: lusher but harder game viewing and higher malaria risk."),
+            2: ("mixed", "Same split as January, slightly thinner post-New-Year crowds in the Cape. Kruger still wet."),
+            3: ("mixed", "Cape still good and cooling into a pleasant autumn; Kruger's rains beginning to ease toward month's end."),
+            4: ("good", "Genuine sweet spot in the Cape - mild, dry, thin crowds, good value. Kruger's dry season is starting and game viewing is improving."),
+            5: ("mixed", "Cape's wet winter begins - real rain and wind, though whale season is starting at Hermanus. Kruger's dry season is established - already good for game viewing."),
+            6: ("good", "Kruger's dry season in full swing - excellent, cool clear days, cold nights. Cape is properly wet and cold but low-season prices and building whale season offset it."),
+            7: ("good", "Kruger at its dry-season best. Cape is at its wettest and coldest month, worth the trade for cheap Winelands time and prime whale watching."),
+            8: ("good", "Kruger still excellent, thin dry-season bush. Cape's rain easing late in the month; whale season peaking at Hermanus."),
+            9: ("good", "Widely one of the best nationwide windows: Kruger's dry season winding down but still strong, Cape turning into a genuine spring sweet spot with the Namaqualand wildflower bloom."),
+            10: ("mixed", "Cape in full, excellent spring. Kruger's first rains are returning, bush greening up and game viewing starting to get harder."),
+            11: ("mixed", "Cape excellent and warming toward summer, before the December price spike. Kruger's wet season is established - hot, thundery, higher malaria risk."),
+            12: ("mixed", "Cape's summer peak begins with Christmas/New Year crowds and prices. Kruger deep in its green season - lush and lower-key game viewing, though impala lambing draws its own interest."),
+        },
+    },
 }
 
 BAD_RATINGS = {"avoid"}

@@ -982,6 +982,67 @@ ROUTE_DOCS: list[dict[str, Any]] = [
         region="east asia",
     ),
     _route(
+        "Kunming", "China", ["Dali", "Lijiang", "Shangri-La", "Chengdu"],
+        """
+        Onward from Kunming, the "Spring City" and gateway to Yunnan. Dali (the old
+        Bai-minority town on Erhai Lake) is 4-5h by bus or a quicker 2h on the
+        high-speed rail link. Lijiang, a further 2-3h from Dali by bus or train, is
+        the jump-off point for the 2-4 day Tiger Leaping Gorge trek, one of the
+        best budget treks in China. Shangri-La, another 3-4h beyond Lijiang, sits
+        above 3,200m - genuine altitude sickness risk, acclimatise a day before any
+        hiking, and its Tibetan-influenced culture and monasteries are a preview of
+        the Tibetan Plateau without the permit Tibet itself requires. Back toward
+        the standard corridor, Chengdu is 6-7h by high-speed rail or a 1.5h flight.
+        For continuing overland out of China: the China-Laos high-speed railway to
+        Vientiane (roughly 10-13h) starts here, and the Hekou-Lao Cai border
+        crossing into Vietnam is a further, less-travelled option. Kunming itself
+        is worth a day: the Stone Forest karst formations (1.5h out of town) and
+        Yunnan's distinctive "crossing-the-bridge" rice noodles, found almost
+        nowhere else in the country.
+        """,
+        region="east asia",
+    ),
+    _route(
+        "Shanghai", "China", ["Suzhou", "Hangzhou", "Beijing", "Guilin"],
+        """
+        Onward from Shanghai. Suzhou, famous for its classical Ming-era gardens, is
+        a cheap 25-minute high-speed rail hop - genuinely doable as a day trip.
+        Hangzhou, for West Lake and its surrounding tea hills, is 45min-1h and
+        rewards an overnight more than Suzhou does. Beijing is 4.5-5h by high-speed
+        rail, the standard way to close a Beijing-Xian-Guilin-Shanghai loop; Guilin
+        is a similar distance southwest. For onward international travel without
+        flying, a twice-weekly ferry to Osaka, Japan runs about 45 hours from
+        around USD 150-200 for the cheapest berth - a slow, genuinely cheap
+        alternative for anyone not in a hurry. Shanghai itself rewards 3-4 days:
+        the Bund's riverside skyline view of Pudong, Yu Garden and the old town,
+        the French Concession's tree-lined streets and cafe scene, and Zhujiajiao
+        water town as an easy half-day trip. The Maglev train to Pudong airport
+        (a top speed of 430km/h over its 8-minute run) is worth riding once just
+        for what it is, even if the metro is cheaper for the same trip.
+        """,
+        region="east asia",
+    ),
+    _route(
+        "Harbin", "China", ["Beijing"],
+        """
+        Onward from Harbin - worth naming honestly as a narrow-appeal detour, not
+        a standard stop on the Beijing-Xian-Guilin-Shanghai corridor. Almost
+        everyone who comes this far north does so for one specific event: the
+        Harbin International Ice and Snow Festival, roughly early January to late
+        February, when city-block-sized illuminated ice sculptures and buildings
+        make it one of the most striking winter spectacles anywhere - and one of
+        the coldest, routinely -20C or lower, genuine expedition-grade layers
+        required, not a normal winter coat. Outside that window there is
+        meaningfully less reason to come. Harbin's Russian-colonial history as a
+        Trans-Siberian Railway town is visible year-round in Central Street's
+        architecture and Saint Sophia Cathedral, and the Siberian Tiger Park
+        outside town is open regardless of season. Onward, Beijing is a long haul:
+        about 8h by high-speed rail or a 2-2.5h flight, the practical way most
+        people actually make the connection back to the main corridor.
+        """,
+        region="east asia",
+    ),
+    _route(
         "Lima", "Peru", ["Huacachina", "Arequipa", "Cusco"],
         """
         Onward from Lima, the usual international arrival point and not a place to
@@ -1338,6 +1399,169 @@ ROUTE_DOCS: list[dict[str, Any]] = [
         """,
         region="south america",
     ),
+    _route(
+        "Sao Paulo", "Brazil", ["Rio de Janeiro", "Ilhabela", "Paraty", "Ouro Preto"],
+        """
+        Onward from Sao Paulo. Most backpackers pass through fast rather than
+        linger - Rio is the city Brazil trips are actually built around - but
+        Sao Paulo has South America's best food and nightlife scene by a wide
+        margin (Vila Madalena and Augusta for bars, some of the continent's
+        best pizza and Japanese food, a legacy of the world's largest Japanese
+        diaspora community) if a night or two fits the route. Rio is 5-6h by
+        bus or a cheap 1h flight - fly it if time is short. Ilhabela, a car-
+        free island known for sailing and surf, is 4-5h by bus and boat.
+        Paraty, the colonial coastal town also reachable from Rio, is about
+        4h. Ouro Preto, a UNESCO colonial mining town in Minas Gerais with
+        some of Brazil's finest Baroque churches, is 5-6h and a genuinely
+        underrated add-on most first-time itineraries skip entirely. In the
+        city itself: the MASP art museum on Avenida Paulista, the Beco do
+        Batman street-art alley in Vila Madalena, and Ibirapuera Park for a
+        break from the traffic. The same beach-day caution as Rio applies to
+        valuables in crowded public spaces here.
+        """,
+        region="south america",
+    ),
+    _route(
+        "Manaus", "Brazil", ["Amazon Jungle Lodges", "Anavilhanas Archipelago", "Belem"],
+        """
+        Onward from Manaus, the only realistic gateway to the Brazilian
+        Amazon - no road connects it to the rest of the country, so every
+        route in or out is by river or by air. Jungle lodge stays (2-4 nights
+        is standard, booked through a Manaus-based operator rather than
+        independently) range from budget riverside lodges to higher-end
+        options, and dry season (roughly May-October) suits trail-based
+        wildlife walks while wet season (especially around February) favours
+        canoe trips through flooded forest (igapo) instead - see the Brazil
+        seasonal document. The Meeting of the Waters (Encontro das Aguas), a
+        half-day boat trip from the city, is the single most popular outing:
+        the black Rio Negro and the pale, sediment-heavy Rio Solimoes run
+        side by side for kilometres without mixing. The Anavilhanas
+        Archipelago, the world's second-largest river-island archipelago, is
+        a further half-to-full day upriver. For the genuinely committed,
+        multi-day hammock-class riverboats run down the Amazon to Belem near
+        the river's mouth - slow, cheap, and one of the classic South America
+        bucket-list journeys rather than a normal transport leg. Manaus
+        itself is worth a day for the ornate Teatro Amazonas opera house, a
+        rubber-boom-era relic that looks completely out of place in the
+        middle of the rainforest.
+        """,
+        region="south america",
+    ),
+    _route(
+        "Jericoacoara", "Brazil", ["Fortaleza", "Lencois Maranhenses", "Natal"],
+        """
+        Onward from Jericoacoara ("Jeri"), a car-free village of sand streets
+        that is Brazil's kitesurfing and windsurfing capital - the steady
+        trade winds peak roughly July/August through December. There is no
+        paved road in: the standard approach from Fortaleza is a 5-6h
+        bus-and-4x4-dune-buggy combination, part of the town's appeal rather
+        than a flaw. Continuing along the coast toward Sao Luis, the Lencois
+        Maranhenses National Park - white sand dunes pooling with rainwater
+        lagoons, at their fullest and bluest roughly June-September after the
+        rains - is a further, genuinely rugged multi-day journey and one of
+        Brazil's most photographed but least-visited landscapes precisely
+        because it is so inconvenient to reach. Natal is the other direction
+        along the coast, a longer haul with its own dune and beach scene.
+        Jeri itself rewards 3-5 days: sunset from the Duna do Por do Sol
+        (Sunset Dune) right in town, the Pedra Furada rock arch a beach walk
+        away, and dune-buggy tours to freshwater lagoons (Lagoa do Paraiso,
+        Lagoa Azul) further out. This is the Northeast beach scene beyond the
+        Salvador circuit most first-time Brazil itineraries never reach.
+        """,
+        region="south america",
+    ),
+    _route(
+        "Cape Town", "South Africa", ["Stellenbosch", "Hermanus", "Knysna", "Johannesburg"],
+        """
+        Onward from Cape Town, usually the first stop and worth 4-5 days on its
+        own. Stellenbosch and Franschhoek, the Winelands, are an easy 45min-1h
+        drive or a wine-tram/tour day trip. Hermanus, for shore-based whale
+        watching (Southern Rights, roughly June-November, peak August-
+        November), is 1.5-2h. West of the city, Cape Point and Boulders
+        Beach's African penguin colony make a full, worthwhile day trip.
+        Gansbaai, the shark-cage-diving hub, is a further hour past Hermanus.
+        Heading east, Knysna and the rest of the Garden Route are the start of
+        a multi-day self-drive or Baz Bus hop-on-hop-off run along the N2 (see
+        the tips document for what Baz Bus does and doesn't cover in 2026).
+        For Kruger and the interior, Johannesburg is a 2h flight - there is no
+        practical overland option most backpackers actually use. Cape Town
+        itself: Table Mountain by cableway (weather-dependent, closes in high
+        wind) or the free Platteklip Gorge hike, Robben Island's ferry tour,
+        Bo-Kaap's colourful streets, and the District Six Museum. Long Street's
+        nightlife is popular and fine in a group; keep valuables minimal
+        walking back late and stick to well-lit routes, the same rule as any
+        big-city nightlife strip in this corpus.
+        """,
+        region="africa",
+    ),
+    _route(
+        "Johannesburg", "South Africa", ["Hazyview", "Pretoria", "Durban", "Cape Town"],
+        """
+        Onward from Johannesburg, the main international gateway and usually a
+        short stop rather than a destination. Hazyview and the rest of the
+        Kruger/Panorama Route area is 5-6h by self-drive or shuttle along the
+        N4, or a 1h flight to Kruger Mpumalanga International or Skukuza
+        airport if time is short. Pretoria is a quick 45min-1h for the Union
+        Buildings and jacaranda-lined streets (spectacular late
+        September-October when they bloom). Durban is a long 6-7h drive or a
+        cheap 1.5h flight. Cape Town is a 2h flight, the standard way to link
+        the two ends of a South Africa trip. Johannesburg itself is worth 1-2
+        days rather than a quick transit: the Apartheid Museum, a half-day
+        Soweto tour with an established community-based operator (Vilakazi
+        Street, the Hector Pieterson Memorial), and Constitution Hill. Most
+        backpackers base themselves in Sandton, Rosebank or Melville rather
+        than the CBD and rely on Uber/Bolt rather than walking between areas
+        after dark - see the tips document for the specifics behind that
+        advice.
+        """,
+        region="africa",
+    ),
+    _route(
+        "Hazyview", "South Africa", ["Kruger National Park", "Blyde River Canyon", "Eswatini", "Johannesburg"],
+        """
+        Onward from Hazyview, the standard backpacker base for a self-drive
+        Kruger safari. Kruger's Numbi or Phabeni gates are 20-30min away;
+        self-drive day passes (a conservation fee per person per day) make
+        independent Big Five game viewing genuinely accessible on a budget,
+        no guided tour required, though gate times are strict (roughly
+        sunrise to sunset, checked on exit) and dry-season months
+        (May-September, see the seasonal document) give noticeably better
+        sightings. The Panorama Route - God's Window, Bourke's Luck Potholes,
+        and the Blyde River Canyon, one of the largest "green" (vegetated)
+        canyons on Earth - is an easy half-day loop by car. Continuing east,
+        the Eswatini (formerly Swaziland) border is 2-3h, a common add-on for
+        travellers with time and the right onward visa arrangements; Maputo,
+        Mozambique is a longer haul from here but a classic combination from
+        Kruger for beach time afterward. Back to Johannesburg is 5-6h by road.
+        Malaria prophylaxis is a real consideration for this whole area - see
+        the tips document - unlike Cape Town or Johannesburg itself.
+        """,
+        region="africa",
+    ),
+    _route(
+        "Durban", "South Africa", ["Drakensberg", "Wild Coast", "St Lucia", "Johannesburg"],
+        """
+        Onward from Durban, the KwaZulu-Natal gateway and, unlike Cape Town's
+        cold Atlantic water, a warm Indian Ocean beach city year-round. The
+        Drakensberg (uKhahlamba), for hiking beneath South Africa's highest
+        peaks and the Amphitheatre, is about 3h inland. South down the Wild
+        Coast toward Coffee Bay is a genuinely slow, bumpy 4-5h - part of its
+        appeal as one of the least-developed, most backpacker-loved stretches
+        of coastline in the country, strong on Xhosa culture and cliff
+        scenery, light on infrastructure. North, St Lucia and the
+        iSimangaliso Wetland Park (hippos and crocodiles visible on an
+        estuary boat trip, plus turtle-nesting season roughly
+        November-February) is about 3h, often combined with the Hluhluwe-
+        iMfolozi game reserve nearby - the reserve where the modern rhino-
+        conservation movement began. Johannesburg is a 6-7h drive or a cheap
+        1.5h flight. Durban itself: the Golden Mile beachfront, South
+        Africa's strongest surf culture, and bunny chow (a curry served in a
+        hollowed-out bread loaf), a legacy of the city's large Indian
+        community and one of the country's genuinely distinctive local
+        dishes.
+        """,
+        region="africa",
+    ),
 ]
 
 # origin city -> known onward hops, used by the discovery tool as a fallback when
@@ -1396,12 +1620,14 @@ EXTRA_CITIES: dict[str, str] = {
     # Mongolia (route doc covers ulaanbaatar).
     "gobi desert": "mongolia", "terelj national park": "mongolia",
     "lake khovsgol": "mongolia",
-    # China (route docs cover beijing/xian/chengdu/guilin as origins). Hong Kong and
-    # Macau are deliberately NOT mapped here - they run separate immigration, visa
-    # and currency regimes from mainland China, so resolving them to "china" would
-    # silently apply the wrong visa rules and coverage data.
-    "datong": "china", "shanghai": "china", "kunming": "china", "lhasa": "china",
-    "yangshuo": "china",
+    # China (route docs cover beijing/xian/chengdu/guilin/kunming/shanghai/harbin as
+    # origins). Hong Kong and Macau are deliberately NOT mapped here - they run
+    # separate immigration, visa and currency regimes from mainland China, so
+    # resolving them to "china" would silently apply the wrong visa rules and
+    # coverage data.
+    "datong": "china", "lhasa": "china", "yangshuo": "china",
+    "dali": "china", "lijiang": "china", "shangri-la": "china",
+    "suzhou": "china", "hangzhou": "china",
     # Bhutan (no route doc - see tips-bhutan-overview, no independent circuit).
     "thimphu": "bhutan", "paro": "bhutan", "punakha": "bhutan",
     # Australia (route docs cover sydney/cairns/melbourne/byron bay as origins).
@@ -1445,10 +1671,24 @@ EXTRA_CITIES: dict[str, str] = {
     "ushuaia": "argentina", "salta": "argentina", "puerto iguazu": "argentina",
     "iguazu falls": "argentina", "cordoba argentina": "argentina", "cafayate": "argentina",
     "perito moreno glacier": "argentina",
-    # Brazil (route docs cover rio de janeiro/salvador/florianopolis as origins).
+    # Brazil (route docs cover rio de janeiro/salvador/florianopolis/sao paulo/
+    # manaus/jericoacoara as origins).
     "foz do iguacu": "brazil", "ilha grande": "brazil", "paraty": "brazil",
-    "ouro preto": "brazil", "sao paulo": "brazil", "morro de sao paulo": "brazil",
-    "jericoacoara": "brazil",
+    "ouro preto": "brazil", "morro de sao paulo": "brazil", "ilhabela": "brazil",
+    "anavilhanas archipelago": "brazil", "belem": "brazil",
+    "lencois maranhenses": "brazil", "fortaleza": "brazil", "natal": "brazil",
+    # South Africa (route docs cover cape town/johannesburg/hazyview/durban as
+    # origins).
+    "stellenbosch": "south africa", "franschhoek": "south africa",
+    "hermanus": "south africa", "gansbaai": "south africa",
+    "knysna": "south africa", "wilderness": "south africa",
+    "plettenberg bay": "south africa", "garden route": "south africa",
+    "soweto": "south africa", "pretoria": "south africa",
+    "kruger national park": "south africa", "blyde river canyon": "south africa",
+    "panorama route": "south africa", "drakensberg": "south africa",
+    "wild coast": "south africa", "coffee bay": "south africa",
+    "st lucia": "south africa", "isimangaliso wetland park": "south africa",
+    "hluhluwe": "south africa", "robben island": "south africa",
 }
 
 KNOWN_CITIES: dict[str, str] = {**CITY_TO_COUNTRY, **EXTRA_CITIES}

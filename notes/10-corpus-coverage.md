@@ -68,12 +68,13 @@ argue with the star count.
 | Ecuador | Yes | 1 doc | 1 doc | 3 | ★★★ | Galapagos treated as part of the mainland seasonal doc rather than its own document - candidate for a future split |
 | Bolivia | Yes | 1 doc | 1 doc | 3 | ★★★ | |
 | Chile | Yes | 1 doc | 1 doc | 3 | ★★★ | North (Atacama) vs. south (Patagonia) is as real a split as Peru's or Australia's but currently held in one doc - candidate for a future two-doc split |
-| Brazil | Split by nationality | 1 doc | 1 doc | 3 | ★★★ | Continent-sized country genuinely undercovered at 3 route docs - Amazon (Manaus), the northeast beaches beyond Salvador, and Sao Paulo are all unrepresented as origins |
+| Brazil | Split by nationality | 1 doc | 1 doc | 6 | ★★★★ | Sao Paulo, Manaus and Jericoacoara added 2026-09-16, closing the exact three gaps this row used to name; Sao Paulo state's interior and the far south beyond Florianopolis are the honest gaps left |
 | South Korea | Yes | 1 doc | 1 doc | 3 | ★★★ | The country that triggered this whole review - now has a real, sourced month-by-month table instead of one live-search guess |
-| China | Split by nationality | 2 docs | 1 doc | 4 | ★★★ | Full triad present and the corridor/Yunnan seasonal split is genuinely warranted, but 4 route docs (Beijing/Xian/Chengdu/Guilin) is thin for a country this size - Yunnan beyond Kunming, the northeast, and the whole west (Xinjiang, Tibet's own independent-travel ban aside) are unrepresented as origins, the same honest gap Brazil has |
+| China | Split by nationality | 2 docs | 1 doc | 7 | ★★★ | Kunming, Shanghai and Harbin added 2026-09-16 - Kunming is now its own Yunnan origin (not just a Chengdu/Guilin hop) and Harbin honestly names its own narrow, festival-season-only appeal; still ★★★ rather than higher because Xinjiang and the deeper northeast beyond one city remain thin for a country this size |
+| South Africa | Yes (90 days, all six) | 2 docs | 1 doc | 4 | ★★★★ | Added 2026-09-16, Africa's first country - Cape/interior seasonal split is a genuine opposite-system pair like Australia's north/south; Namibia/Botswana/Zimbabwe/Mozambique/Eswatini beyond it remain uncovered |
 | Bhutan | No (operator-arranged) | No (folded into tips) | 1 doc | 0 | ★ | Deliberately minimal by design - independent budget travel isn't possible there, see `tips-bhutan-overview`; not a gap to close, a fact to keep surfacing honestly |
 
-**25 countries covered**, 92 curated `visa`/`seasonal`/`tips` documents, 88
+**26 countries covered**, 96 curated `visa`/`seasonal`/`tips` documents, 98
 `routes` documents, ~320 known place names resolvable to a country (see
 `route_data.KNOWN_CITIES`).
 
@@ -90,9 +91,13 @@ wide, not because they're low-priority:
   Greece, the Balkans) - a completely different traveller profile (rail
   passes, hostels, no visa friction for most Western passports) that this
   corpus has never modelled at all.
-- **Africa** - zero coverage. Morocco and South Africa/east Africa safari
-  circuits (Kenya, Tanzania) are the most commonly requested gap-year
-  destinations here.
+- **Rest of Africa** - South Africa was the only African country added
+  2026-09-16 (see History below); Morocco and the east Africa safari circuit
+  (Kenya, Tanzania) remain the most commonly requested gap-year destinations
+  still uncovered, plus South Africa's own immediate neighbours (Namibia,
+  Botswana, Zimbabwe, Mozambique, Eswatini) now named but not curated in
+  `coverage.COUNTRY_NEIGHBOURS` - the same "handled, not curated" situation
+  described below for Southeast Asia and South America's near-neighbours.
 - **Rest of South America**: Uruguay, Paraguay, Venezuela and Guyana/Suriname
   were excluded from the 2026-09 batch as lower-traffic on the backpacker
   circuit than the seven added - worth revisiting if user demand says
@@ -110,6 +115,13 @@ claim about the world at a point in time, and claims like that can go stale
 just as easily as a number can - the fix, same as everywhere else in this
 file, is to verify before repeating it, not to trust a previous entry's
 confidence.
+
+**Africa's "zero coverage" line was on this list until 2026-09-16 and no
+longer is either** - South Africa moved into the coverage table the same day,
+for the same "verify, don't inherit" reason the China entry above states:
+nobody had actually re-checked whether Africa still deserved a blanket
+"uncovered" note, they had just kept restating the previous version of this
+file.
 
 ## Countries the app can now NAME but does not cover
 
@@ -205,3 +217,35 @@ When adding a country:
   size - the same honest gap Brazil has. Corpus grew from 24 to 25 countries,
   88 to 92 curated documents, 84 to 88 route documents. See decision 58 in
   `08-decisions-log.md`.
+- **2026-09-16: South Africa added (Africa's first country); Brazil and China
+  deepened.** Direct request, not a bug fix. South Africa got the full triad -
+  one visa document (all six Western passports get uniform 90-day visa-free
+  entry, unlike Brazil's or China's nationality splits), two seasonal
+  documents for the Cape/interior opposite-climate-system split (the same
+  shape as `seasonal-australia`/`seasonal-australia-north`, and given the
+  same single-blended-table treatment in `climate.CLIMATE_TABLE` rather than
+  two separate country entries), one tips document, and four town-level route
+  documents (Cape Town, Johannesburg, Hazyview/Kruger, Durban) - plus a new
+  `"south africa"` entry in `coverage.COUNTRY_NEIGHBOURS` (Namibia, Botswana,
+  Zimbabwe, Mozambique, Eswatini). Two facts were checked live rather than
+  assumed and turned out to matter: Baz Bus scaled back to a Garden-Route-only
+  network before 2026 (several existing guides still describe its old
+  Cape Town-Durban-Johannesburg full loop), and Eskom's "load shedding" has
+  been suspended since a stable 2026 winter after being a near-constant
+  feature of the 2020s - stated as current but explicitly hedged as
+  conditional, not framed as permanently solved. China got three new
+  town-level route documents (Kunming - now its own Yunnan origin rather than
+  only ever a hop from Chengdu/Guilin, with Dali/Lijiang/Shangri-La as its own
+  onward hops; Shanghai; Harbin, whose own route doc names its appeal as
+  genuinely narrow to the Ice and Snow Festival window rather than pretending
+  it's a normal stop) - route count 4 to 7, still rated ★★★ since Xinjiang and
+  the deeper northeast remain thin for the country's size. Brazil got three
+  new town-level route documents (Sao Paulo, Manaus, Jericoacoara) - the exact
+  three gaps its own notes/10 row previously named - route count 3 to 6, rated
+  up to ★★★★. `EXTRA_CITIES`/`CITY_TO_COUNTRY` in `route_data.py` were cleaned
+  up alongside the additions (Kunming, Shanghai, Sao Paulo and Jericoacoara
+  moved from hop-only to route-origin entries) so the file's own comments
+  describing which towns are origins stayed accurate. Corpus grew from 25 to
+  26 countries, 92 to 96 curated documents, 88 to 98 route documents.
+  Re-ingested (`--wipe`) and the smoke test and full 196-test suite both still
+  pass. See decision 60 in `08-decisions-log.md`.

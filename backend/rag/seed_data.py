@@ -637,6 +637,42 @@ VISA_DOCS = [
         region="south america",
         nationalities=WESTERN_PASSPORTS,
     ),
+    _doc(
+        "visa-south-africa-western",
+        """
+        South Africa visa exemption: unlike Brazil or China, all six "Western"
+        passports covered here get the same deal - UK, US, Australian,
+        Canadian, Irish and New Zealand holders all enter visa-free for
+        tourism for up to 90 days, stamped on arrival, no application needed.
+        Two entry-document rules trip people up more than the visa itself:
+        the passport needs only 30 days validity remaining past the planned
+        departure date (a genuinely shorter margin than the 6-month rule most
+        other countries in this corpus use, so don't assume the stricter
+        figure applies here), but it must carry at least 2 completely blank
+        visa pages - endorsement pages don't count, and passports with
+        glued-in extra pages are refused outright at the border. From 1 July
+        2026, every traveller must also complete a free online traveller
+        declaration before arriving at any port of entry - air, land, sea or
+        rail. A phased Electronic Travel Authorisation (ETA) system began
+        rolling out in October 2025, but as of this writing it only applies
+        to Chinese, Indian, Indonesian and Mexican passport holders; the
+        government has stated an intention to extend it to every nationality
+        eventually, so re-check before a future trip rather than assuming
+        today's exemption still holds. A yellow fever vaccination certificate
+        is required only for travellers arriving from, or transiting more
+        than 12 hours through, a yellow-fever-endemic country - not a factor
+        flying in directly from any of these six countries. Extensions are
+        handled by the Department of Home Affairs (via VFS Global) and are
+        genuinely slow and bureaucratic by regional standards - apply weeks,
+        not days, before the 90 days run out. The same 90-day terms generally
+        apply re-entering by land from Namibia, Botswana, Zimbabwe,
+        Mozambique, Eswatini or Lesotho.
+        """,
+        "visa",
+        "south africa",
+        region="africa",
+        nationalities=WESTERN_PASSPORTS,
+    ),
 ]
 
 # --------------------------------------------------------------------------- #
@@ -1273,6 +1309,69 @@ SEASONAL_DOCS = [
         "brazil",
         region="south america",
         monsoon_months=[],
+    ),
+    _doc(
+        "seasonal-south-africa-cape",
+        """
+        The Western Cape (Cape Town, the Winelands, the Garden Route) runs a
+        genuine Mediterranean climate - the opposite rhythm to the interior,
+        see seasonal-south-africa-interior for Kruger/the highveld. Summer
+        (November-March) is warm, dry and the peak season: expect the "Cape
+        Doctor", a strong, near-daily southeasterly wind that can flatten
+        beach plans and occasionally suspends the Table Mountain cableway,
+        alongside the crowds and top prices of the December-January school
+        holidays. Winter (May-August) is the wet season - cold fronts roll in
+        off the Atlantic bringing genuine rain and wind, the cableway closes
+        more often on bad-visibility days, but it is also low season with the
+        cheapest accommodation and Winelands tastings without a queue. Autumn
+        (April-May) and spring (September-October) are the real sweet spot:
+        mild, far drier than winter, thinner crowds than summer, and spring
+        adds the Namaqualand wildflower bloom on the West Coast. Southern
+        right whales arrive in False Bay and off Hermanus from roughly June,
+        build through the season, and peak August-November - visible free
+        from the shore at Hermanus's cliff path, no boat required. The Garden
+        Route (Knysna, Wilderness, Plettenberg Bay) shares this Mediterranean
+        pattern and is best hiked in the shoulder months for the same reason
+        Cape Town is - summer heat and crowds, winter rain, spring and autumn
+        the calm middle.
+        """,
+        "seasonal",
+        "south africa",
+        region="africa",
+        monsoon_months=[],
+    ),
+    _doc(
+        "seasonal-south-africa-interior",
+        """
+        The highveld, Kruger National Park and the Panorama Route
+        (Mpumalanga), and the Drakensberg run on the opposite clock to the
+        Cape - see seasonal-south-africa-cape for Cape Town/the Garden Route.
+        This is a summer-rainfall region: October-April brings hot afternoons
+        and dramatic thunderstorms, the bush turns lush and green, and while
+        this "green season" has cheaper lodge rates and newborn animals
+        (impala lambing peaks November-December), thick vegetation and
+        scattered water sources make game genuinely harder to find, and it is
+        the higher-malaria-risk stretch of the year in the Kruger lowveld and
+        northern KwaZulu-Natal. May-September is the dry season and, for
+        wildlife specifically, the better half of the year: animals
+        concentrate around the remaining waterholes, thin vegetation means
+        far better sightlines, days are clear and comfortably warm, and
+        malaria risk drops - the trade-off is cold, sometimes near-freezing
+        nights, worth packing real layers for. July-August is the dry
+        season's peak and Kruger's most reliable game-viewing stretch. The
+        Drakensberg's best hiking windows are the April-May and September-
+        October shoulders (mild, mostly dry, clear peak views); winter days
+        there are cold but genuinely clear, while summer brings afternoon
+        mist, lightning risk on exposed ridgelines and occasional trail
+        closures. Whatever the month, malaria prophylaxis is a real
+        consideration for the Kruger/lowveld/northern KZN coast (see the
+        tips document) - Cape Town, the Garden Route, Johannesburg itself and
+        the Drakensberg highlands are malaria-free.
+        """,
+        "seasonal",
+        "south africa",
+        region="africa",
+        monsoon_months=[10, 11, 12, 1, 2, 3, 4],
     ),
 ]
 
@@ -2218,6 +2317,58 @@ TIPS_DOCS = [
         "brazil",
         region="south america",
         budget_shoestring_usd=42,
+    ),
+    _doc(
+        "tips-south-africa",
+        """
+        South Africa backpacker notes. Daily budget: shoestring USD 30-45
+        (ZAR 500-750 at roughly ZAR 16-17/USD as of late 2026), mid USD
+        60-90. Dorm beds run ZAR 200-450 (roughly USD 12-27), cheapest in the
+        Garden Route and Kruger-area backpacker lodges, priciest in central
+        Cape Town in December. Getting around: Baz Bus, the classic
+        backpacker hop-on-hop-off network, scaled back its network in 2026 -
+        it now runs the Garden Route hop-on-hop-off loop between Cape Town
+        and Port Elizabeth, day trips from both cities, and Kruger safari
+        packages, but no longer the old Cape Town-Durban-Johannesburg full
+        loop some older guides still describe. For everything outside that
+        footprint, self-driving the N2 along the Garden Route is the
+        standard way backpackers actually do it (an International Driving
+        Permit is required alongside your home licence for a rental), long-
+        distance coaches (Intercape, Greyhound, City to City) cover the rest
+        of the country, and domestic flights (FlySafair, Kulula, Airlink)
+        between Cape Town, Johannesburg and Durban are frequently cheaper
+        than the equivalent overland journey and worth defaulting to for any
+        leg over about 6 hours.
+
+        Safety, taken plainly rather than avoided: carjacking and smash-and-
+        grabs are a real and specific risk, not generic caution - keep doors
+        locked and windows up at intersections in Johannesburg and central
+        Durban, never leave anything visible in a parked car, and don't stop
+        for a staged "flat tyre" flagged down by a stranger. Card skimming
+        at street ATMs is common enough that using machines inside a bank
+        branch or mall is standard advice, not paranoia. Use Uber or Bolt
+        over hailed taxis in the cities. Most solo travellers base
+        Johannesburg stays in Sandton, Rosebank or Melville rather than the
+        CBD. Township tours (Soweto, Langa) are genuinely worthwhile but only
+        with an established community-based operator, never independently -
+        the same rule this corpus gives for Rio's favelas. Malaria
+        prophylaxis matters for the Kruger lowveld, Mpumalanga and northern
+        KwaZulu-Natal (including St Lucia) - it is not needed for Cape Town,
+        the Garden Route, Johannesburg itself or the Drakensberg highlands,
+        so don't over-medicate for a Cape-only trip. Money note: cities are
+        heavily card-based, but carry rand cash for petrol-station
+        attendants (tipping them a few rand is customary), rural stops and
+        township vendors. Eskom's rolling blackouts ("load shedding"), a
+        near-constant feature of the 2020s, have been suspended since a
+        stable 2026 winter - worth mentioning because so many older guides
+        still warn travellers to plan around it, but pack a power bank
+        regardless given the recent history and the fact any resumption is
+        explicitly conditional on the grid, not guaranteed gone for good.
+        """,
+        "tips",
+        "south africa",
+        region="africa",
+        budget_shoestring_usd=37,
     ),
 ]
 

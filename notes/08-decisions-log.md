@@ -1088,3 +1088,150 @@ documents, 84 to 88 route documents. Not yet covered by a dedicated eval case
 and asserts the visa split (five nationalities visa-free, one not) comes
 through correctly rather than being flattened to "visa-free" or "needs a
 visa" for everyone.
+
+## 59. `DECISION_INSTRUCTION` told the weigher two contradictory things about how many cards to return
+
+Bug report #5, 2026-09-16 (`test12345`), trace `ad5162c9bfd601c8d21035f6f6a3443f`.
+Asked "my visa is running out, where should i go to next?" from Bangkok, the
+country-scope pool (decision 53) correctly built all five of Thailand's
+neighbours - Malaysia, Vietnam, Cambodia, Laos, Myanmar - and all three
+specialists reported real data for all five (confirmed in the trace: the
+weigher's own `reply` cites Vietnam's $25 e-visa, Cambodia's closed land
+borders, Laos's rains, Myanmar's unrest). The weigher's `cards` array held
+exactly one entry, Malaysia. The traveller saw one comparison card after
+asking a comparison question with five real candidates and got a bug report
+that just asks "why has this only recommended 1 country?" - there is no
+sharper way to state the symptom.
+
+**Root cause: `DECISION_INSTRUCTION` contradicted itself**, not a retrieval or
+routing failure - `candidates.pool`/`candidates.ranked` in the trace show all
+five reaching the weigher, and every specialist wrote up all five. Two
+paragraphs of the prompt gave opposite instructions for exactly this case (at
+or under the candidate cap):
+
+- "HOW MANY CARDS... If there are fewer candidates than that, return one card
+  per candidate."
+- "Dropping a candidate is a real decision, not a formatting one. Cut the ones
+  that genuinely lose... and keep the ones that genuinely compete."
+
+Under five candidates against a `weigher_top_n` of 6, the first rule says
+"five cards," the second says "cut the ones that lose" - and in this trace the
+model followed the second, reducing a five-way comparison to the one
+destination it judged strongest and relegating the other four to prose the UI
+never turns into cards (`ChatView.vue` renders `m.comparison`, not the free
+`reply` text, as the comparison grid). Nothing here is a specialist dropout
+(decisions 56-57) or a pool-building bug (decision 53) - the data reached the
+weigher intact; the weigher was just given two ways to read its own
+instructions and picked the one that broke the feature.
+
+**Fix:** rewrote the "HOW MANY CARDS" section in `graph.py` so the two rules
+can no longer conflict, by making them conditions on different counts instead
+of competing pieces of advice: at or under `{max_cards?}` candidates, one card
+per candidate, full stop - a losing destination gets a card ranked last with
+verdict `avoid`/`maybe` and the real reason in its cons, because "this one
+doesn't compete" is content for a card, not grounds to omit it. Only *above*
+`{max_cards?}` candidates does "decide which ones make the cut" apply, where
+it was always intended to (that is what the cap and `weigher_top_n` are for).
+The wishlist-candidate-cut disclosure rule moved with it, now scoped
+explicitly to the above-cap case only.
+
+Not caught by `scope-visa-expiry-forces-a-country-answer` or
+`scope-country-question-answered-with-countries` (decision 43) - both assert
+the reply *mentions* other countries, which it did even in the broken trace
+(in prose); neither asserts a card count. Worth a follow-up eval case that
+asserts `len(cards) == len(candidates)` when the pool is under the cap, so a
+regression here fails the suite instead of waiting for another bug report.
+196 tests still pass; no test asserted the old (contradictory) prompt text.
+
+## 60. South Africa added (Africa's first country), Brazil and China deepened - a direct request, not a bug fix
+
+Requested directly: "expand the corpus... south africa, china, brazil... as
+in depth and relevant and factual as you can." Africa was still zero coverage
+per notes/10's "deliberately NOT covered" list, named there as one of the
+most commonly requested gap-year regions; China and Brazil were both flagged
+in their own notes/10 rows as genuinely undercovered on route-doc density for
+their size, with the exact gaps already named ("Yunnan beyond Kunming, the
+northeast, and the whole west" for China; "Amazon (Manaus), the northeast
+beaches beyond Salvador, and Sao Paulo" for Brazil) - so this closed named,
+pre-existing gaps rather than picking arbitrary new ones.
+
+**South Africa: full triad plus four route docs**, given the same treatment
+decision 40 gave India/Myanmar - two seasonal documents rather than one,
+because the Cape (Mediterranean climate, wet winter/dry summer) and the
+Kruger/highveld interior (summer-rainfall, dry-season-is-best-for-safari) are
+a genuine opposite-system split, the same shape as `seasonal-australia`/
+`seasonal-australia-north` and given the identical treatment in
+`climate.CLIMATE_TABLE`'s single blended `"south africa"` entry (one rating
+per month weighing both halves, not two separate tables - matching how
+`"australia"` already resolves this). Facts were checked live rather than
+assumed, and two turned out to matter enough to write into the docs
+explicitly rather than silently getting them right: Baz Bus, the classic
+backpacker hop-on-hop-off network, scaled back sometime before 2026 to just
+the Garden Route loop plus day trips and Kruger packages - several existing
+guides still describe its old Cape Town-Durban-Johannesburg full loop, which
+would have been a confident, wrong, specific claim of exactly the kind
+`notes/10`'s fact-check ethos exists to catch; and Eskom's rolling blackouts
+("load shedding"), a near-constant feature of the country for most of the
+2020s, have been suspended since a stable 2026 winter - stated as current but
+explicitly hedged ("any resumption is conditional... not guaranteed gone for
+good") rather than either repeating the old warning as fact or dropping it
+as if the history never happened. `coverage.COUNTRY_NEIGHBOURS` got a new
+`"south africa"` entry (Namibia, Botswana, Zimbabwe, Mozambique, Eswatini -
+Lesotho, though physically nearest, is a full enclave and was passed over for
+the same "not a usable through-route" reason decision 53's China entry
+preferred South Korea over the geographically-closer Nepal). Rated ★★★★ in
+notes/10 on first addition - four route docs (Cape Town, Johannesburg,
+Hazyview/Kruger, Durban) covering four genuinely distinct sub-circuits is
+real depth for a first pass, the same tier New Zealand and Argentina sit at.
+
+**China: three new route docs** (Kunming, Shanghai, Harbin) close two of the
+three gaps notes/10 named for it verbatim. Kunming becomes its own origin
+(previously only ever an onward hop from Chengdu/Guilin), with Dali/Lijiang/
+Shangri-La as its own onward hops - real depth added to Yunnan, not just
+Kunming city. Shanghai, previously also hop-only, becomes the eastern-
+corridor anchor it always should have been given how many first-timer
+itineraries end there. Harbin closes the "northeast" gap honestly rather
+than pretending it's a normal stop: the route doc says outright that its
+appeal is genuinely narrow to the Ice and Snow Festival window (January-
+February) and that most backpackers on the standard corridor never come this
+far north - the same honesty pattern `tips-bhutan-overview` set for a
+different kind of narrow-appeal destination. Xinjiang and Tibet's independent-
+travel ban were already correctly named as their own callouts in
+`seasonal-china-yunnan` (decision 58) and didn't need a route doc - Tibet
+still can't have one, the same reasoning Bhutan has always had. Not re-rated
+above ★★★ in notes/10 despite seven route docs now (up from four) - Xinjiang
+and the deep northeast beyond one festival-season city are still genuinely
+thin for a country this size, and the honest thing is to say so rather than
+round up because the raw count improved.
+
+**Brazil: three new route docs** (Sao Paulo, Manaus, Jericoacoara) are the
+exact three gaps notes/10 named. Manaus's route doc leads with the fact that
+no road connects it to the rest of Brazil - every route in or out is by river
+or air, which shapes the whole onward-hop list (jungle lodges, the Meeting of
+the Waters, a multi-day hammock-class riverboat to Belem) more than a normal
+"bus takes N hours" pattern would. Jericoacoara ties directly back into the
+existing `seasonal-brazil` document's kitesurfing-season mention and pushes
+the Northeast beach circuit past Salvador into the genuinely under-served
+Lencois Maranhenses/Sao Luis stretch. Rated ★★★★ in notes/10, up from ★★★ -
+six route docs is now comparable density to Argentina's four for a
+similarly-scaled circuit, though Sao Paulo state's interior, the far south
+beyond Florianopolis, and the northern Amazon beyond Manaus itself remain
+honestly thin, same pattern as China above.
+
+**KNOWN_CITIES cleanup, not just additions.** Kunming, Shanghai, Sao Paulo
+and Jericoacoara moved from `EXTRA_CITIES` (hop-only) into `CITY_TO_COUNTRY`
+(route origins) now that each has its own document - left in both would have
+been harmless (`KNOWN_CITIES` just merges the two dicts and both map to the
+same country) but was cleaned up anyway since the `EXTRA_CITIES` comments
+explicitly list which towns are route origins per country, and leaving stale
+entries there would have made that comment actively wrong on inspection.
+
+Re-ingested (`python -m scripts.ingest_rag --wipe`) and confirmed the smoke
+test still passes; full 196-test suite still green (no test names a specific
+country count, so none needed updating). Corpus grew from 25 to 26 countries,
+92 to 96 curated documents, 88 to 98 route documents. No eval case exists yet
+for South Africa, China's Yunnan depth, or Brazil's Amazon/Northeast/Sao
+Paulo legs - worth adding at least one comparison case that puts South Africa
+against an existing corpus country so the honesty-guard and coverage-note
+machinery gets exercised against real African-continent data instead of only
+ever being tested against a destination the corpus holds nothing for.

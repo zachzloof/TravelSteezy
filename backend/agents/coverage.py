@@ -286,6 +286,12 @@ COUNTRY_NEIGHBOURS: dict[str, list[str]] = {
     "brazil": ["uruguay", "argentina", "paraguay", "bolivia", "peru"],
     "colombia": ["ecuador", "panama", "venezuela", "peru", "brazil"],
     "ecuador": ["colombia", "peru", "panama", "brazil", "bolivia"],
+    # --- Africa -------------------------------------------------------------
+    # South Africa's five nearest are its actual land-border neighbours (Lesotho
+    # is a full enclave within South Africa, so Eswatini - a real border crossing
+    # from the Kruger/Hazyview area described in the route docs - takes the fifth
+    # slot instead as the more usable near-neighbour for an independent traveller).
+    "south africa": ["namibia", "botswana", "zimbabwe", "mozambique", "eswatini"],
 }
 
 # Every origin above now carries five, so this is the number of neighbour slots

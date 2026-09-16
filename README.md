@@ -336,10 +336,11 @@ address account B's row. Two eval cases and four unit tests assert this.
 
 ## 5. RAG
 
-Seed corpus: 92 curated country-level documents across 25 countries - the
+Seed corpus: 96 curated country-level documents across 26 countries - the
 Southeast Asia backpacker circuit, South Asia, East Asia (Japan, South Korea,
-Mongolia, China), South America and Oceania (Australia, New Zealand) - in
-three namespaces, plus 88 town-level `routes` documents (see
+Mongolia, China), South America, Oceania (Australia, New Zealand) and, as of
+2026-09-16, Africa (South Africa) - in three namespaces, plus 98 town-level
+`routes` documents (see
 [notes/10-corpus-coverage.md](notes/10-corpus-coverage.md) for the
 country-by-country depth rating):
 
@@ -358,7 +359,7 @@ Ingest with `python -m scripts.ingest_rag` (or `--stats` to inspect the index).
 > retried unscoped, which handed the agent passages about entirely different
 > countries and led directly to confabulation. That fallback was removed.
 
-The extension adds two more namespaces on top of these — `routes` (47
+The extension adds two more namespaces on top of these — `routes` (98
 town-level "where next from here" documents) and `experience` (written at
 runtime from reviews and accepted/rejected suggestions, so recommendations
 improve with use). A live web search + two-pass LLM synthesis/verification
@@ -367,8 +368,8 @@ search comes back empty, and writes its result into whichever of the
 namespaces above matches the question's kind - tagged `origin: live` in its
 metadata rather than kept in a separate namespace, so retrieval for that kind
 of question stays correctly scoped instead of colliding across question types
-for the same country. This bumps the live index to 99 curated documents plus
-runtime content. See [docs/EXTENSION.md](docs/EXTENSION.md) section 6 and
+for the same country. That's 194 seeded documents total (96 curated +
+98 routes) plus runtime content. See [docs/EXTENSION.md](docs/EXTENSION.md) section 6 and
 [notes/03-rag-and-retrieval.md](notes/03-rag-and-retrieval.md) for the design
 and the bugs found building it.
 

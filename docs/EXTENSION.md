@@ -363,10 +363,12 @@ links.
 
 Two new Pinecone namespaces:
 
-- **`routes`** - 47 curated city-level documents ("onward from Chiang Mai": Pai 3h
+- **`routes`** - 98 curated city-level documents ("onward from Chiang Mai": Pai 3h
   by minibus, Chiang Rai for the Laos border, the Mae Hong Son loop). The original
   corpus is country-level and cannot answer "where next from here". Now spans
-  Southeast Asia, South Asia (India added), and Myanmar and Mongolia.
+  every region the curated corpus covers - see
+  [notes/10-corpus-coverage.md](../notes/10-corpus-coverage.md) for the current
+  country-by-country breakdown.
 - **`experience`** - written at runtime from post-visit reviews and from whether a
   suggestion was accepted or rejected.
 
