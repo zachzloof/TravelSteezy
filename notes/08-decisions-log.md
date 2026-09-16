@@ -888,3 +888,45 @@ what was missing was the habit of actually running the full suite at `--repeat`.
 A single-run suite reports 38/39 and looks clean. The same code at `--repeat 3`
 reports 38/39 *and names a case that fails a third of the time.* Those are not
 the same result.
+
+## 55. The three specialists score 1-10 on their own axis; the weigher still ranks holistically, not by formula
+
+Reported live: only the Weather specialist had any explicit per-destination
+rating (`good`/`mixed`/`avoid`), and even that wasn't a number. Logistics and
+Recommendations gave prose with no rating at all, so "some specialists rank,
+some don't" was literally true — there had never been a consistent per-axis
+score for the weigher to read.
+
+The naive fix — each specialist scores 1-10, the weigher sums or averages the
+three into the top 6 — was rejected before being built, because it is the same
+shape as two things this codebase already tried and reverted:
+
+- Rule 5 of `DECISION_INSTRUCTION` exists specifically to stop the weigher's
+  `verdict` being mechanically derived from a tier (a "mixed" season always
+  reading as "maybe" regardless of everything else) — reproduced live and
+  fixed by keeping the judgment holistic.
+- Decision 53 removed a code-side sort (season tier → distance → priority)
+  that picked the traveller's candidates by formula, before any step that held
+  their budget, pace or interests had looked at them. The whole point of that
+  change was that the weigher is "the only step holding all three specialist
+  reports and the trip profile at once," so ranking is its job, not a
+  computation upstream or downstream of it.
+
+An arithmetic combination of three specialist scores is exactly that kind of
+computation, just relocated to sit *inside* the weigher instead of before it.
+
+**What was built instead:** all three specialists now open every destination's
+report with an explicit `Score: X/10` line on their own axis — Weather keeps
+its `good`/`mixed`/`avoid` word alongside the number (must agree: 1-3/4-6/7-10),
+Logistics scores ease of entry and travel, Recommendations scores fit with
+*this* traveller's stated interests/budget/pace. `DECISION_INSTRUCTION` was
+given one new paragraph telling the weigher to treat these numbers as real
+signal — "a 7/10 is a clearly stronger seasonal fit than a 4/10" — but to weigh
+them against each other and the trip profile itself, the same way it already
+weighs the surrounding prose, rather than average or sum them. No code parses
+or touches these scores; they are a prompt-level consistency fix, not a new
+data path, so nothing in `runner.py` changed.
+
+Not yet covered by an eval case — worth adding one that checks a destination
+with an uneven score spread (e.g. high season score, low logistics score) isn't
+mechanically outranked by one that scores evenly-but-lower across all three.

@@ -354,10 +354,19 @@ Your data is a curated seasonal table, not a live forecast: it is reliable for
 "is this monsoon season" and cannot know about an anomalous year or a specific
 storm. Say so if the user seems to want a forecast.
 
-Then write 2-4 sentences per destination covering: the season it falls in, the
-rating (good / mixed / avoid), and the practical consequence for a backpacker -
-cancelled ferries, impassable roads, haze, crowds, price. Lead with any
-destination rated "avoid" and state clearly that it is a bad time to go.
+For EVERY destination, start with a line in exactly this form:
+
+Score: X/10 (good | mixed | avoid) - <destination>
+
+X is your seasonal-fit score for a backpacker travelling there that month (10 =
+ideal season, 1 = actively dangerous or pointless to go). The word in
+parentheses must agree with the number: 1-3 avoid, 4-6 mixed, 7-10 good - never
+score 8 and call it "avoid" or score 2 and call it "good".
+
+After that line, write 2-4 sentences per destination covering: the season it
+falls in, and the practical consequence for a backpacker - cancelled ferries,
+impassable roads, haze, crowds, price. Lead with any destination scored "avoid"
+and state clearly that it is a bad time to go.
 """
 )
 
@@ -387,6 +396,15 @@ on any destination where they could plausibly differ, lead with whichever
 passport gives the easier entry, and say explicitly which one you assumed. A
 dual national being quoted the harder of their two options is a wrong answer,
 not a conservative one.
+
+For EVERY destination, start with a line in exactly this form:
+
+Score: X/10 - <destination>
+
+X is how easy this destination actually is to reach and enter right now for
+this traveller (10 = visa-free or trivial e-visa plus a short, cheap journey
+from where they are; 1 = a real visa or journey obstacle - a long lead time, a
+costly or gruelling route - that could rule it out on its own).
 
 Report per destination:
 - Visa: what they get, cost, how long it lasts, and crucially any ADVANCE LEAD
@@ -425,6 +443,15 @@ KEY interest's activities.
 You MUST call search_backpacker_tips once for EVERY candidate destination before
 writing anything. Everything you recommend must come from retrieved passages or
 from a tool result.
+
+For EVERY destination, start with a line in exactly this form:
+
+Score: X/10 - <destination>
+
+X is how well this destination fits THIS traveller specifically - their stated
+interests (especially anything marked KEY), budget band and pace - not how
+objectively popular or scenic it is (10 = excellent match, 1 = poor match for
+what they said they want).
 
 You also have live tools. Use them when the question calls for them:
 - find_hostels: where to actually sleep, with real ratings and booking links.
@@ -545,6 +572,18 @@ above - their budget band, their pace, their climate preference, AND their
 interests. A destination that is wrong for their stated preferences should
 rank lower even if it is objectively pleasant. Say which preference drove the
 call.
+
+Each specialist opens their report on every destination with "Score: X/10" on
+their own axis (season fit, ease of travel/entry, fit with this traveller).
+Treat those numbers as real signal, exactly like the rest of their report - a
+7/10 is a clearly stronger seasonal fit than a 4/10 - but do not average, sum
+or otherwise compute your ranking from them. Which axis matters most depends on
+what THIS traveller actually said they care about, and that judgment call is
+the reason this step exists rather than a formula. A destination scoring
+highest on one axis and mediocre on another is not automatically ahead of or
+behind one that scores evenly across all three - weigh the three scores against
+each other and against the trip profile the same way you weigh the surrounding
+prose.
 
 Interests marked KEY in the trip profile are a real ranking factor, not colour.
 When one candidate is a notably stronger match for a KEY interest than the

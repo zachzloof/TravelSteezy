@@ -383,6 +383,30 @@ one of the three inputs it claims to have weighed. Eval cases
 `season-nepal-monsoon` and `rag-budget-numbers`; full history in note 08,
 decisions 51 and 52.
 
+## Specialist scores are evidence for the weigher, not a formula it runs
+
+All three specialists (`WEATHER_INSTRUCTION`, `LOGISTICS_INSTRUCTION`,
+`RECOMMENDATIONS_INSTRUCTION`) open every destination's report with an explicit
+`Score: X/10` line on their own axis - season fit, ease of entry/travel, fit
+with this traveller's stated interests/budget/pace. Before this, only Weather
+had any explicit rating at all (`good`/`mixed`/`avoid`, no number), so the
+other two specialists gave the weigher nothing consistent to compare across
+candidates.
+
+The obvious next step - have the weigher average or sum the three scores into
+its ranking - was deliberately not taken. It's the same shape as two things
+already reverted here: rule 5 above (verdict must not be mechanically derived
+from a tier) and decision 53 in `08-decisions-log.md` (the code-side sort that
+picked candidates by formula before the weigher, holding full context, ever
+saw them). `DECISION_INSTRUCTION` instead tells the weigher to treat the
+scores as real signal - "a 7/10 is a clearly stronger seasonal fit than a
+4/10" - and weigh them against each other and the trip profile itself, exactly
+as it already weighs the surrounding prose. A destination scoring high on one
+axis and mediocre on another is not automatically ahead of or behind one that
+scores evenly across all three; which axis matters more depends on what this
+traveller actually said they care about, which is the judgment the weigher
+exists to make. See decision 55.
+
 ## What a guard does *not* do
 
 Worth being explicit: none of these guards can stop a model from getting
