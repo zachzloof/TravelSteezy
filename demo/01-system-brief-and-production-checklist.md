@@ -138,19 +138,7 @@ Everything is keyed by the authenticated `user_id` from the signed JWT, never
 from a caller-controlled parameter — asserted by dedicated eval cases and
 unit tests for cross-account isolation.
 
-## 6. Demo Day walkthrough plan (5–10 min slot, ~5 min live)
 
-| Time | Segment |
-|---|---|
-| 0:00–0:30 | **Problem.** One line: backpackers ask "where next" constantly, and season/visa/logistics/taste don't share a unit. |
-| 0:30–1:15 | **Architecture.** Point at the pipeline diagram: parse → write → parallel specialists → weigher. Name the one deliberate guard (coverage) so the audience knows honesty is engineered, not hoped for. |
-| 1:15–1:45 | **Stack.** One breath: ADK + OpenAI via LiteLlm, Pinecone RAG, SQLite memory, Langfuse tracing, Railway host. |
-| 1:45–6:45 | **Live demo (~5 min)**, following the README's demo script: <br>1. Incognito, log in as the seeded demo account — memory sidebar already populated, nothing typed yet. <br>2. Ask *"I'm in Thailand with six weeks left — Laos or Vietnam?"* — ranked cards with pros/cons/season/visa flags and sourced backpacker notes appear. <br>3. Expand "Show what ran" — real specialist timings and retrieved passages with similarity scores, straight from the trace. <br>4. Change a preference (climate → cool) in My Preferences, ask again — ranking moves, reply names the preference that drove it. <br>5. Say *"I left Laos yesterday, I'm in Thailand now"* — sidebar's "Just remembered" panel shows the write live. |
-| 6:45–7:30 | **Prove persistence.** Log out, reopen in a fresh incognito window, log back in — profile is exactly as it was (or hit `/profile/me` directly). |
-| 7:30–8:00 | **Evals close.** State the number, not a vibe: "33/35 on the full suite, and here's a real regression this exact harness caught and the fix that closed it" (Vietnam lead-time, 38%→75%). |
-
-If live time runs short, cut step 4 (preference change) first — persistence
-and the initial comparison are the two things that must land.
 
 ## 7. Backup demo — critical
 
@@ -173,19 +161,3 @@ deployed (see checklist below).
 | At least one fix from TRACE is shipped | ✅ Done | Multiple — headline: the Vietnam visa-lead-time rate-limit fix, 38%→75% attempt-pass rate (§4 above), plus four base-app fixes that took the suite from 14/19 to 19/19 |
 | README or brief covers problem, architecture, stack, and demos | ✅ Done | `README.md` §1–11, plus `notes/00-index.md` for depth and this document |
 | Backup recording exported and ready | ⚠️ **Outstanding** | Not yet recorded — do this immediately after deploying |
-
-### Outstanding before Demo Day (in order)
-
-1. **Deploy to Railway with a `/data` volume mounted**, then verify the URL
-   loads in a genuinely fresh incognito window.
-2. **Decide the demo-safety mechanism** (README §10): a seeded
-   `DEMO_USERNAME`/`DEMO_PASSWORD` account (recommended — keeps the approval
-   gate demonstrable for everyone else) vs. `ADMIN_AUTO_APPROVE=true`.
-3. **Confirm the production Pinecone index reflects the current 24-country
-   corpus** (88 curated docs + 84 route docs as of the 2026-09-14 expansion,
-   `notes/10-corpus-coverage.md`) — the most recent eval runs already used
-   live Pinecone with this corpus, but re-check right before Demo Day since
-   the index can drift from what's in `seed_data.py`.
-4. **Record the backup screen capture** of the walkthrough in §6, once the
-   deployed URL is live, so the recording matches what a stranger will
-   actually see.
